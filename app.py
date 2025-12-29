@@ -79,10 +79,34 @@ def ler_config():
             return json.load(f).get('periodo', 'Não informado')
     return "Aguardando atualização"
 
-def limpar_base_dados():
+def limpar_arquivos_temporarios():
+    """Remove CSVs processados para evitar duplicação, mas mantem histórico e usuarios"""
+    arquivos = [f for f in os.listdir('.') if f.endswith('.csv')]
+    protegidos = ['historico_consolidado.csv', 'usuarios.csv']
+    for f in arquivos:
+        if f not in protegidos:
+            try: os.remove(f)
+            except: pass
+
+def limpar_tudo_reset():
     arquivos = [f for f in os.listdir('.') if f.endswith('.csv')]
     for f in arquivos:
-        os.remove(f)
+        try: os.remove(f)
+        except: pass
+
+# --- FUNÇÃO DE PROCESSAMENTO DE VALORES ---
+def processar_porcentagem_br(valor):
+    if isinstance(valor, str):
+        v = valor.replace('%', '').replace(',', '.').strip()
+        try: 
+            v_float = float(v)
+            if v_float > 1.1: return v_float / 100
+            return v_float
+        except: return 0.0
+    if isinstance(valor, (int, float)):
+        if valor > 1.1: return valor / 100
+        return valor
+    return 0.0
 
 # --- HISTÓRICO ---
 def atualizar_historico(df_atual, periodo):
@@ -90,13 +114,14 @@ def atualizar_historico(df_atual, periodo):
     df_save = df_atual.copy()
     df_save['Periodo'] = periodo
     
-    # Padroniza nome para evitar duplicidade
+    # Padroniza nome e valores antes de salvar
     df_save['Colaborador'] = df_save['Colaborador'].astype(str).str.strip().str.upper()
+    df_save['% Atingimento'] = df_save['% Atingimento'].apply(processar_porcentagem_br)
     
     if os.path.exists(ARQUIVO_HIST):
         try:
             df_hist = pd.read_csv(ARQUIVO_HIST)
-            # Remove dados antigos deste mesmo período para sobrescrever
+            # Remove dados antigos deste mesmo período
             df_hist = df_hist[df_hist['Periodo'] != periodo]
             df_final = pd.concat([df_hist, df_save], ignore_index=True)
         except: df_final = df_save
@@ -109,7 +134,11 @@ def carregar_historico_completo():
     if os.path.exists('historico_consolidado.csv'):
         try: 
             df = pd.read_csv('historico_consolidado.csv')
+            # --- LIMPEZA DE HISTÓRICO ON-THE-FLY ---
+            # Garante que os nomes estejam em maiúsculo e os valores normalizados (0-1)
             df['Colaborador'] = df['Colaborador'].astype(str).str.strip().str.upper()
+            if '% Atingimento' in df.columns:
+                df['% Atingimento'] = df['% Atingimento'].apply(processar_porcentagem_br)
             return df
         except: return None
     return None
@@ -131,16 +160,6 @@ def salvar_arquivos_padronizados(files):
             arquivos_salvos.append(f.name)
         except Exception as e: st.error(f"Erro salvar {f.name}: {e}")
     return arquivos_salvos
-
-def processar_porcentagem_br(valor):
-    if isinstance(valor, str):
-        v = valor.replace('%', '').replace(',', '.').strip()
-        try: return float(v) / 100
-        except: return 0.0
-    if isinstance(valor, (int, float)):
-        if valor > 1.1: return valor / 100
-        return valor
-    return 0.0
 
 def ler_csv_inteligente(arquivo_ou_caminho):
     separadores = [',', ';']
@@ -174,13 +193,11 @@ def tratar_arquivo_especial(df, nome_arquivo):
         if any(p == c or p in c for p in possiveis_nomes):
             col_agente = c
             break
-            
     if not col_agente: return None, "Coluna de Nome não encontrada"
     
     df.rename(columns={col_agente: 'Colaborador'}, inplace=True)
     df['Colaborador'] = df['Colaborador'].astype(str).str.strip().str.upper()
 
-    # 2. Lógica Especial: Arquivo Combinado (Aderência & Conformidade)
     col_ad = next((c for c in df.columns if 'ader' in c and ('%' in c or 'perc' in c or 'aderencia' in c)), None)
     col_conf = next((c for c in df.columns if 'conform' in c and ('%' in c or 'perc' in c or 'conformidade' in c)), None)
 
@@ -195,10 +212,8 @@ def tratar_arquivo_especial(df, nome_arquivo):
         df_conf['% Atingimento'] = df_conf[col_conf].apply(processar_porcentagem_br)
         df_conf['Indicador'] = 'CONFORMIDADE'
         lista_retorno.append(df_conf[['Colaborador', 'Indicador', '% Atingimento']])
-        
         return pd.concat(lista_retorno), "Arquivo Combinado Detectado"
 
-    # 3. Lógica Padrão
     col_valor = None
     nome_kpi_limpo = nome_arquivo.split('.')[0].lower()
     possiveis_valores = [nome_kpi_limpo, 'atingimento', 'resultado', 'nota', 'final', 'pontos', 'valor', 'score']
@@ -235,7 +250,6 @@ def carregar_dados_completo():
     lista_final = []
     arquivos_ignorar = ['usuarios.csv', 'historico_consolidado.csv', 'config.json']
     arquivos = [f for f in os.listdir('.') if f.endswith('.csv') and f.lower() not in arquivos_ignorar]
-    
     for arquivo in arquivos:
         try:
             df_bruto = ler_csv_inteligente(arquivo)
@@ -244,7 +258,6 @@ def carregar_dados_completo():
                 if df_tratado is not None:
                     lista_final.append(df_tratado)
         except: pass
-        
     if lista_final: 
         df_concat = pd.concat(lista_final, ignore_index=True)
         df_concat['Colaborador'] = df_concat['Colaborador'].astype(str).str.strip().str.upper()
@@ -255,7 +268,6 @@ def carregar_dados_completo():
         
         df_final = df_concat.groupby(['Colaborador', 'Indicador'], as_index=False).agg(agg_rules)
         return df_final
-        
     return None
 
 def carregar_usuarios():
@@ -284,9 +296,9 @@ def filtrar_por_usuarios_cadastrados(df_dados, df_users):
 
 # --- CLASSIFICAÇÃO ---
 def classificar_farol(val):
-    if val >= 0.90: return '💎 Excelência' # >= 90%
-    elif val >= 0.80: return '🟢 Meta Batida' # 80% a 90%
-    else: return '🔴 Crítico' # < 80%
+    if val >= 0.90: return '💎 Excelência' 
+    elif val >= 0.80: return '🟢 Meta Batida' 
+    else: return '🔴 Crítico' 
 
 # --- 4. LOGIN ---
 if 'logado' not in st.session_state:
@@ -414,10 +426,8 @@ if perfil == 'admin':
             colab_sel = st.selectbox("Selecione o Colaborador:", sorted(df_hist['Colaborador'].unique()))
             df_hist_user = df_hist[df_hist['Colaborador'] == colab_sel].copy()
             if not df_hist_user.empty:
-                # --- ORDENAÇÃO TEMPORAL CORRIGIDA ---
                 df_hist_user['dt_temp'] = pd.to_datetime(df_hist_user['Periodo'], format='%m/%Y', errors='coerce')
                 df_hist_user = df_hist_user.sort_values('dt_temp')
-                # ------------------------------------
                 
                 df_hist_user['Indicador'] = df_hist_user['Indicador'].apply(formatar_nome_visual)
                 df_hist_user['Texto'] = df_hist_user['% Atingimento'].apply(lambda x: f"{x:.1%}")
@@ -509,10 +519,14 @@ if perfil == 'admin':
                             st.error("⚠️ NENHUM dado foi salvo! O filtro de usuários removeu todos os nomes. Verifique o 'usuarios.csv'.")
                         else:
                             atualizar_historico(df_filtrado, nova_data)
+                            
+                            # LIMPEZA AUTOMÁTICA
+                            limpar_arquivos_temporarios()
+                            
                             st.cache_data.clear()
                             st.balloons()
-                            st.success(f"✅ Sucesso! Dados salvos em **{nova_data}**.")
-                            time.sleep(1)
+                            st.success(f"✅ Sucesso! Dados salvos em **{nova_data}** e arquivos temporários removidos.")
+                            time.sleep(2)
                             st.rerun()
                     except Exception as e: st.error(f"Erro salvamento: {e}")
         
@@ -523,8 +537,7 @@ if perfil == 'admin':
                 st.download_button("⬇️ Baixar Histórico Consolidado", f, "historico_consolidado.csv", "text/csv")
         
         if st.button("🗑️ Resetar Tudo"):
-            limpar_base_dados()
-            if os.path.exists('historico_consolidado.csv'): os.remove('historico_consolidado.csv')
+            limpar_tudo_reset()
             st.cache_data.clear()
             st.warning("Tudo limpo!")
             time.sleep(2)
@@ -589,7 +602,6 @@ else:
             val = r['% Atingimento']
             nome_visual = formatar_nome_visual(r['Indicador'])
             
-            # --- NOVA LÓGICA DE CORES DOS CARDS ---
             delta_msg = "Meta 80%"
             delta_cor = "normal"
             if val >= 0.90: 
@@ -631,7 +643,7 @@ else:
             fig_lol.update_layout(title="Hastes de Atingimento", plot_bgcolor='white')
             st.plotly_chart(fig_lol, use_container_width=True)
             
-        # --- NOVO: GRÁFICO DE HISTÓRICO MENSAL ORDENADO ---
+        # --- GRÁFICO DE HISTÓRICO MENSAL ORDENADO ---
         st.markdown("---")
         st.subheader("📅 Minha Evolução Mensal")
         
@@ -641,10 +653,8 @@ else:
             df_user_hist = df_full_hist[df_full_hist['Colaborador'] == nome_upper_match].copy()
             
             if not df_user_hist.empty:
-                # --- ORDENAÇÃO TEMPORAL CORRIGIDA ---
                 df_user_hist['dt_temp'] = pd.to_datetime(df_user_hist['Periodo'], format='%m/%Y', errors='coerce')
                 df_user_hist = df_user_hist.sort_values('dt_temp')
-                # ------------------------------------
                 
                 df_user_hist['Indicador'] = df_user_hist['Indicador'].apply(formatar_nome_visual)
                 fig_hist = px.line(df_user_hist, x='Periodo', y='% Atingimento', color='Indicador', markers=True)
