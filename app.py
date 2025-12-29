@@ -41,6 +41,7 @@ st.markdown("""
 
 # --- 3. FUNÇÕES DE BACKEND ---
 
+# --- FUNÇÃO: CORRETOR ORTOGRÁFICO VISUAL ---
 def formatar_nome_visual(nome_cru):
     nome = str(nome_cru).strip().upper()
     if "ADER" in nome: return "Aderência"
@@ -52,6 +53,7 @@ def formatar_nome_visual(nome_cru):
     if "TPC" in nome: return "TPC"
     if "QUALIDADE" in nome: return "Qualidade"
     return nome_cru 
+# ----------------------------------------------------
 
 def tentar_extrair_data_csv(df):
     colunas_possiveis = ['data', 'date', 'periodo', 'mês', 'mes', 'competencia', 'ref']
@@ -114,13 +116,25 @@ def listar_periodos_disponiveis():
     return []
 
 def salvar_arquivos_padronizados(files):
-    # Salva com o nome original para facilitar, a lógica de leitura vai se virar
+    mapa_nomes = {
+        'ir': 'IR.csv', 'csat': 'CSAT.csv', 'tpc': 'TPC.csv',
+        'interacoes': 'INTERACOES.csv', 'interações': 'INTERACOES.csv',
+        'pontualidade': 'PONTUALIDADE.csv',
+        'aderência': 'ADERENCIA.csv', 'aderencia': 'ADERENCIA.csv',
+        'conformidade': 'CONFORMIDADE.csv'
+    }
     arquivos_salvos = []
     for f in files:
+        nome_original = f.name.lower()
+        nome_final = f.name 
+        for chave, valor in mapa_nomes.items():
+            if chave in nome_original:
+                nome_final = valor
+                break
         try:
-            with open(f.name, "wb") as w: w.write(f.getbuffer())
-            arquivos_salvos.append(f.name)
-        except Exception as e: st.error(f"Erro salvar {f.name}: {e}")
+            with open(nome_final, "wb") as w: w.write(f.getbuffer())
+            arquivos_salvos.append(nome_final)
+        except Exception as e: st.error(f"Erro salvar {nome_final}: {e}")
     return arquivos_salvos
 
 def processar_porcentagem_br(valor):
@@ -138,63 +152,49 @@ def ler_csv_inteligente(arquivo_ou_caminho):
             try:
                 if hasattr(arquivo_ou_caminho, 'seek'): arquivo_ou_caminho.seek(0)
                 df = pd.read_csv(arquivo_ou_caminho, sep=sep, encoding=enc)
-                if len(df.columns) > 1: return df
+                if len(df.columns) > 1:
+                    df.columns = df.columns.str.strip()
+                    return df
             except: continue
     return None
 
-def normalizar_nome_indicador(nome_arquivo):
-    """Padroniza o nome do indicador INDEPENDENTE do nome do arquivo"""
-    nome = nome_arquivo.upper()
-    if 'ADER' in nome: return 'ADERENCIA'
-    if 'CONFORM' in nome: return 'CONFORMIDADE'
-    if 'INTERA' in nome: return 'INTERACOES'
-    if 'PONTUAL' in nome: return 'PONTUALIDADE'
-    if 'CSAT' in nome: return 'CSAT'
-    if 'IR' in nome or 'RESOLU' in nome: return 'IR'
-    if 'TPC' in nome: return 'TPC'
-    return nome.split('.')[0] # Fallback
-
 def tratar_arquivo_especial(df, nome_arquivo):
-    df.columns = [str(c).strip().lower() for c in df.columns]
+    lista_dfs_processados = []
+    colunas_lower = [c.lower() for c in df.columns]
     
-    col_agente = None
-    possiveis_nomes = ['colaborador', 'agente', 'nome', 'employee', 'funcionario', 'operador']
-    for c in df.columns:
-        if any(p in c for p in possiveis_nomes):
-            col_agente = c
-            break
-    if not col_agente: return []
-    
-    df.rename(columns={col_agente: 'Colaborador'}, inplace=True)
+    tem_aderencia = any('aderência' in c or 'aderencia' in c for c in colunas_lower)
+    tem_conformidade = any('conformidade' in c for c in colunas_lower)
+    tem_agente = any('agente' in c for c in colunas_lower)
 
-    col_valor = None
-    nome_kpi_limpo = nome_arquivo.split('.')[0].lower()
-    possiveis_valores = [nome_kpi_limpo, 'atingimento', 'resultado', 'nota', 'final', 'pontos', 'valor']
-    
-    # Adiciona variações específicas
-    if 'ader' in nome_kpi_limpo: possiveis_valores.extend(['aderência', 'aderencia'])
-    if 'conform' in nome_kpi_limpo: possiveis_valores.extend(['conformidade'])
-    if 'intera' in nome_kpi_limpo: possiveis_valores.extend(['interações', 'interacoes'])
-
-    for c in df.columns:
-        if c == 'colaborador': continue
-        if any(pv in c for pv in possiveis_valores):
-            col_valor = c
-            break
-    if col_valor: df.rename(columns={col_valor: '% Atingimento'}, inplace=True)
-    else: return [] # Sem valor, sem jogo
-
-    # Padroniza Diamantes
-    for c in df.columns:
-        if 'diamantes' in c and 'max' not in c: df.rename(columns={c: 'Diamantes'}, inplace=True)
-        if 'max' in c and 'diamantes' in c: df.rename(columns={c: 'Max. Diamantes'}, inplace=True)
-
-    df['% Atingimento'] = df['% Atingimento'].apply(processar_porcentagem_br)
-    
-    # AQUI ESTÁ O PULO DO GATO: Normalização Forçada do Nome
-    df['Indicador'] = normalizar_nome_indicador(nome_arquivo)
-    
-    return [df]
+    if tem_agente and (tem_aderencia or tem_conformidade):
+        col_agente = next(c for c in df.columns if 'agente' in c.lower())
+        df = df.rename(columns={col_agente: 'Colaborador'})
+        col_ad = next((c for c in df.columns if 'aderência' in c.lower() or 'aderencia' in c.lower()), None)
+        if col_ad:
+            df_ad = df[['Colaborador', col_ad]].copy()
+            df_ad['% Atingimento'] = df_ad[col_ad].apply(processar_porcentagem_br)
+            df_ad['Indicador'] = 'ADERENCIA'
+            lista_dfs_processados.append(df_ad[['Colaborador', 'Indicador', '% Atingimento']])
+        col_conf = next((c for c in df.columns if 'conformidade' in c.lower()), None)
+        if col_conf:
+            df_conf = df[['Colaborador', col_conf]].copy()
+            df_conf['% Atingimento'] = df_conf[col_conf].apply(processar_porcentagem_br)
+            df_conf['Indicador'] = 'CONFORMIDADE'
+            lista_dfs_processados.append(df_conf[['Colaborador', 'Indicador', '% Atingimento']])
+        return lista_dfs_processados
+    else:
+        for col in df.columns:
+            c_low = col.lower()
+            if 'atingimento' in c_low: df.rename(columns={col: '% Atingimento'}, inplace=True)
+            if 'colaborador' in c_low or 'nome' in c_low: df.rename(columns={col: 'Colaborador'}, inplace=True)
+            if 'diamantes' == c_low: df.rename(columns={col: 'Diamantes'}, inplace=True)
+            if 'max' in c_low and 'diamantes' in c_low: df.rename(columns={col: 'Max. Diamantes'}, inplace=True)
+        if '% Atingimento' in df.columns:
+            nome_kpi = nome_arquivo.split('.')[0].upper()
+            df['Indicador'] = nome_kpi
+            lista_dfs_processados.append(df)
+            return lista_dfs_processados
+    return []
 
 def carregar_dados_completo():
     lista_final = []
@@ -285,7 +285,7 @@ with st.sidebar:
     if periodo_selecionado == "Nenhum histórico disponível":
         df_raw = None
         periodo_label = "Aguardando Upload"
-        st.warning("⚠️ Histórico vazio ou não encontrado.")
+        st.warning("⚠️ Histórico vazio. Vá em 'Admin / Upload' para salvar dados.")
     else:
         df_hist_full = carregar_historico_completo()
         if df_hist_full is not None:
@@ -413,8 +413,7 @@ if perfil == 'admin':
         data_sugestao = obter_data_hoje()
         st.markdown("#### 1. Configurar Período")
         nova_data = st.text_input("Mês/Ano de Referência:", value=data_sugestao)
-        
-        st.markdown("#### 2. Atualizar Dados (Cria novo Mês)")
+        st.markdown("#### 2. Atualizar Arquivos")
         c1, c2 = st.columns(2)
         with c1:
             up_u = st.file_uploader("usuarios.csv", key="u")
@@ -448,24 +447,12 @@ if perfil == 'admin':
                             time.sleep(1)
                             st.rerun()
                     except Exception as e: st.error(f"Erro salvamento: {e}")
-        
         st.markdown("---")
-        st.markdown("### 3. Restaurar Backup Antigo")
-        up_hist = st.file_uploader("Envie o 'historico_consolidado.csv' para restaurar:", type=['csv'], key="hist_up")
-        if up_hist:
-            if st.button("Restaurar Backup"):
-                with open("historico_consolidado.csv", "wb") as w: w.write(up_hist.getbuffer())
-                st.success("Backup restaurado! Reiniciando...")
-                time.sleep(2)
-                st.rerun()
-
-        st.markdown("---")
-        st.markdown("### 💾 Baixar Backup Atual")
+        st.markdown("### 💾 Backup do Histórico")
         if os.path.exists('historico_consolidado.csv'):
             with open('historico_consolidado.csv', 'rb') as f:
                 st.download_button("⬇️ Baixar Histórico Consolidado", f, "historico_consolidado.csv", "text/csv")
         else: st.info("Salve dados primeiro para gerar o histórico.")
-        
         st.markdown("---")
         if st.button("🗑️ Resetar Tudo"):
             limpar_base_dados()
@@ -483,6 +470,7 @@ else:
     
     if not meus_dados.empty:
         if 'Diamantes' in meus_dados.columns and 'Max. Diamantes' in meus_dados.columns:
+            # --- LÓGICA FINANCEIRA ---
             total_dia_bruto = meus_dados['Diamantes'].sum()
             total_max = meus_dados['Max. Diamantes'].sum()
             perc_dia = (total_dia_bruto / total_max) if total_max > 0 else 0
@@ -492,22 +480,16 @@ else:
             with col_bar: st.progress(perc_dia)
             with col_num: st.write(f"**{total_dia_bruto} / {total_max}** Diamantes")
             
-            # --- LÓGICA FINANCEIRA ---
-            # Verifica se existe o dado de Conformidade
+            # Pega valor da Conformidade (raw name é CONFORMIDADE)
             df_conf = meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE']
+            atingimento_conf = df_conf.iloc[0]['% Atingimento'] if not df_conf.empty else 0.0
             
-            if not df_conf.empty:
-                atingimento_conf = df_conf.iloc[0]['% Atingimento']
-                tem_dado_conf = True
-            else:
-                atingimento_conf = 0.0
-                tem_dado_conf = False
-            
+            # Cálculo do Desconto (Pontualidade)
             desconto_diamantes = 0
             motivo_desconto = ""
             
-            # Só aplica penalidade se tiver o dado e for baixo
-            if tem_dado_conf and atingimento_conf < 0.92:
+            if atingimento_conf < 0.92:
+                # Procura a Pontualidade para remover os diamantes dela
                 df_pont = meus_dados[meus_dados['Indicador'] == 'PONTUALIDADE']
                 if not df_pont.empty:
                     desconto_diamantes = df_pont.iloc[0]['Diamantes']
@@ -518,13 +500,10 @@ else:
             
             st.markdown("#### 💰 Extrato Financeiro")
             c1, c2, c3 = st.columns(3)
-            c1.metric("Diamantes Válidos", f"{total_dia_liquido}", f"{motivo_desconto}", delta_color="inverse" if desconto_diamantes > 0 else "normal")
+            c1.metric("Diamantes Válidos", f"{total_dia_liquido}", f"{motivo_desconto}", delta_color="inverse")
             c2.metric("Valor por Diamante", "R$ 0,50")
             
-            if not tem_dado_conf:
-                c3.metric("Valor a Receber", "Aguardando Conformidade", "Dado Indisponível", delta_color="off")
-                st.info("ℹ️ O cálculo final depende do lançamento da sua nota de **Conformidade**.")
-            elif desconto_diamantes > 0:
+            if desconto_diamantes > 0:
                 c3.metric("Valor a Receber", f"R$ {valor_final:.2f}", "⚠️ Conformidade < 92%", delta_color="inverse")
                 st.error(f"⚠️ Atenção: Sua Conformidade foi de **{atingimento_conf:.1%}**. Por ser menor que 92%, você deixou de ganhar os diamantes de Pontualidade.")
             else:
