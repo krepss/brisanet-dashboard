@@ -21,6 +21,7 @@ st.markdown("""
         border-radius: 12px; border-left: 5px solid #F37021;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s;
     }
+    div.stMetric:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
     div.stButton > button {
         background: linear-gradient(90deg, #F37021 0%, #d35400 100%); color: white; border: none;
         padding: 0.5rem 1rem; border-radius: 8px; font-weight: bold; transition: 0.3s;
@@ -71,6 +72,22 @@ def limpar_base_dados():
     for f in arquivos:
         os.remove(f)
 
+# --- TRADUTOR DE NOMES (EMBELEZADOR) ---
+def formatar_nome_indicador(nome_bruto):
+    """Converte nomes de arquivo técnicos para Português bonito"""
+    mapa = {
+        'INTERACOES': 'Interações',
+        'PONTUALIDADE': 'Pontualidade',
+        'ADERENCIA': 'Aderência',
+        'CONFORMIDADE': 'Conformidade',
+        'QUALIDADE': 'Qualidade',
+        'IR': 'IR',
+        'CSAT': 'CSAT',
+        'TPC': 'TPC'
+    }
+    chave = nome_bruto.strip().upper().replace('.CSV', '')
+    return mapa.get(chave, chave) # Se não achar, devolve o original
+
 # --- HISTÓRICO ---
 def atualizar_historico(df_atual, periodo):
     ARQUIVO_HIST = 'historico_consolidado.csv'
@@ -104,6 +121,7 @@ def listar_periodos_disponiveis():
     return []
 
 def salvar_arquivos_padronizados(files):
+    # Mapa apenas para salvar no disco de forma organizada
     mapa_nomes = {
         'ir': 'IR.csv', 'csat': 'CSAT.csv', 'tpc': 'TPC.csv',
         'interacoes': 'INTERACOES.csv', 'interações': 'INTERACOES.csv',
@@ -156,29 +174,36 @@ def tratar_arquivo_especial(df, nome_arquivo):
     if tem_agente and (tem_aderencia or tem_conformidade):
         col_agente = next(c for c in df.columns if 'agente' in c.lower())
         df = df.rename(columns={col_agente: 'Colaborador'})
+        
+        # Aderência (Com acento)
         col_ad = next((c for c in df.columns if 'aderência' in c.lower() or 'aderencia' in c.lower()), None)
         if col_ad:
             df_ad = df[['Colaborador', col_ad]].copy()
             df_ad['% Atingimento'] = df_ad[col_ad].apply(processar_porcentagem_br)
-            df_ad['Indicador'] = 'ADERENCIA'
+            df_ad['Indicador'] = 'Aderência' # Nome Bonito
             lista_dfs_processados.append(df_ad[['Colaborador', 'Indicador', '% Atingimento']])
+            
+        # Conformidade (Com acento)
         col_conf = next((c for c in df.columns if 'conformidade' in c.lower()), None)
         if col_conf:
             df_conf = df[['Colaborador', col_conf]].copy()
             df_conf['% Atingimento'] = df_conf[col_conf].apply(processar_porcentagem_br)
-            df_conf['Indicador'] = 'CONFORMIDADE'
+            df_conf['Indicador'] = 'Conformidade' # Nome Bonito
             lista_dfs_processados.append(df_conf[['Colaborador', 'Indicador', '% Atingimento']])
         return lista_dfs_processados
     else:
+        # Arquivos Padrão
         for col in df.columns:
             c_low = col.lower()
             if 'atingimento' in c_low: df.rename(columns={col: '% Atingimento'}, inplace=True)
             if 'colaborador' in c_low or 'nome' in c_low: df.rename(columns={col: 'Colaborador'}, inplace=True)
             if 'diamantes' == c_low: df.rename(columns={col: 'Diamantes'}, inplace=True)
             if 'max' in c_low and 'diamantes' in c_low: df.rename(columns={col: 'Max. Diamantes'}, inplace=True)
+        
         if '% Atingimento' in df.columns:
-            nome_kpi = nome_arquivo.split('.')[0].upper()
-            df['Indicador'] = nome_kpi
+            # Pega o nome do arquivo e aplica o "Embelezador"
+            nome_kpi_raw = nome_arquivo.split('.')[0]
+            df['Indicador'] = formatar_nome_indicador(nome_kpi_raw)
             lista_dfs_processados.append(df)
             return lista_dfs_processados
     return []
@@ -359,10 +384,6 @@ if perfil == 'admin':
                 fig_heat.update_traces(texttemplate="%{z:.1%}", textfont={"size":12})
                 fig_heat.update_layout(plot_bgcolor='white')
                 st.plotly_chart(fig_heat, use_container_width=True)
-                with st.expander("Ver Gráfico de Tendência (Linhas)"):
-                    fig_line = px.line(df_hist_user, x='Periodo', y='% Atingimento', color='Indicador', markers=True)
-                    fig_line.add_hline(y=1.0, line_dash="dash", line_color="green")
-                    st.plotly_chart(fig_line, use_container_width=True)
             else: st.warning("Sem histórico para este colaborador.")
         else: st.info("O histórico está vazio. Salve novos dados na aba 'Upload' para começar.")
 
@@ -437,11 +458,10 @@ if perfil == 'admin':
                         df_novo_ciclo = carregar_dados_completo()
                         df_users_fresh = carregar_usuarios()
                         
-                        # Filtro com diagnóstico
                         df_filtrado = filtrar_por_usuarios_cadastrados(df_novo_ciclo, df_users_fresh)
                         
                         if df_filtrado.empty and not df_novo_ciclo.empty:
-                            st.error("🚨 ATENÇÃO: Os dados foram lidos, mas nenhum nome bateu com 'usuarios.csv'. NADA FOI SALVO.")
+                            st.error("🚨 ATENÇÃO: Os dados foram lidos, mas nenhum nome bateu com 'usuarios.csv'. Verifique se os nomes estão idênticos.")
                         else:
                             atualizar_historico(df_filtrado, nova_data)
                             st.cache_data.clear()
@@ -475,11 +495,10 @@ else:
     st.markdown(f"## 🚀 Olá, **{nome.split()[0]}**!")
     st.caption(f"📅 Dados referentes a: **{periodo_label}**")
     
-    # --- LÓGICA DE FILTRO DO OPERADOR (NORMALIZADA) ---
+    # --- FILTRO DO OPERADOR (INSENSÍVEL A CAIXA) ---
     nome_login_norm = nome.strip().lower()
     df_dados['colab_norm'] = df_dados['Colaborador'].astype(str).str.strip().str.lower()
     meus_dados = df_dados[df_dados['colab_norm'] == nome_login_norm].copy()
-    # ---------------------------------------------------
     
     if not meus_dados.empty:
         if 'Diamantes' in meus_dados.columns and 'Max. Diamantes' in meus_dados.columns:
