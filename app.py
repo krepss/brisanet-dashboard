@@ -72,44 +72,17 @@ def limpar_base_dados():
     for f in arquivos:
         os.remove(f)
 
-# --- TRADUTOR DE NOMES (CORRETOR GLOBAL) ---
-def corrigir_nomes_display(df):
-    """
-    Passa em todo o DataFrame e corrige os nomes dos indicadores para exibir bonito.
-    """
-    if df is None or df.empty or 'Indicador' not in df.columns:
-        return df
-    
-    # Dicionário de Correção
-    mapa_correcao = {
-        'ADERENCIA': 'Aderência',
-        'CONFORMIDADE': 'Conformidade',
-        'INTERACOES': 'Interações',
-        'PONTUALIDADE': 'Pontualidade',
-        'QUALIDADE': 'Qualidade',
-        'SATISFACAO': 'Satisfação',
-        'RESOLUCAO': 'Resolução',
-        'IR': 'IR',
-        'CSAT': 'CSAT',
-        'TPC': 'TPC'
-    }
-    
-    def aplicar_correcao(texto):
-        texto_upper = str(texto).strip().upper()
-        return mapa_correcao.get(texto_upper, str(texto).capitalize())
-
-    df['Indicador'] = df['Indicador'].apply(aplicar_correcao)
-    return df
-
 # --- HISTÓRICO ---
 def atualizar_historico(df_atual, periodo):
     ARQUIVO_HIST = 'historico_consolidado.csv'
+    
     df_save = df_atual.copy()
     df_save['Periodo'] = periodo
     
     if os.path.exists(ARQUIVO_HIST):
         try:
             df_hist = pd.read_csv(ARQUIVO_HIST)
+            # Remove dados antigos deste mesmo período para evitar duplicatas
             df_hist = df_hist[df_hist['Periodo'] != periodo]
             df_final = pd.concat([df_hist, df_save], ignore_index=True)
         except:
@@ -186,19 +159,17 @@ def tratar_arquivo_especial(df, nome_arquivo):
     if tem_agente and (tem_aderencia or tem_conformidade):
         col_agente = next(c for c in df.columns if 'agente' in c.lower())
         df = df.rename(columns={col_agente: 'Colaborador'})
-        
         col_ad = next((c for c in df.columns if 'aderência' in c.lower() or 'aderencia' in c.lower()), None)
         if col_ad:
             df_ad = df[['Colaborador', col_ad]].copy()
             df_ad['% Atingimento'] = df_ad[col_ad].apply(processar_porcentagem_br)
-            df_ad['Indicador'] = 'ADERENCIA' # Mantém bruto, corrige depois
+            df_ad['Indicador'] = 'ADERENCIA'
             lista_dfs_processados.append(df_ad[['Colaborador', 'Indicador', '% Atingimento']])
-            
         col_conf = next((c for c in df.columns if 'conformidade' in c.lower()), None)
         if col_conf:
             df_conf = df[['Colaborador', col_conf]].copy()
             df_conf['% Atingimento'] = df_conf[col_conf].apply(processar_porcentagem_br)
-            df_conf['Indicador'] = 'CONFORMIDADE' # Mantém bruto, corrige depois
+            df_conf['Indicador'] = 'CONFORMIDADE'
             lista_dfs_processados.append(df_conf[['Colaborador', 'Indicador', '% Atingimento']])
         return lista_dfs_processados
     else:
@@ -208,16 +179,16 @@ def tratar_arquivo_especial(df, nome_arquivo):
             if 'colaborador' in c_low or 'nome' in c_low: df.rename(columns={col: 'Colaborador'}, inplace=True)
             if 'diamantes' == c_low: df.rename(columns={col: 'Diamantes'}, inplace=True)
             if 'max' in c_low and 'diamantes' in c_low: df.rename(columns={col: 'Max. Diamantes'}, inplace=True)
-        
         if '% Atingimento' in df.columns:
-            nome_kpi_raw = nome_arquivo.split('.')[0]
-            df['Indicador'] = nome_kpi_raw.upper()
+            nome_kpi = nome_arquivo.split('.')[0].upper()
+            df['Indicador'] = nome_kpi
             lista_dfs_processados.append(df)
             return lista_dfs_processados
     return []
 
 def carregar_dados_completo():
     lista_final = []
+    # Lista arquivos mas IGNORA arquivos de sistema e histórico
     arquivos_ignorar = ['usuarios.csv', 'historico_consolidado.csv', 'config.json']
     arquivos = [f for f in os.listdir('.') if f.endswith('.csv') and f.lower() not in arquivos_ignorar]
     
@@ -254,6 +225,7 @@ def carregar_usuarios():
                 return df
     return None
 
+# Filtro Mestre de Usuários
 def filtrar_por_usuarios_cadastrados(df_dados, df_users):
     if df_dados is None or df_dados.empty: return df_dados
     if df_users is None or df_users.empty: return df_dados
@@ -310,19 +282,20 @@ with st.sidebar:
     else:
         df_hist_full = carregar_historico_completo()
         if df_hist_full is not None:
+            # FILTRO CRÍTICO DE PERÍODO
             df_raw = df_hist_full[df_hist_full['Periodo'] == periodo_selecionado].copy()
         else:
             df_raw = None
         periodo_label = periodo_selecionado
     
+    # Aplica filtro de usuários e duplicatas finais
     df_users_cadastrados = carregar_usuarios()
     df_dados = filtrar_por_usuarios_cadastrados(df_raw, df_users_cadastrados)
     
-    # --- CORREÇÃO GERAL DE NOMES (APLICA A TODOS) ---
     if df_dados is not None and not df_dados.empty:
-        df_dados = corrigir_nomes_display(df_dados)
-    # ------------------------------------------------
-    
+        # Garante remoção de duplicatas na visualização final
+        df_dados = df_dados.drop_duplicates(subset=['Colaborador', 'Indicador'], keep='last')
+
     st.markdown(f"""<div class="date-box">Ref. Exibida:<br>{periodo_label}</div>""", unsafe_allow_html=True)
     st.markdown("---")
     nome = st.session_state['usuario_nome']
@@ -383,13 +356,8 @@ if perfil == 'admin':
 
     with tabs[1]:
         st.markdown("### ⏳ Evolução Temporal")
-        st.caption("Visão térmica do desempenho ao longo dos meses.")
         df_hist = carregar_historico_completo()
         df_hist = filtrar_por_usuarios_cadastrados(df_hist, df_users_cadastrados)
-        
-        # Correção no histórico também
-        if df_hist is not None: df_hist = corrigir_nomes_display(df_hist)
-        
         if df_hist is not None and not df_hist.empty:
             colab_sel = st.selectbox("Selecione o Colaborador:", sorted(df_hist['Colaborador'].unique()))
             df_hist_user = df_hist[df_hist['Colaborador'] == colab_sel].copy()
@@ -399,10 +367,9 @@ if perfil == 'admin':
                                               text_auto=False, title=f"Mapa de Calor: {colab_sel}",
                                               color_continuous_scale="RdYlGn", range_color=[0.7, 1.2])
                 fig_heat.update_traces(texttemplate="%{z:.1%}", textfont={"size":12})
-                fig_heat.update_layout(plot_bgcolor='white')
                 st.plotly_chart(fig_heat, use_container_width=True)
             else: st.warning("Sem histórico para este colaborador.")
-        else: st.info("O histórico está vazio. Salve novos dados na aba 'Upload' para começar.")
+        else: st.info("Histórico vazio.")
 
     with tabs[2]:
         if df_dados is not None and not df_dados.empty:
@@ -417,9 +384,8 @@ if perfil == 'admin':
             fig_farol = px.bar(df_agrupado, x='Indicador', y='Quantidade', color='Status', 
                                text='Quantidade', title="Farol de Performance",
                                color_discrete_map={'🟢 Meta Batida': '#2ecc71', '🟡 Atenção': '#f1c40f', '🔴 Crítico': '#e74c3c'})
-            fig_farol.update_layout(plot_bgcolor='white')
             st.plotly_chart(fig_farol, use_container_width=True)
-            st.markdown("---")
+            
             lista_kpis = sorted(df_dados['Indicador'].unique())
             for kpi in lista_kpis:
                 with st.expander(f"📊 Ranking: {kpi}", expanded=False):
@@ -428,15 +394,16 @@ if perfil == 'admin':
                                       text_auto='.1%', title=f"Ranking - {kpi}",
                                       color='% Atingimento', color_continuous_scale=['#e74c3c', '#f1c40f', '#2ecc71'])
                     fig_rank.add_vline(x=1.0, line_dash="dash", line_color="black")
-                    fig_rank.update_layout(height=max(400, len(df_kpi)*30), plot_bgcolor='white')
                     st.plotly_chart(fig_rank, use_container_width=True)
 
     with tabs[3]: 
         if df_dados is not None and not df_dados.empty:
             c1, c2 = st.columns([3, 1])
-            with c1: st.markdown("### Mapa de Resultados")
+            with c1: st.markdown(f"### Mapa de Resultados: {periodo_label}")
             with c2: filtro = st.multiselect("🔍 Filtrar:", df_dados['Colaborador'].unique())
             df_show = df_dados if not filtro else df_dados[df_dados['Colaborador'].isin(filtro)]
+            
+            # --- TABELA GERAL BLINDADA ---
             pivot = df_show.pivot_table(index='Colaborador', columns='Indicador', values='% Atingimento')
             try:
                 st.dataframe(pivot.style.background_gradient(cmap='RdYlGn', vmin=0.0, vmax=1.2).format("{:.1%}"), use_container_width=True, height=600)
@@ -471,22 +438,15 @@ if perfil == 'admin':
                     try:
                         salvos = salvar_arquivos_padronizados(up_k)
                         salvar_config(nova_data)
-                        
                         df_novo_ciclo = carregar_dados_completo()
                         df_users_fresh = carregar_usuarios()
-                        
-                        df_filtrado = filtrar_por_usuarios_cadastrados(df_novo_ciclo, df_users_fresh)
-                        
-                        if df_filtrado.empty and not df_novo_ciclo.empty:
-                            st.error("🚨 ATENÇÃO: Os dados foram lidos, mas nenhum nome bateu com 'usuarios.csv'. Verifique se os nomes estão idênticos.")
-                        else:
-                            atualizar_historico(df_filtrado, nova_data)
-                            st.cache_data.clear()
-                            st.balloons()
-                            st.success(f"✅ Sucesso! Dados de **{nova_data}** salvos no histórico.")
-                            time.sleep(1)
-                            st.rerun()
-                            
+                        df_novo_ciclo = filtrar_por_usuarios_cadastrados(df_novo_ciclo, df_users_fresh)
+                        atualizar_historico(df_novo_ciclo, nova_data)
+                        st.cache_data.clear()
+                        st.balloons()
+                        st.success(f"✅ Sucesso! Dados de **{nova_data}** salvos no histórico.")
+                        time.sleep(1)
+                        st.rerun()
                     except Exception as e:
                         st.error(f"Erro salvamento: {e}")
         
@@ -511,11 +471,7 @@ if perfil == 'admin':
 else:
     st.markdown(f"## 🚀 Olá, **{nome.split()[0]}**!")
     st.caption(f"📅 Dados referentes a: **{periodo_label}**")
-    
-    nome_login_norm = nome.strip().lower()
-    df_dados['colab_norm'] = df_dados['Colaborador'].astype(str).str.strip().str.lower()
-    meus_dados = df_dados[df_dados['colab_norm'] == nome_login_norm].copy()
-    
+    meus_dados = df_dados[df_dados['Colaborador'] == nome].copy()
     if not meus_dados.empty:
         if 'Diamantes' in meus_dados.columns and 'Max. Diamantes' in meus_dados.columns:
             total_dia = meus_dados['Diamantes'].sum()
