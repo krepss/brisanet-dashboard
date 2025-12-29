@@ -89,19 +89,29 @@ def atualizar_historico(df_atual, periodo):
     ARQUIVO_HIST = 'historico_consolidado.csv'
     df_save = df_atual.copy()
     df_save['Periodo'] = periodo
+    
+    # Garante padronização antes de salvar
+    df_save['Colaborador'] = df_save['Colaborador'].astype(str).str.strip().str.upper()
+    
     if os.path.exists(ARQUIVO_HIST):
         try:
             df_hist = pd.read_csv(ARQUIVO_HIST)
+            # Remove dados antigos deste mesmo período
             df_hist = df_hist[df_hist['Periodo'] != periodo]
             df_final = pd.concat([df_hist, df_save], ignore_index=True)
         except: df_final = df_save
     else: df_final = df_save
+    
     df_final.to_csv(ARQUIVO_HIST, index=False)
     return True
 
 def carregar_historico_completo():
     if os.path.exists('historico_consolidado.csv'):
-        try: return pd.read_csv('historico_consolidado.csv')
+        try: 
+            df = pd.read_csv('historico_consolidado.csv')
+            # Padroniza leitura
+            df['Colaborador'] = df['Colaborador'].astype(str).str.strip().str.upper()
+            return df
         except: return None
     return None
 
@@ -170,35 +180,34 @@ def tratar_arquivo_especial(df, nome_arquivo):
     if not col_agente: return None, "Coluna de Nome não encontrada"
     
     df.rename(columns={col_agente: 'Colaborador'}, inplace=True)
+    
+    # --- PADRONIZAÇÃO DE NOME FORÇADA ---
+    # Converte tudo para maiúsculo e remove espaços para evitar duplicatas (João vs JOAO)
+    df['Colaborador'] = df['Colaborador'].astype(str).str.strip().str.upper()
 
     # 2. Lógica Especial: Arquivo Combinado (Aderência & Conformidade)
-    # Procura TODAS as colunas que podem ser Aderência ou Conformidade
     col_ad = next((c for c in df.columns if 'ader' in c and ('%' in c or 'perc' in c or 'aderencia' in c)), None)
     col_conf = next((c for c in df.columns if 'conform' in c and ('%' in c or 'perc' in c or 'conformidade' in c)), None)
 
-    # Se achou as duas, força a separação
     if col_ad and col_conf:
         lista_retorno = []
-        # Processa Aderência
         df_ad = df[['Colaborador', col_ad]].copy()
         df_ad['% Atingimento'] = df_ad[col_ad].apply(processar_porcentagem_br)
         df_ad['Indicador'] = 'ADERENCIA'
         lista_retorno.append(df_ad[['Colaborador', 'Indicador', '% Atingimento']])
         
-        # Processa Conformidade
         df_conf = df[['Colaborador', col_conf]].copy()
         df_conf['% Atingimento'] = df_conf[col_conf].apply(processar_porcentagem_br)
         df_conf['Indicador'] = 'CONFORMIDADE'
         lista_retorno.append(df_conf[['Colaborador', 'Indicador', '% Atingimento']])
         
-        return pd.concat(lista_retorno), "Arquivo Combinado Detectado (Aderência + Conformidade)"
+        return pd.concat(lista_retorno), "Arquivo Combinado Detectado"
 
     # 3. Lógica Padrão (Arquivo Único)
     col_valor = None
     nome_kpi_limpo = nome_arquivo.split('.')[0].lower()
     possiveis_valores = [nome_kpi_limpo, 'atingimento', 'resultado', 'nota', 'final', 'pontos', 'valor', 'score']
     
-    # Adiciona variações
     if 'ader' in nome_kpi_limpo: possiveis_valores.extend(['aderência', 'aderencia'])
     if 'conform' in nome_kpi_limpo: possiveis_valores.extend(['conformidade'])
     if 'intera' in nome_kpi_limpo: possiveis_valores.extend(['interações', 'interacoes'])
@@ -231,6 +240,7 @@ def carregar_dados_completo():
     lista_final = []
     arquivos_ignorar = ['usuarios.csv', 'historico_consolidado.csv', 'config.json']
     arquivos = [f for f in os.listdir('.') if f.endswith('.csv') and f.lower() not in arquivos_ignorar]
+    
     for arquivo in arquivos:
         try:
             df_bruto = ler_csv_inteligente(arquivo)
@@ -239,13 +249,19 @@ def carregar_dados_completo():
                 if df_tratado is not None:
                     lista_final.append(df_tratado)
         except: pass
+        
     if lista_final: 
-        df_final = pd.concat(lista_final, ignore_index=True)
-        df_final['Key_Colab'] = df_final['Colaborador'].astype(str).str.strip().str.lower()
-        df_final['Key_Ind'] = df_final['Indicador'].astype(str).str.strip().str.lower()
-        df_final = df_final.drop_duplicates(subset=['Key_Colab', 'Key_Ind'], keep='last')
-        df_final = df_final.drop(columns=['Key_Colab', 'Key_Ind'])
+        df_concat = pd.concat(lista_final, ignore_index=True)
+        
+        # --- AGREGADOR DE DUPLICATAS (SOMA E MÉDIA) ---
+        # Se um colaborador aparecer 2x no mesmo indicador, tira a média da nota e soma os diamantes
+        agg_rules = {'% Atingimento': 'mean'}
+        if 'Diamantes' in df_concat.columns: agg_rules['Diamantes'] = 'sum'
+        if 'Max. Diamantes' in df_concat.columns: agg_rules['Max. Diamantes'] = 'sum' # Assume que se apareceu 2x, o potencial dobrou
+        
+        df_final = df_concat.groupby(['Colaborador', 'Indicador'], as_index=False).agg(agg_rules)
         return df_final
+        
     return None
 
 def carregar_usuarios():
@@ -259,20 +275,22 @@ def carregar_usuarios():
             if col_email and col_nome:
                 df.rename(columns={col_email: 'email', col_nome: 'nome'}, inplace=True)
                 df['email'] = df['email'].astype(str).str.strip().str.lower()
-                df['nome'] = df['nome'].astype(str).str.strip()
+                # Padroniza nome dos usuários também para bater o match
+                df['nome'] = df['nome'].astype(str).str.strip().str.upper()
                 return df
     return None
 
 def filtrar_por_usuarios_cadastrados(df_dados, df_users):
     if df_dados is None or df_dados.empty: return df_dados
     if df_users is None or df_users.empty: return df_dados
-    lista_vip = df_users['nome'].astype(str).str.strip().str.lower().unique()
-    df_dados['temp_nome'] = df_dados['Colaborador'].astype(str).str.strip().str.lower()
-    df_filtrado = df_dados[df_dados['temp_nome'].isin(lista_vip)].copy()
-    df_filtrado = df_filtrado.drop(columns=['temp_nome'])
+    
+    lista_vip = df_users['nome'].unique() # Já está upper
+    # df_dados['Colaborador'] já está upper e tratado
+    
+    df_filtrado = df_dados[df_dados['Colaborador'].isin(lista_vip)].copy()
     return df_filtrado
 
-# --- NOVA LÓGICA DE CLASSIFICAÇÃO ---
+# --- CLASSIFICAÇÃO ---
 def classificar_farol(val):
     if val >= 0.90: return '💎 Excelência' # >= 90%
     elif val >= 0.80: return '🟢 Meta Batida' # 80% a 90%
@@ -305,7 +323,9 @@ if not st.session_state['logado']:
                     if df_users is not None:
                         user = df_users[df_users['email'] == email]
                         if not user.empty:
-                            st.session_state.update({'logado': True, 'usuario_nome': user.iloc[0]['nome'], 'perfil': 'user'})
+                            # Guarda o nome em Title Case para ficar bonito
+                            nome_upper = user.iloc[0]['nome']
+                            st.session_state.update({'logado': True, 'usuario_nome': nome_upper, 'perfil': 'user'})
                             st.rerun()
                         else: st.error("Email não encontrado.")
                     else: st.error("⚠️ Sistema em manutenção.")
@@ -333,13 +353,18 @@ with st.sidebar:
     
     df_users_cadastrados = carregar_usuarios()
     df_dados = filtrar_por_usuarios_cadastrados(df_raw, df_users_cadastrados)
+    
+    # Converte nomes para Title Case na visualização final
     if df_dados is not None and not df_dados.empty:
-        df_dados = df_dados.drop_duplicates(subset=['Colaborador', 'Indicador'], keep='last')
+        df_dados['Colaborador'] = df_dados['Colaborador'].str.title()
 
     st.markdown(f"""<div class="date-box">Ref. Exibida:<br>{periodo_label}</div>""", unsafe_allow_html=True)
     st.markdown("---")
-    nome = st.session_state['usuario_nome']
-    st.markdown(f"### 👤 {nome.split()[0]}")
+    
+    # Exibe nome do usuário logado bonito
+    nome_logado = st.session_state['usuario_nome'].title() if st.session_state['usuario_nome'] != 'Gestor' else 'Gestor'
+    
+    st.markdown(f"### 👤 {nome_logado.split()[0]}")
     if st.button("Sair / Logout"):
         st.session_state.update({'logado': False})
         st.rerun()
@@ -360,10 +385,9 @@ if perfil == 'admin':
             st.markdown(f"### Resumo de Saúde: **{periodo_label}**")
             df_media_pessoas = df_dados.groupby('Colaborador')['% Atingimento'].mean().reset_index()
             
-            # NOVAS METAS
-            qtd_verde = len(df_media_pessoas[df_media_pessoas['% Atingimento'] >= 0.90]) # Excelência
-            qtd_amarelo = len(df_media_pessoas[(df_media_pessoas['% Atingimento'] >= 0.80) & (df_media_pessoas['% Atingimento'] < 0.90)]) # Meta Batida
-            qtd_vermelho = len(df_media_pessoas[df_media_pessoas['% Atingimento'] < 0.80]) # Crítico
+            qtd_verde = len(df_media_pessoas[df_media_pessoas['% Atingimento'] >= 0.90]) 
+            qtd_amarelo = len(df_media_pessoas[(df_media_pessoas['% Atingimento'] >= 0.80) & (df_media_pessoas['% Atingimento'] < 0.90)]) 
+            qtd_vermelho = len(df_media_pessoas[df_media_pessoas['% Atingimento'] < 0.80]) 
             
             c1, c2, c3 = st.columns(3)
             c1.metric("💎 Excelência", f"{qtd_verde}", delta=">=90%")
@@ -396,7 +420,9 @@ if perfil == 'admin':
         st.markdown("### ⏳ Evolução Temporal")
         df_hist = carregar_historico_completo()
         df_hist = filtrar_por_usuarios_cadastrados(df_hist, df_users_cadastrados)
+        
         if df_hist is not None and not df_hist.empty:
+            df_hist['Colaborador'] = df_hist['Colaborador'].str.title() # Visual Bonito
             colab_sel = st.selectbox("Selecione o Colaborador:", sorted(df_hist['Colaborador'].unique()))
             df_hist_user = df_hist[df_hist['Colaborador'] == colab_sel].copy()
             if not df_hist_user.empty:
@@ -513,9 +539,14 @@ if perfil == 'admin':
 
 # --- COLABORADOR ---
 else:
-    st.markdown(f"## 🚀 Olá, **{nome.split()[0]}**!")
+    # Ajusta o nome para Title Case na exibição
+    nome_visual_user = nome_logado
+    st.markdown(f"## 🚀 Olá, **{nome_visual_user.split()[0]}**!")
     st.caption(f"📅 Dados referentes a: **{periodo_label}**")
-    meus_dados = df_dados[df_dados['Colaborador'] == nome].copy()
+    
+    # O df_dados já foi convertido para Title Case no bloco do Dashboard
+    # Mas precisamos garantir o match com o nome logado (que também está Title Case)
+    meus_dados = df_dados[df_dados['Colaborador'] == nome_visual_user].copy()
     
     if not meus_dados.empty:
         if 'Diamantes' in meus_dados.columns and 'Max. Diamantes' in meus_dados.columns:
