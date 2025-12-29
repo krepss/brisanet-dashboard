@@ -56,8 +56,11 @@ def obter_data_hoje():
     return datetime.now().strftime("%m/%Y")
 
 def salvar_config(data_texto):
-    with open('config.json', 'w') as f:
-        json.dump({'periodo': data_texto}, f)
+    try:
+        with open('config.json', 'w') as f:
+            json.dump({'periodo': data_texto}, f)
+    except Exception as e:
+        st.error(f"Erro ao salvar config: {e}")
 
 def ler_config():
     if os.path.exists('config.json'):
@@ -101,6 +104,10 @@ def salvar_arquivos_padronizados(files):
         'aderência': 'ADERENCIA.csv', 'aderencia': 'ADERENCIA.csv'
     }
     arquivos_salvos = []
+    
+    # Debug: Mostra o diretório atual
+    # st.write(f"Diretório de trabalho: {os.getcwd()}")
+    
     for f in files:
         nome_original = f.name.lower()
         nome_final = f.name 
@@ -108,9 +115,15 @@ def salvar_arquivos_padronizados(files):
             if chave in nome_original:
                 nome_final = valor
                 break
-        with open(nome_final, "wb") as w:
-            w.write(f.getbuffer())
-        arquivos_salvos.append(nome_final)
+        
+        # Salvamento blindado
+        try:
+            with open(nome_final, "wb") as w:
+                w.write(f.getbuffer())
+            arquivos_salvos.append(nome_final)
+        except Exception as e:
+            st.error(f"Erro crítico ao salvar o arquivo {nome_final}: {e}")
+            
     return arquivos_salvos
 
 def processar_porcentagem_br(valor):
@@ -310,9 +323,9 @@ if perfil == 'admin':
                         'Pior Indicador': f"{pior_kpi_row['Indicador']} ({pior_kpi_row['% Atingimento']:.1%})"
                     })
                 df_final_atencao = pd.DataFrame(lista_detalhada)
-                st.dataframe(df_final_atencao.style.format({'Média Geral': '{:.1%}'})
-                    .applymap(lambda v: 'color: red; font-weight: bold;' if 'Crítico' in str(v) else 'color: #d35400;' if 'Atenção' in str(v) else '', subset=['Status']),
-                    use_container_width=True, height=500)
+                
+                # REMOVIDO STYLE COMPLEXO QUE CAUSAVA ERRO
+                st.dataframe(df_final_atencao, use_container_width=True, height=500)
             else: st.success("🎉 Todos bateram a meta neste período.")
 
     with tabs[1]:
@@ -371,8 +384,8 @@ if perfil == 'admin':
             with c2: filtro = st.multiselect("🔍 Filtrar:", df_dados['Colaborador'].unique())
             df_show = df_dados if not filtro else df_dados[df_dados['Colaborador'].isin(filtro)]
             pivot = df_show.pivot_table(index='Colaborador', columns='Indicador', values='% Atingimento')
-            # --- CORREÇÃO AQUI: Removemos o background_gradient que causava erro ---
-            st.dataframe(pivot.style.format("{:.1%}"), use_container_width=True, height=600)
+            # REMOVIDO FORMATO COMPLEXO
+            st.dataframe(pivot, use_container_width=True, height=600)
 
     with tabs[4]:
         st.markdown("### 📂 Gestão de Arquivos")
@@ -385,8 +398,10 @@ if perfil == 'admin':
         with c1:
             up_u = st.file_uploader("usuarios.csv", key="u")
             if up_u: 
-                with open("usuarios.csv", "wb") as w: w.write(up_u.getbuffer())
-                st.success("Usuarios OK!")
+                try:
+                    with open("usuarios.csv", "wb") as w: w.write(up_u.getbuffer())
+                    st.success("Usuarios OK!")
+                except Exception as e: st.error(f"Erro ao salvar usuarios.csv: {e}")
         with c2:
             up_k = st.file_uploader("Indicadores (CSVs)", accept_multiple_files=True, key="k")
             if up_k: 
@@ -397,20 +412,23 @@ if perfil == 'admin':
                 except: pass
 
                 if st.button("Salvar e Atualizar Histórico"): 
-                    salvos = salvar_arquivos_padronizados(up_k)
-                    salvar_config(nova_data)
-                    df_novo_ciclo = carregar_dados_completo()
-                    df_users_fresh = carregar_usuarios()
-                    if df_users_fresh is not None:
-                         nomes_ok = df_users_fresh['nome'].astype(str).str.strip().str.lower().unique()
-                         df_novo_ciclo['tmp'] = df_novo_ciclo['Colaborador'].astype(str).str.strip().str.lower()
-                         df_novo_ciclo = df_novo_ciclo[df_novo_ciclo['tmp'].isin(nomes_ok)].drop(columns=['tmp'])
-                    atualizar_historico(df_novo_ciclo, nova_data)
-                    st.cache_data.clear()
-                    st.balloons()
-                    st.success(f"✅ Sucesso! Dados de **{nova_data}** salvos no histórico.")
-                    time.sleep(2)
-                    st.rerun()
+                    try:
+                        salvos = salvar_arquivos_padronizados(up_k)
+                        salvar_config(nova_data)
+                        df_novo_ciclo = carregar_dados_completo()
+                        df_users_fresh = carregar_usuarios()
+                        if df_users_fresh is not None:
+                             nomes_ok = df_users_fresh['nome'].astype(str).str.strip().str.lower().unique()
+                             df_novo_ciclo['tmp'] = df_novo_ciclo['Colaborador'].astype(str).str.strip().str.lower()
+                             df_novo_ciclo = df_novo_ciclo[df_novo_ciclo['tmp'].isin(nomes_ok)].drop(columns=['tmp'])
+                        atualizar_historico(df_novo_ciclo, nova_data)
+                        st.cache_data.clear()
+                        st.balloons()
+                        st.success(f"✅ Sucesso! Dados de **{nova_data}** salvos no histórico.")
+                        time.sleep(2)
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Ocorreu um erro crítico no salvamento: {e}")
         st.markdown("---")
         if st.button("🗑️ Resetar Tudo (Inclusive Histórico)"):
             limpar_base_dados()
