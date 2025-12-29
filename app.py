@@ -16,22 +16,18 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
     html, body, [class*="css"] { font-family: 'Roboto', sans-serif; }
     .stApp { background-color: #f4f7f6; }
-    
     div.stMetric {
         background-color: white; border: 1px solid #e0e0e0; padding: 15px 20px;
         border-radius: 12px; border-left: 5px solid #F37021;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s;
     }
     div.stMetric:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
-    
     div.stButton > button {
         background: linear-gradient(90deg, #F37021 0%, #d35400 100%); color: white; border: none;
         padding: 0.5rem 1rem; border-radius: 8px; font-weight: bold; transition: 0.3s;
     }
     div.stButton > button:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(243, 112, 33, 0.4); }
-    
     h1, h2, h3 { color: #003366 !important; }
-    
     .login-container {
         background: white; padding: 40px; border-radius: 15px;
         box-shadow: 0 10px 25px rgba(0,0,0,0.08); text-align: center; border-top: 6px solid #003366;
@@ -121,6 +117,7 @@ def salvar_arquivos_padronizados(files):
     return arquivos_salvos
 
 def processar_porcentagem_br(valor):
+    # Transforma texto "99,5%" em float 0.995
     if isinstance(valor, str):
         v = valor.replace('%', '').replace(',', '.').strip()
         try: return float(v) / 100
@@ -144,6 +141,7 @@ def ler_csv_inteligente(arquivo_ou_caminho):
 def tratar_arquivo_especial(df, nome_arquivo):
     lista_dfs_processados = []
     colunas_lower = [c.lower() for c in df.columns]
+    
     tem_aderencia = any('aderência' in c or 'aderencia' in c for c in colunas_lower)
     tem_conformidade = any('conformidade' in c for c in colunas_lower)
     tem_agente = any('agente' in c for c in colunas_lower)
@@ -189,9 +187,21 @@ def carregar_dados_completo():
                 dfs_tratados = tratar_arquivo_especial(df_bruto, arquivo)
                 lista_final.extend(dfs_tratados)
         except: pass
+    
     if lista_final: 
         df_final = pd.concat(lista_final, ignore_index=True)
-        df_final = df_final.drop_duplicates(subset=['Colaborador', 'Indicador'], keep='last')
+        
+        # --- LIMPEZA PROFUNDA DE DUPLICADOS ---
+        # 1. Normaliza strings para evitar duplicidade por espaço ou letra maiuscula
+        df_final['Colaborador_Clean'] = df_final['Colaborador'].astype(str).str.strip().str.upper()
+        df_final['Indicador_Clean'] = df_final['Indicador'].astype(str).str.strip().str.upper()
+        
+        # 2. Remove duplicados mantendo o último
+        df_final = df_final.drop_duplicates(subset=['Colaborador_Clean', 'Indicador_Clean'], keep='last')
+        
+        # 3. Remove colunas auxiliares
+        df_final = df_final.drop(columns=['Colaborador_Clean', 'Indicador_Clean'])
+        
         return df_final
     return None
 
@@ -317,13 +327,12 @@ if perfil == 'admin':
                     })
                 df_final_atencao = pd.DataFrame(lista_detalhada)
                 
-                # --- VISUAL COLORIDO (RESTAURADO) ---
+                # Visual Tabela Prioridade (Cores no Texto)
                 def colorir_status(val):
                     if 'Crítico' in str(val): return 'color: #e74c3c; font-weight: bold;'
                     if 'Atenção' in str(val): return 'color: #d35400; font-weight: bold;'
                     return ''
                 
-                # Aplica as cores no texto da coluna Status
                 st.dataframe(
                     df_final_atencao.style.format({'Média Geral': '{:.1%}'})
                     .map(colorir_status, subset=['Status']),
@@ -388,14 +397,15 @@ if perfil == 'admin':
             df_show = df_dados if not filtro else df_dados[df_dados['Colaborador'].isin(filtro)]
             pivot = df_show.pivot_table(index='Colaborador', columns='Indicador', values='% Atingimento')
             
-            # --- VISUAL COLORIDO (RESTAURADO): Degradê de Fundo ---
+            # --- TENTATIVA DUPLA DE ESTILO ---
             try:
+                # Tenta o visual colorido (requer matplotlib/jinja2)
                 st.dataframe(
-                    pivot.style.background_gradient(cmap='RdYlGn', vmin=0.7, vmax=1.2).format("{:.1%}"),
+                    pivot.style.background_gradient(cmap='RdYlGn', vmin=0.0, vmax=1.2).format("{:.1%}"),
                     use_container_width=True, height=600
                 )
             except:
-                st.warning("⚠️ Biblioteca visual não carregada. Mostrando tabela simples.")
+                # Se falhar, vai no visual simples mas COM porcentagem
                 st.dataframe(pivot.style.format("{:.1%}"), use_container_width=True, height=600)
 
     with tabs[4]:
