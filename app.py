@@ -21,7 +21,6 @@ st.markdown("""
         border-radius: 12px; border-left: 5px solid #F37021;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s;
     }
-    div.stMetric:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
     div.stButton > button {
         background: linear-gradient(90deg, #F37021 0%, #d35400 100%); color: white; border: none;
         padding: 0.5rem 1rem; border-radius: 8px; font-weight: bold; transition: 0.3s;
@@ -82,7 +81,7 @@ def atualizar_historico(df_atual, periodo):
     if os.path.exists(ARQUIVO_HIST):
         try:
             df_hist = pd.read_csv(ARQUIVO_HIST)
-            # Remove dados antigos deste mesmo período para evitar duplicatas
+            # Remove dados antigos deste mesmo período
             df_hist = df_hist[df_hist['Periodo'] != periodo]
             df_final = pd.concat([df_hist, df_save], ignore_index=True)
         except:
@@ -103,7 +102,14 @@ def carregar_historico_completo():
 def listar_periodos_disponiveis():
     df = carregar_historico_completo()
     if df is not None and 'Periodo' in df.columns:
-        return sorted(df['Periodo'].unique().tolist(), reverse=True)
+        # Pega valores únicos e ordena
+        periodos = df['Periodo'].unique().tolist()
+        # Tenta ordenar por data se possível, senão alfabético reverso
+        try:
+            periodos.sort(key=lambda x: datetime.strptime(x, "%m/%Y"), reverse=True)
+        except:
+            periodos.sort(reverse=True)
+        return periodos
     return []
 
 def salvar_arquivos_padronizados(files):
@@ -202,7 +208,6 @@ def carregar_dados_completo():
     
     if lista_final: 
         df_final = pd.concat(lista_final, ignore_index=True)
-        # Limpeza de Duplicatas
         df_final['Key_Colab'] = df_final['Colaborador'].astype(str).str.strip().str.lower()
         df_final['Key_Ind'] = df_final['Indicador'].astype(str).str.strip().str.lower()
         df_final = df_final.drop_duplicates(subset=['Key_Colab', 'Key_Ind'], keep='last')
@@ -225,7 +230,6 @@ def carregar_usuarios():
                 return df
     return None
 
-# Filtro Mestre de Usuários
 def filtrar_por_usuarios_cadastrados(df_dados, df_users):
     if df_dados is None or df_dados.empty: return df_dados
     if df_users is None or df_users.empty: return df_dados
@@ -269,31 +273,35 @@ if not st.session_state['logado']:
     st.stop()
 
 # --- 5. DASHBOARD ---
-opcoes_periodo = ['Atual (Upload Recente)'] + listar_periodos_disponiveis()
+# Lógica Nova de Datas na Sidebar
+lista_periodos = listar_periodos_disponiveis()
+opcoes_periodo = lista_periodos if lista_periodos else ["Nenhum histórico disponível"]
 
 with st.sidebar:
     st.title("📶 BRISANET")
     st.caption("Performance Analytics")
-    periodo_selecionado = st.selectbox("📅 Visualizar Dados De:", opcoes_periodo)
     
-    if periodo_selecionado == 'Atual (Upload Recente)':
-        df_raw = carregar_dados_completo()
-        periodo_label = ler_config()
+    periodo_selecionado = st.selectbox("📅 Visualizar Mês:", opcoes_periodo)
+    
+    # Lógica de Carregamento (Sem opção 'Atual')
+    if periodo_selecionado == "Nenhum histórico disponível":
+        df_raw = None
+        periodo_label = "Aguardando Upload"
+        st.warning("⚠️ Histórico vazio. Vá em 'Admin / Upload' para salvar dados.")
     else:
         df_hist_full = carregar_historico_completo()
         if df_hist_full is not None:
-            # FILTRO CRÍTICO DE PERÍODO
+            # Filtro rigoroso pelo mês
             df_raw = df_hist_full[df_hist_full['Periodo'] == periodo_selecionado].copy()
         else:
             df_raw = None
         periodo_label = periodo_selecionado
     
-    # Aplica filtro de usuários e duplicatas finais
+    # Aplica filtros de segurança
     df_users_cadastrados = carregar_usuarios()
     df_dados = filtrar_por_usuarios_cadastrados(df_raw, df_users_cadastrados)
     
     if df_dados is not None and not df_dados.empty:
-        # Garante remoção de duplicatas na visualização final
         df_dados = df_dados.drop_duplicates(subset=['Colaborador', 'Indicador'], keep='last')
 
     st.markdown(f"""<div class="date-box">Ref. Exibida:<br>{periodo_label}</div>""", unsafe_allow_html=True)
@@ -307,7 +315,7 @@ with st.sidebar:
 perfil = st.session_state['perfil']
 
 if df_dados is None and perfil == 'user':
-    st.info("👋 Olá! O Gestor ainda não subiu os indicadores. Volte mais tarde.")
+    st.info("👋 Olá! Os dados deste mês ainda não estão disponíveis. O gestor precisa fazer o upload.")
     st.stop()
 
 # --- GESTOR ---
@@ -369,7 +377,7 @@ if perfil == 'admin':
                 fig_heat.update_traces(texttemplate="%{z:.1%}", textfont={"size":12})
                 st.plotly_chart(fig_heat, use_container_width=True)
             else: st.warning("Sem histórico para este colaborador.")
-        else: st.info("Histórico vazio.")
+        else: st.info("O histórico está vazio. Salve dados na aba Upload para começar.")
 
     with tabs[2]:
         if df_dados is not None and not df_dados.empty:
@@ -402,8 +410,6 @@ if perfil == 'admin':
             with c1: st.markdown(f"### Mapa de Resultados: {periodo_label}")
             with c2: filtro = st.multiselect("🔍 Filtrar:", df_dados['Colaborador'].unique())
             df_show = df_dados if not filtro else df_dados[df_dados['Colaborador'].isin(filtro)]
-            
-            # --- TABELA GERAL BLINDADA ---
             pivot = df_show.pivot_table(index='Colaborador', columns='Indicador', values='% Atingimento')
             try:
                 st.dataframe(pivot.style.background_gradient(cmap='RdYlGn', vmin=0.0, vmax=1.2).format("{:.1%}"), use_container_width=True, height=600)
@@ -413,8 +419,8 @@ if perfil == 'admin':
     with tabs[4]:
         st.markdown("### 📂 Gestão de Arquivos")
         data_sugestao = obter_data_hoje()
-        st.markdown("#### 1. Configurar Período")
-        nova_data = st.text_input("Mês/Ano de Referência:", value=data_sugestao)
+        st.markdown("#### 1. Configurar Período (Novo Mês)")
+        nova_data = st.text_input("Referência:", value=data_sugestao)
         
         st.markdown("#### 2. Atualizar Arquivos")
         c1, c2 = st.columns(2)
@@ -431,22 +437,29 @@ if perfil == 'admin':
                 try:
                     df_preview = ler_csv_inteligente(up_k[0])
                     data_csv = tentar_extrair_data_csv(df_preview)
-                    if data_csv: st.info(f"💡 Data detectada no arquivo: {data_csv}")
+                    if data_csv: st.info(f"💡 Data detectada: {data_csv}")
                 except: pass
 
-                if st.button("Salvar e Atualizar Histórico"): 
+                if st.button("💾 Salvar e Atualizar Histórico"): 
                     try:
                         salvos = salvar_arquivos_padronizados(up_k)
                         salvar_config(nova_data)
+                        
                         df_novo_ciclo = carregar_dados_completo()
                         df_users_fresh = carregar_usuarios()
-                        df_novo_ciclo = filtrar_por_usuarios_cadastrados(df_novo_ciclo, df_users_fresh)
-                        atualizar_historico(df_novo_ciclo, nova_data)
-                        st.cache_data.clear()
-                        st.balloons()
-                        st.success(f"✅ Sucesso! Dados de **{nova_data}** salvos no histórico.")
-                        time.sleep(1)
-                        st.rerun()
+                        
+                        # Filtro com diagnóstico
+                        df_filtrado = filtrar_por_usuarios_cadastrados(df_novo_ciclo, df_users_fresh)
+                        
+                        if df_filtrado.empty and not df_novo_ciclo.empty:
+                            st.error("⚠️ NENHUM dado foi salvo! O filtro de usuários removeu todos os nomes. Verifique o 'usuarios.csv'.")
+                        else:
+                            atualizar_historico(df_filtrado, nova_data)
+                            st.cache_data.clear()
+                            st.balloons()
+                            st.success(f"✅ Sucesso! {len(df_filtrado)} registros salvos em **{nova_data}**.")
+                            time.sleep(2)
+                            st.rerun()
                     except Exception as e:
                         st.error(f"Erro salvamento: {e}")
         
@@ -456,7 +469,7 @@ if perfil == 'admin':
             with open('historico_consolidado.csv', 'rb') as f:
                 st.download_button("⬇️ Baixar Histórico Consolidado", f, "historico_consolidado.csv", "text/csv")
         else:
-            st.info("Arquivo de histórico ainda não existe. Salve dados primeiro.")
+            st.info("Salve dados primeiro para gerar o histórico.")
 
         st.markdown("---")
         if st.button("🗑️ Resetar Tudo"):
