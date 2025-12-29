@@ -41,6 +41,27 @@ st.markdown("""
 
 # --- 3. FUNÇÕES DE BACKEND ---
 
+# --- NOVA FUNÇÃO: CORRETOR ORTOGRÁFICO VISUAL ---
+def formatar_nome_visual(nome_cru):
+    """
+    Recebe nomes sujos como 'ADERENCIA', 'interacoes' e retorna
+    nomes bonitos como 'Aderência', 'Interações'.
+    """
+    nome = str(nome_cru).strip().upper()
+    
+    # Lógica de "Contém" para ser mais robusto
+    if "ADER" in nome: return "Aderência"
+    if "CONFORM" in nome: return "Conformidade"
+    if "INTERA" in nome: return "Interações"
+    if "PONTUAL" in nome: return "Pontualidade"
+    if "CSAT" in nome: return "CSAT"
+    if "RESOLU" in nome or nome == "IR": return "IR (Resolução)"
+    if "TPC" in nome: return "TPC"
+    if "QUALIDADE" in nome: return "Qualidade"
+    
+    return nome_cru # Se não achar nada, devolve o original
+# ----------------------------------------------------
+
 def tentar_extrair_data_csv(df):
     colunas_possiveis = ['data', 'date', 'periodo', 'mês', 'mes', 'competencia', 'ref']
     for col in df.columns:
@@ -81,7 +102,6 @@ def atualizar_historico(df_atual, periodo):
     if os.path.exists(ARQUIVO_HIST):
         try:
             df_hist = pd.read_csv(ARQUIVO_HIST)
-            # Remove dados antigos deste mesmo período
             df_hist = df_hist[df_hist['Periodo'] != periodo]
             df_final = pd.concat([df_hist, df_save], ignore_index=True)
         except:
@@ -192,7 +212,6 @@ def tratar_arquivo_especial(df, nome_arquivo):
 
 def carregar_dados_completo():
     lista_final = []
-    # Lista arquivos mas IGNORA arquivos de sistema e histórico
     arquivos_ignorar = ['usuarios.csv', 'historico_consolidado.csv', 'config.json']
     arquivos = [f for f in os.listdir('.') if f.endswith('.csv') and f.lower() not in arquivos_ignorar]
     
@@ -341,12 +360,16 @@ if perfil == 'admin':
                 for colab in df_atencao['Colaborador']:
                     dados_pessoa = df_dados[df_dados['Colaborador'] == colab]
                     media_pessoa = dados_pessoa['% Atingimento'].mean()
+                    
+                    # Correção para exibir nome bonito na lista de prioridade
                     pior_kpi_row = dados_pessoa.loc[dados_pessoa['% Atingimento'].idxmin()]
+                    nome_kpi_bonito = formatar_nome_visual(pior_kpi_row['Indicador'])
+                    
                     lista_detalhada.append({
                         'Colaborador': colab,
                         'Média Geral': media_pessoa,
                         'Status': '🔴 Crítico' if media_pessoa < 0.80 else '🟡 Atenção',
-                        'Pior Indicador': f"{pior_kpi_row['Indicador']} ({pior_kpi_row['% Atingimento']:.1%})"
+                        'Pior Indicador': f"{nome_kpi_bonito} ({pior_kpi_row['% Atingimento']:.1%})"
                     })
                 df_final_atencao = pd.DataFrame(lista_detalhada)
                 def colorir_status(val):
@@ -367,6 +390,9 @@ if perfil == 'admin':
             colab_sel = st.selectbox("Selecione o Colaborador:", sorted(df_hist['Colaborador'].unique()))
             df_hist_user = df_hist[df_hist['Colaborador'] == colab_sel].copy()
             if not df_hist_user.empty:
+                # Aplica nomes bonitos no gráfico
+                df_hist_user['Indicador'] = df_hist_user['Indicador'].apply(formatar_nome_visual)
+                
                 df_hist_user['Texto'] = df_hist_user['% Atingimento'].apply(lambda x: f"{x:.1%}")
                 fig_heat = px.density_heatmap(df_hist_user, x="Periodo", y="Indicador", z="% Atingimento", 
                                               text_auto=False, title=f"Mapa de Calor: {colab_sel}",
@@ -379,22 +405,26 @@ if perfil == 'admin':
     with tabs[2]:
         if df_dados is not None and not df_dados.empty:
             st.markdown("### 🔬 Detalhe por Indicador")
+            # Cria cópia para visualização com nomes bonitos
+            df_visual = df_dados.copy()
+            df_visual['Indicador'] = df_visual['Indicador'].apply(formatar_nome_visual)
+            
             def classificar_farol(val):
                 if val >= 1.0: return '🟢 Meta Batida'
                 elif val >= 0.80: return '🟡 Atenção'
                 else: return '🔴 Crítico'
-            df_farol = df_dados.copy()
-            df_farol['Status'] = df_farol['% Atingimento'].apply(classificar_farol)
-            df_agrupado = df_farol.groupby(['Indicador', 'Status']).size().reset_index(name='Quantidade')
+            
+            df_visual['Status'] = df_visual['% Atingimento'].apply(classificar_farol)
+            df_agrupado = df_visual.groupby(['Indicador', 'Status']).size().reset_index(name='Quantidade')
             fig_farol = px.bar(df_agrupado, x='Indicador', y='Quantidade', color='Status', 
                                text='Quantidade', title="Farol de Performance",
                                color_discrete_map={'🟢 Meta Batida': '#2ecc71', '🟡 Atenção': '#f1c40f', '🔴 Crítico': '#e74c3c'})
             st.plotly_chart(fig_farol, use_container_width=True)
             
-            lista_kpis = sorted(df_dados['Indicador'].unique())
+            lista_kpis = sorted(df_visual['Indicador'].unique())
             for kpi in lista_kpis:
                 with st.expander(f"📊 Ranking: {kpi}", expanded=False):
-                    df_kpi = df_dados[df_dados['Indicador'] == kpi].sort_values(by='% Atingimento', ascending=True)
+                    df_kpi = df_visual[df_visual['Indicador'] == kpi].sort_values(by='% Atingimento', ascending=True)
                     fig_rank = px.bar(df_kpi, x='% Atingimento', y='Colaborador', orientation='h',
                                       text_auto='.1%', title=f"Ranking - {kpi}",
                                       color='% Atingimento', color_continuous_scale=['#e74c3c', '#f1c40f', '#2ecc71'])
@@ -407,7 +437,12 @@ if perfil == 'admin':
             with c1: st.markdown(f"### Mapa de Resultados: {periodo_label}")
             with c2: filtro = st.multiselect("🔍 Filtrar:", df_dados['Colaborador'].unique())
             df_show = df_dados if not filtro else df_dados[df_dados['Colaborador'].isin(filtro)]
-            pivot = df_show.pivot_table(index='Colaborador', columns='Indicador', values='% Atingimento')
+            
+            # Formata indicador na tabela
+            df_show_visual = df_show.copy()
+            df_show_visual['Indicador'] = df_show_visual['Indicador'].apply(formatar_nome_visual)
+            
+            pivot = df_show_visual.pivot_table(index='Colaborador', columns='Indicador', values='% Atingimento')
             try:
                 st.dataframe(pivot.style.background_gradient(cmap='RdYlGn', vmin=0.0, vmax=1.2).format("{:.1%}"), use_container_width=True, height=600)
             except:
@@ -480,17 +515,6 @@ else:
     st.caption(f"📅 Dados referentes a: **{periodo_label}**")
     meus_dados = df_dados[df_dados['Colaborador'] == nome].copy()
     
-    # --- DICIONÁRIO DE NOMES BONITOS ---
-    mapa_nomes_bonitos = {
-        'ADERENCIA': 'Aderência',
-        'CONFORMIDADE': 'Conformidade',
-        'INTERACOES': 'Interações',
-        'PONTUALIDADE': 'Pontualidade',
-        'IR': 'IR (Índice de Resolução)',
-        'CSAT': 'CSAT (Satisfação)',
-        'TPC': 'TPC'
-    }
-
     if not meus_dados.empty:
         if 'Diamantes' in meus_dados.columns and 'Max. Diamantes' in meus_dados.columns:
             total_dia = meus_dados['Diamantes'].sum()
@@ -506,17 +530,20 @@ else:
             r = row[1]
             val = r['% Atingimento']
             
-            # --- AQUI É ONDE A MÁGICA DOS NOMES ACONTECE ---
-            nome_original = r['Indicador']
-            nome_exibicao = mapa_nomes_bonitos.get(nome_original, nome_original)
+            # APLICAÇÃO DA CORREÇÃO DE NOME NO CARD
+            nome_visual = formatar_nome_visual(r['Indicador'])
             
             with cols[i]:
-                st.metric(label=nome_exibicao, value=f"{val:.1%}", delta="Meta 100%", delta_color="normal" if val >= 1.0 else "inverse")
+                st.metric(label=nome_visual, value=f"{val:.1%}", delta="Meta 100%", delta_color="normal" if val >= 1.0 else "inverse")
         st.markdown("---")
         st.subheader("📊 Comparativo: Eu vs Equipe")
         media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
         media_equipe.rename(columns={'% Atingimento': 'Média Equipe'}, inplace=True)
+        
         df_comp = pd.merge(meus_dados, media_equipe, on='Indicador')
+        # Formata nomes para o gráfico também
+        df_comp['Indicador'] = df_comp['Indicador'].apply(formatar_nome_visual)
+        
         df_melt = df_comp.melt(id_vars=['Indicador'], value_vars=['% Atingimento', 'Média Equipe'], var_name='Tipo', value_name='Resultado')
         fig_comp = px.bar(df_melt, x='Indicador', y='Resultado', color='Tipo', barmode='group',
                           text_auto='.1%', title="Minha Performance vs Média Geral",
@@ -528,10 +555,13 @@ else:
         with c1:
             st.subheader("🎯 Distância para a Meta")
             fig_lol = go.Figure()
-            fig_lol.add_trace(go.Scatter(x=meus_dados['% Atingimento'], y=meus_dados['Indicador'], mode='markers', marker=dict(color='#003366', size=15)))
+            # Formata nomes para o gráfico de hastes
+            meus_dados['Indicador_Visual'] = meus_dados['Indicador'].apply(formatar_nome_visual)
+            
+            fig_lol.add_trace(go.Scatter(x=meus_dados['% Atingimento'], y=meus_dados['Indicador_Visual'], mode='markers', marker=dict(color='#003366', size=15)))
             for i, row in meus_dados.iterrows():
                 cor = 'green' if row['% Atingimento'] >= 1.0 else 'red'
-                fig_lol.add_shape(type='line', x0=0, y0=row['Indicador'], x1=row['% Atingimento'], y1=row['Indicador'], line=dict(color=cor, width=3))
+                fig_lol.add_shape(type='line', x0=0, y0=row['Indicador_Visual'], x1=row['% Atingimento'], y1=row['Indicador_Visual'], line=dict(color=cor, width=3))
             fig_lol.add_vline(x=1.0, line_dash="dash", line_color="gray", annotation_text="Meta 100%")
             fig_lol.update_xaxes(range=[0, 1.2], tickformat='.0%')
             fig_lol.update_layout(title="Hastes de Atingimento", plot_bgcolor='white')
