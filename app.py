@@ -102,9 +102,7 @@ def carregar_historico_completo():
 def listar_periodos_disponiveis():
     df = carregar_historico_completo()
     if df is not None and 'Periodo' in df.columns:
-        # Pega lista de periodos unicos
         periodos = df['Periodo'].unique().tolist()
-        # Tenta ordenar por data, se falhar ordena texto reverso
         try:
             periodos.sort(key=lambda x: datetime.strptime(x, "%m/%Y"), reverse=True)
         except:
@@ -273,7 +271,6 @@ if not st.session_state['logado']:
     st.stop()
 
 # --- 5. DASHBOARD ---
-# Lógica do Menu Lateral (SOMENTE MESES)
 lista_periodos = listar_periodos_disponiveis()
 opcoes_periodo = lista_periodos if lista_periodos else ["Nenhum histórico disponível"]
 
@@ -286,7 +283,7 @@ with st.sidebar:
     if periodo_selecionado == "Nenhum histórico disponível":
         df_raw = None
         periodo_label = "Aguardando Upload"
-        st.warning("⚠️ Histórico vazio. Vá em 'Admin / Upload' e salve os dados.")
+        st.warning("⚠️ Histórico vazio. Vá em 'Admin / Upload' para salvar dados.")
     else:
         df_hist_full = carregar_historico_completo()
         if df_hist_full is not None:
@@ -295,7 +292,6 @@ with st.sidebar:
             df_raw = None
         periodo_label = periodo_selecionado
     
-    # Filtro de Usuários + Duplicatas
     df_users_cadastrados = carregar_usuarios()
     df_dados = filtrar_por_usuarios_cadastrados(df_raw, df_users_cadastrados)
     
@@ -357,7 +353,10 @@ if perfil == 'admin':
                     if 'Crítico' in str(val): return 'color: #e74c3c; font-weight: bold;'
                     if 'Atenção' in str(val): return 'color: #d35400; font-weight: bold;'
                     return ''
-                st.dataframe(df_final_atencao.style.format({'Média Geral': '{:.1%}'}).map(colorir_status, subset=['Status']), use_container_width=True, height=500)
+                try:
+                    st.dataframe(df_final_atencao.style.format({'Média Geral': '{:.1%}'}).map(colorir_status, subset=['Status']), use_container_width=True, height=500)
+                except:
+                    st.dataframe(df_final_atencao, use_container_width=True, height=500)
             else: st.success("🎉 Todos bateram a meta neste período.")
 
     with tabs[1]:
@@ -442,10 +441,8 @@ if perfil == 'admin':
                     try:
                         salvos = salvar_arquivos_padronizados(up_k)
                         salvar_config(nova_data)
-                        
                         df_novo_ciclo = carregar_dados_completo()
                         df_users_fresh = carregar_usuarios()
-                        
                         df_filtrado = filtrar_por_usuarios_cadastrados(df_novo_ciclo, df_users_fresh)
                         
                         if df_filtrado.empty and not df_novo_ciclo.empty:
@@ -482,6 +479,18 @@ else:
     st.markdown(f"## 🚀 Olá, **{nome.split()[0]}**!")
     st.caption(f"📅 Dados referentes a: **{periodo_label}**")
     meus_dados = df_dados[df_dados['Colaborador'] == nome].copy()
+    
+    # --- DICIONÁRIO DE NOMES BONITOS ---
+    mapa_nomes_bonitos = {
+        'ADERENCIA': 'Aderência',
+        'CONFORMIDADE': 'Conformidade',
+        'INTERACOES': 'Interações',
+        'PONTUALIDADE': 'Pontualidade',
+        'IR': 'IR (Índice de Resolução)',
+        'CSAT': 'CSAT (Satisfação)',
+        'TPC': 'TPC'
+    }
+
     if not meus_dados.empty:
         if 'Diamantes' in meus_dados.columns and 'Max. Diamantes' in meus_dados.columns:
             total_dia = meus_dados['Diamantes'].sum()
@@ -496,8 +505,13 @@ else:
         for i, row in enumerate(meus_dados.iterrows()):
             r = row[1]
             val = r['% Atingimento']
+            
+            # --- AQUI É ONDE A MÁGICA DOS NOMES ACONTECE ---
+            nome_original = r['Indicador']
+            nome_exibicao = mapa_nomes_bonitos.get(nome_original, nome_original)
+            
             with cols[i]:
-                st.metric(label=r['Indicador'], value=f"{val:.1%}", delta="Meta 100%", delta_color="normal" if val >= 1.0 else "inverse")
+                st.metric(label=nome_exibicao, value=f"{val:.1%}", delta="Meta 100%", delta_color="normal" if val >= 1.0 else "inverse")
         st.markdown("---")
         st.subheader("📊 Comparativo: Eu vs Equipe")
         media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
