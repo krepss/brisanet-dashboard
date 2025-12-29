@@ -21,7 +21,6 @@ st.markdown("""
         border-radius: 12px; border-left: 5px solid #F37021;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s;
     }
-    div.stMetric:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
     div.stButton > button {
         background: linear-gradient(90deg, #F37021 0%, #d35400 100%); color: white; border: none;
         padding: 0.5rem 1rem; border-radius: 8px; font-weight: bold; transition: 0.3s;
@@ -76,23 +75,28 @@ def limpar_base_dados():
 def atualizar_historico(df_atual, periodo):
     ARQUIVO_HIST = 'historico_consolidado.csv'
     
-    # Prepara o DataFrame atual
     df_save = df_atual.copy()
     df_save['Periodo'] = periodo
     
     if os.path.exists(ARQUIVO_HIST):
-        df_hist = pd.read_csv(ARQUIVO_HIST)
-        # Remove dados antigos deste mesmo período (para evitar duplicidade no histórico)
-        df_hist = df_hist[df_hist['Periodo'] != periodo]
-        df_final = pd.concat([df_hist, df_save], ignore_index=True)
+        try:
+            df_hist = pd.read_csv(ARQUIVO_HIST)
+            # Remove dados antigos deste mesmo período
+            df_hist = df_hist[df_hist['Periodo'] != periodo]
+            df_final = pd.concat([df_hist, df_save], ignore_index=True)
+        except:
+            df_final = df_save
     else:
         df_final = df_save
         
     df_final.to_csv(ARQUIVO_HIST, index=False)
+    return True
 
 def carregar_historico_completo():
     if os.path.exists('historico_consolidado.csv'):
-        return pd.read_csv('historico_consolidado.csv')
+        try:
+            return pd.read_csv('historico_consolidado.csv')
+        except: return None
     return None
 
 def listar_periodos_disponiveis():
@@ -147,7 +151,6 @@ def tratar_arquivo_especial(df, nome_arquivo):
     lista_dfs_processados = []
     colunas_lower = [c.lower() for c in df.columns]
     
-    # Verifica tipos especiais
     tem_aderencia = any('aderência' in c or 'aderencia' in c for c in colunas_lower)
     tem_conformidade = any('conformidade' in c for c in colunas_lower)
     tem_agente = any('agente' in c for c in colunas_lower)
@@ -169,7 +172,6 @@ def tratar_arquivo_especial(df, nome_arquivo):
             lista_dfs_processados.append(df_conf[['Colaborador', 'Indicador', '% Atingimento']])
         return lista_dfs_processados
     else:
-        # Padronização normal
         for col in df.columns:
             c_low = col.lower()
             if 'atingimento' in c_low: df.rename(columns={col: '% Atingimento'}, inplace=True)
@@ -177,7 +179,6 @@ def tratar_arquivo_especial(df, nome_arquivo):
             if 'diamantes' == c_low: df.rename(columns={col: 'Diamantes'}, inplace=True)
             if 'max' in c_low and 'diamantes' in c_low: df.rename(columns={col: 'Max. Diamantes'}, inplace=True)
         if '% Atingimento' in df.columns:
-            # Usa o nome do arquivo para definir o indicador, se não tiver coluna especifica
             nome_kpi = nome_arquivo.split('.')[0].upper()
             df['Indicador'] = nome_kpi
             lista_dfs_processados.append(df)
@@ -200,18 +201,15 @@ def carregar_dados_completo():
     
     if lista_final: 
         df_final = pd.concat(lista_final, ignore_index=True)
-        
-        # --- LIMPEZA DE DUPLICATAS ---
+        # Limpeza de Duplicatas
         df_final['Key_Colab'] = df_final['Colaborador'].astype(str).str.strip().str.lower()
         df_final['Key_Ind'] = df_final['Indicador'].astype(str).str.strip().str.lower()
         df_final = df_final.drop_duplicates(subset=['Key_Colab', 'Key_Ind'], keep='last')
         df_final = df_final.drop(columns=['Key_Colab', 'Key_Ind'])
-        
         return df_final
     return None
 
 def carregar_usuarios():
-    # Tenta carregar usuarios.csv
     arquivos = [f for f in os.listdir('.') if f.endswith('.csv') and 'usuario' in f.lower()]
     if arquivos:
         df = ler_csv_inteligente(arquivos[0])
@@ -226,7 +224,6 @@ def carregar_usuarios():
                 return df
     return None
 
-# --- FILTRO MESTRE DE USUÁRIOS ---
 def filtrar_por_usuarios_cadastrados(df_dados, df_users):
     if df_dados is None or df_dados.empty: return df_dados
     if df_users is None or df_users.empty: return df_dados
@@ -439,39 +436,37 @@ if perfil == 'admin':
                     try:
                         salvos = salvar_arquivos_padronizados(up_k)
                         salvar_config(nova_data)
+                        
                         df_novo_ciclo = carregar_dados_completo()
                         df_users_fresh = carregar_usuarios()
-                        df_novo_ciclo = filtrar_por_usuarios_cadastrados(df_novo_ciclo, df_users_fresh)
-                        atualizar_historico(df_novo_ciclo, nova_data)
-                        st.cache_data.clear()
-                        st.balloons()
-                        st.success(f"✅ Sucesso! Dados de **{nova_data}** salvos no histórico.")
-                        time.sleep(1)
-                        st.rerun()
+                        
+                        # --- FILTRO COM DIAGNÓSTICO ---
+                        df_filtrado = filtrar_por_usuarios_cadastrados(df_novo_ciclo, df_users_fresh)
+                        
+                        if df_filtrado.empty and not df_novo_ciclo.empty:
+                            st.error("🚨 ERRO CRÍTICO: Todos os dados foram filtrados! Verifique se os nomes no 'usuarios.csv' batem com os nomes nos indicadores. NADA FOI SALVO NO HISTÓRICO.")
+                        else:
+                            atualizar_historico(df_filtrado, nova_data)
+                            st.cache_data.clear()
+                            st.balloons()
+                            st.success(f"✅ Sucesso! Dados de **{nova_data}** salvos no histórico.")
+                            time.sleep(1)
+                            st.rerun()
+                            
                     except Exception as e:
                         st.error(f"Erro salvamento: {e}")
         
-        # --- LÓGICA DE DOWNLOAD ROBUSTA (AGORA COM BOTÃO EM MEMÓRIA) ---
+        st.markdown("---")
         st.markdown("### 💾 Backup do Histórico")
-        df_historico_final = carregar_historico_completo()
-        
-        if df_historico_final is not None and not df_historico_final.empty:
-            # Converte para CSV em memória (mais seguro que ler arquivo)
-            csv_historico = df_historico_final.to_csv(index=False).encode('utf-8')
-            
-            st.download_button(
-                label="⬇️ Baixar Histórico Consolidado (Atualizado)",
-                data=csv_historico,
-                file_name="historico_consolidado.csv",
-                mime="text/csv",
-                key="download_hist"
-            )
+        # BOTÃO FORÇADO (Sem checagem de empty, apenas existência)
+        if os.path.exists('historico_consolidado.csv'):
+            with open('historico_consolidado.csv', 'rb') as f:
+                st.download_button("⬇️ Baixar Histórico Consolidado", f, "historico_consolidado.csv", "text/csv")
         else:
-            st.warning("O arquivo de histórico ainda não foi gerado ou está vazio.")
-        # --------------------------------------
+            st.info("Arquivo de histórico ainda não existe. Salve dados primeiro.")
 
         st.markdown("---")
-        if st.button("🗑️ Resetar Tudo (Inclusive Histórico)"):
+        if st.button("🗑️ Resetar Tudo"):
             limpar_base_dados()
             if os.path.exists('historico_consolidado.csv'): os.remove('historico_consolidado.csv')
             st.cache_data.clear()
