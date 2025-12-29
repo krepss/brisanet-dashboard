@@ -71,21 +71,33 @@ def limpar_base_dados():
     for f in arquivos:
         os.remove(f)
 
-# --- TRADUTOR DE NOMES (EMBELEZADOR) ---
-def formatar_nome_indicador(nome_bruto):
-    """Converte nomes de arquivo técnicos para Português bonito"""
-    mapa = {
-        'INTERACOES': 'Interações',
-        'PONTUALIDADE': 'Pontualidade',
+# --- TRADUTOR DE NOMES (CORRETOR GLOBAL) ---
+def corrigir_nomes_display(df):
+    """
+    Passa em todo o DataFrame e corrige os nomes dos indicadores para exibir bonito.
+    """
+    if df is None or df.empty or 'Indicador' not in df.columns:
+        return df
+    
+    # Dicionário de Correção (Adicione mais aqui se precisar)
+    mapa_correcao = {
         'ADERENCIA': 'Aderência',
         'CONFORMIDADE': 'Conformidade',
+        'INTERACOES': 'Interações',
+        'PONTUALIDADE': 'Pontualidade',
         'QUALIDADE': 'Qualidade',
-        'IR': 'IR',
-        'CSAT': 'CSAT',
-        'TPC': 'TPC'
+        'SATISFACAO': 'Satisfação',
+        'RESOLUCAO': 'Resolução'
     }
-    chave = nome_bruto.strip().upper().replace('.CSV', '')
-    return mapa.get(chave, chave.capitalize()) 
+    
+    # Função auxiliar para aplicar o mapa
+    def aplicar_correcao(texto):
+        texto_upper = str(texto).strip().upper()
+        # Se estiver no mapa, usa o bonito. Se não, usa o original capitalizado.
+        return mapa_correcao.get(texto_upper, str(texto))
+
+    df['Indicador'] = df['Indicador'].apply(aplicar_correcao)
+    return df
 
 # --- HISTÓRICO ---
 def atualizar_historico(df_atual, periodo):
@@ -120,6 +132,7 @@ def listar_periodos_disponiveis():
     return []
 
 def salvar_arquivos_padronizados(files):
+    # Mapa apenas para salvar no disco de forma organizada
     mapa_nomes = {
         'ir': 'IR.csv', 'csat': 'CSAT.csv', 'tpc': 'TPC.csv',
         'interacoes': 'INTERACOES.csv', 'interações': 'INTERACOES.csv',
@@ -173,19 +186,18 @@ def tratar_arquivo_especial(df, nome_arquivo):
         col_agente = next(c for c in df.columns if 'agente' in c.lower())
         df = df.rename(columns={col_agente: 'Colaborador'})
         
-        # --- CORREÇÃO AQUI: Forçando nomes com acento ---
         col_ad = next((c for c in df.columns if 'aderência' in c.lower() or 'aderencia' in c.lower()), None)
         if col_ad:
             df_ad = df[['Colaborador', col_ad]].copy()
             df_ad['% Atingimento'] = df_ad[col_ad].apply(processar_porcentagem_br)
-            df_ad['Indicador'] = 'Aderência' # Nome com Acento
+            df_ad['Indicador'] = 'Aderência' # Já tenta forçar aqui
             lista_dfs_processados.append(df_ad[['Colaborador', 'Indicador', '% Atingimento']])
             
         col_conf = next((c for c in df.columns if 'conformidade' in c.lower()), None)
         if col_conf:
             df_conf = df[['Colaborador', col_conf]].copy()
             df_conf['% Atingimento'] = df_conf[col_conf].apply(processar_porcentagem_br)
-            df_conf['Indicador'] = 'Conformidade' # Nome com Acento
+            df_conf['Indicador'] = 'Conformidade' # Já tenta forçar aqui
             lista_dfs_processados.append(df_conf[['Colaborador', 'Indicador', '% Atingimento']])
         return lista_dfs_processados
     else:
@@ -198,9 +210,9 @@ def tratar_arquivo_especial(df, nome_arquivo):
             if 'max' in c_low and 'diamantes' in c_low: df.rename(columns={col: 'Max. Diamantes'}, inplace=True)
         
         if '% Atingimento' in df.columns:
-            # Aplica o formatador bonito
             nome_kpi_raw = nome_arquivo.split('.')[0]
-            df['Indicador'] = formatar_nome_indicador(nome_kpi_raw)
+            # Deixa o nome bruto aqui, o 'corrigir_nomes_display' vai arrumar no final
+            df['Indicador'] = nome_kpi_raw.upper()
             lista_dfs_processados.append(df)
             return lista_dfs_processados
     return []
@@ -307,6 +319,11 @@ with st.sidebar:
     df_users_cadastrados = carregar_usuarios()
     df_dados = filtrar_por_usuarios_cadastrados(df_raw, df_users_cadastrados)
     
+    # --- CORREÇÃO FINAL: FORÇA OS NOMES BONITOS AQUI ---
+    if df_dados is not None and not df_dados.empty:
+        df_dados = corrigir_nomes_display(df_dados)
+    # ---------------------------------------------------
+    
     st.markdown(f"""<div class="date-box">Ref. Exibida:<br>{periodo_label}</div>""", unsafe_allow_html=True)
     st.markdown("---")
     nome = st.session_state['usuario_nome']
@@ -370,6 +387,10 @@ if perfil == 'admin':
         st.caption("Visão térmica do desempenho ao longo dos meses.")
         df_hist = carregar_historico_completo()
         df_hist = filtrar_por_usuarios_cadastrados(df_hist, df_users_cadastrados)
+        
+        # Corrige nomes também no histórico
+        if df_hist is not None: df_hist = corrigir_nomes_display(df_hist)
+        
         if df_hist is not None and not df_hist.empty:
             colab_sel = st.selectbox("Selecione o Colaborador:", sorted(df_hist['Colaborador'].unique()))
             df_hist_user = df_hist[df_hist['Colaborador'] == colab_sel].copy()
@@ -492,7 +513,6 @@ else:
     st.markdown(f"## 🚀 Olá, **{nome.split()[0]}**!")
     st.caption(f"📅 Dados referentes a: **{periodo_label}**")
     
-    # Filtro Insensível a Caixa
     nome_login_norm = nome.strip().lower()
     df_dados['colab_norm'] = df_dados['Colaborador'].astype(str).str.strip().str.lower()
     meus_dados = df_dados[df_dados['colab_norm'] == nome_login_norm].copy()
