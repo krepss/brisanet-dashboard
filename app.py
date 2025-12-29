@@ -89,29 +89,19 @@ def atualizar_historico(df_atual, periodo):
     ARQUIVO_HIST = 'historico_consolidado.csv'
     df_save = df_atual.copy()
     df_save['Periodo'] = periodo
-    
-    # Garante padronização antes de salvar
-    df_save['Colaborador'] = df_save['Colaborador'].astype(str).str.strip().str.upper()
-    
     if os.path.exists(ARQUIVO_HIST):
         try:
             df_hist = pd.read_csv(ARQUIVO_HIST)
-            # Remove dados antigos deste mesmo período
             df_hist = df_hist[df_hist['Periodo'] != periodo]
             df_final = pd.concat([df_hist, df_save], ignore_index=True)
         except: df_final = df_save
     else: df_final = df_save
-    
     df_final.to_csv(ARQUIVO_HIST, index=False)
     return True
 
 def carregar_historico_completo():
     if os.path.exists('historico_consolidado.csv'):
-        try: 
-            df = pd.read_csv('historico_consolidado.csv')
-            # Padroniza leitura
-            df['Colaborador'] = df['Colaborador'].astype(str).str.strip().str.upper()
-            return df
+        try: return pd.read_csv('historico_consolidado.csv')
         except: return None
     return None
 
@@ -180,12 +170,8 @@ def tratar_arquivo_especial(df, nome_arquivo):
     if not col_agente: return None, "Coluna de Nome não encontrada"
     
     df.rename(columns={col_agente: 'Colaborador'}, inplace=True)
-    
-    # --- PADRONIZAÇÃO DE NOME FORÇADA ---
-    # Converte tudo para maiúsculo e remove espaços para evitar duplicatas (João vs JOAO)
-    df['Colaborador'] = df['Colaborador'].astype(str).str.strip().str.upper()
 
-    # 2. Lógica Especial: Arquivo Combinado (Aderência & Conformidade)
+    # 2. Lógica Especial: Arquivo Combinado
     col_ad = next((c for c in df.columns if 'ader' in c and ('%' in c or 'perc' in c or 'aderencia' in c)), None)
     col_conf = next((c for c in df.columns if 'conform' in c and ('%' in c or 'perc' in c or 'conformidade' in c)), None)
 
@@ -203,7 +189,7 @@ def tratar_arquivo_especial(df, nome_arquivo):
         
         return pd.concat(lista_retorno), "Arquivo Combinado Detectado"
 
-    # 3. Lógica Padrão (Arquivo Único)
+    # 3. Lógica Padrão
     col_valor = None
     nome_kpi_limpo = nome_arquivo.split('.')[0].lower()
     possiveis_valores = [nome_kpi_limpo, 'atingimento', 'resultado', 'nota', 'final', 'pontos', 'valor', 'score']
@@ -252,12 +238,12 @@ def carregar_dados_completo():
         
     if lista_final: 
         df_concat = pd.concat(lista_final, ignore_index=True)
+        # Padroniza antes de agrupar
+        df_concat['Colaborador'] = df_concat['Colaborador'].astype(str).str.strip().str.upper()
         
-        # --- AGREGADOR DE DUPLICATAS (SOMA E MÉDIA) ---
-        # Se um colaborador aparecer 2x no mesmo indicador, tira a média da nota e soma os diamantes
         agg_rules = {'% Atingimento': 'mean'}
         if 'Diamantes' in df_concat.columns: agg_rules['Diamantes'] = 'sum'
-        if 'Max. Diamantes' in df_concat.columns: agg_rules['Max. Diamantes'] = 'sum' # Assume que se apareceu 2x, o potencial dobrou
+        if 'Max. Diamantes' in df_concat.columns: agg_rules['Max. Diamantes'] = 'sum'
         
         df_final = df_concat.groupby(['Colaborador', 'Indicador'], as_index=False).agg(agg_rules)
         return df_final
@@ -275,7 +261,6 @@ def carregar_usuarios():
             if col_email and col_nome:
                 df.rename(columns={col_email: 'email', col_nome: 'nome'}, inplace=True)
                 df['email'] = df['email'].astype(str).str.strip().str.lower()
-                # Padroniza nome dos usuários também para bater o match
                 df['nome'] = df['nome'].astype(str).str.strip().str.upper()
                 return df
     return None
@@ -283,11 +268,10 @@ def carregar_usuarios():
 def filtrar_por_usuarios_cadastrados(df_dados, df_users):
     if df_dados is None or df_dados.empty: return df_dados
     if df_users is None or df_users.empty: return df_dados
-    
-    lista_vip = df_users['nome'].unique() # Já está upper
-    # df_dados['Colaborador'] já está upper e tratado
-    
-    df_filtrado = df_dados[df_dados['Colaborador'].isin(lista_vip)].copy()
+    lista_vip = df_users['nome'].astype(str).str.strip().str.upper().unique()
+    df_dados['temp_nome'] = df_dados['Colaborador'].astype(str).str.strip().str.upper()
+    df_filtrado = df_dados[df_dados['temp_nome'].isin(lista_vip)].copy()
+    df_filtrado = df_filtrado.drop(columns=['temp_nome'])
     return df_filtrado
 
 # --- CLASSIFICAÇÃO ---
@@ -323,7 +307,6 @@ if not st.session_state['logado']:
                     if df_users is not None:
                         user = df_users[df_users['email'] == email]
                         if not user.empty:
-                            # Guarda o nome em Title Case para ficar bonito
                             nome_upper = user.iloc[0]['nome']
                             st.session_state.update({'logado': True, 'usuario_nome': nome_upper, 'perfil': 'user'})
                             st.rerun()
@@ -354,16 +337,13 @@ with st.sidebar:
     df_users_cadastrados = carregar_usuarios()
     df_dados = filtrar_por_usuarios_cadastrados(df_raw, df_users_cadastrados)
     
-    # Converte nomes para Title Case na visualização final
     if df_dados is not None and not df_dados.empty:
         df_dados['Colaborador'] = df_dados['Colaborador'].str.title()
 
     st.markdown(f"""<div class="date-box">Ref. Exibida:<br>{periodo_label}</div>""", unsafe_allow_html=True)
     st.markdown("---")
     
-    # Exibe nome do usuário logado bonito
     nome_logado = st.session_state['usuario_nome'].title() if st.session_state['usuario_nome'] != 'Gestor' else 'Gestor'
-    
     st.markdown(f"### 👤 {nome_logado.split()[0]}")
     if st.button("Sair / Logout"):
         st.session_state.update({'logado': False})
@@ -422,7 +402,7 @@ if perfil == 'admin':
         df_hist = filtrar_por_usuarios_cadastrados(df_hist, df_users_cadastrados)
         
         if df_hist is not None and not df_hist.empty:
-            df_hist['Colaborador'] = df_hist['Colaborador'].str.title() # Visual Bonito
+            df_hist['Colaborador'] = df_hist['Colaborador'].str.title()
             colab_sel = st.selectbox("Selecione o Colaborador:", sorted(df_hist['Colaborador'].unique()))
             df_hist_user = df_hist[df_hist['Colaborador'] == colab_sel].copy()
             if not df_hist_user.empty:
@@ -627,4 +607,47 @@ else:
                           color_discrete_map={'% Atingimento': '#F37021', 'Média Equipe': '#bdc3c7'})
         fig_comp.add_hline(y=0.8, line_dash="dash", line_color="green", annotation_text="Meta 80%")
         st.plotly_chart(fig_comp, use_container_width=True)
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            st.subheader("🎯 Distância para a Meta")
+            fig_lol = go.Figure()
+            meus_dados['Indicador_Visual'] = meus_dados['Indicador'].apply(formatar_nome_visual)
+            fig_lol.add_trace(go.Scatter(x=meus_dados['% Atingimento'], y=meus_dados['Indicador_Visual'], mode='markers', marker=dict(color='#003366', size=15)))
+            for i, row in meus_dados.iterrows():
+                cor = 'green' if row['% Atingimento'] >= 1.0 else 'red'
+                fig_lol.add_shape(type='line', x0=0, y0=row['Indicador_Visual'], x1=row['% Atingimento'], y1=row['Indicador_Visual'], line=dict(color=cor, width=3))
+            fig_lol.add_vline(x=1.0, line_dash="dash", line_color="gray", annotation_text="Meta 100%")
+            fig_lol.update_xaxes(range=[0, 1.2], tickformat='.0%')
+            fig_lol.update_layout(title="Hastes de Atingimento", plot_bgcolor='white')
+            st.plotly_chart(fig_lol, use_container_width=True)
+            
+        # --- NOVO: GRÁFICO DE HISTÓRICO MENSAL ---
+        st.markdown("---")
+        st.subheader("📅 Minha Evolução Mensal")
+        
+        df_full_hist = carregar_historico_completo()
+        if df_full_hist is not None and not df_full_hist.empty:
+            # Filtra pelo usuário logado (usando o nome padronizado em Upper no histórico)
+            # Precisamos garantir que o match ocorra. 
+            # O histórico tem nomes UPPER. O nome_logado está Title Case.
+            nome_upper_match = nome_logado.upper()
+            df_user_hist = df_full_hist[df_full_hist['Colaborador'] == nome_upper_match].copy()
+            
+            if not df_user_hist.empty:
+                # Cria data para ordenar
+                df_user_hist['dt_temp'] = pd.to_datetime(df_user_hist['Periodo'], format='%m/%Y', errors='coerce')
+                df_user_hist = df_user_hist.sort_values('dt_temp')
+                
+                # Visual
+                df_user_hist['Indicador'] = df_user_hist['Indicador'].apply(formatar_nome_visual)
+                
+                fig_hist = px.line(df_user_hist, x='Periodo', y='% Atingimento', color='Indicador', markers=True)
+                fig_hist.update_yaxes(tickformat=".0%")
+                st.plotly_chart(fig_hist, use_container_width=True)
+            else:
+                st.info("Ainda não há histórico suficiente para gerar o gráfico de evolução.")
+        else:
+            st.info("Histórico não disponível.")
+
     else: st.error("Usuário sem dados vinculados.")
