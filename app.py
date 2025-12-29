@@ -21,6 +21,7 @@ st.markdown("""
         border-radius: 12px; border-left: 5px solid #F37021;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s;
     }
+    div.stMetric:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
     div.stButton > button {
         background: linear-gradient(90deg, #F37021 0%, #d35400 100%); color: white; border: none;
         padding: 0.5rem 1rem; border-radius: 8px; font-weight: bold; transition: 0.3s;
@@ -127,7 +128,11 @@ def processar_porcentagem_br(valor):
         v = valor.replace('%', '').replace(',', '.').strip()
         try: return float(v) / 100
         except: return 0.0
-    return valor
+    if isinstance(valor, (int, float)):
+        # Se for número maior que 1 (ex: 95.5), divide por 100
+        if valor > 1.1: return valor / 100
+        return valor
+    return 0.0
 
 def ler_csv_inteligente(arquivo_ou_caminho):
     separadores = [',', ';']
@@ -141,73 +146,46 @@ def ler_csv_inteligente(arquivo_ou_caminho):
             except: continue
     return None
 
-def normalizar_nome_indicador(nome_arquivo):
-    nome = nome_arquivo.upper()
-    if 'ADER' in nome: return 'ADERENCIA'
-    if 'CONFORM' in nome: return 'CONFORMIDADE'
-    if 'INTERA' in nome: return 'INTERACOES'
-    if 'PONTUAL' in nome: return 'PONTUALIDADE'
-    if 'CSAT' in nome: return 'CSAT'
-    if 'IR' in nome or 'RESOLU' in nome: return 'IR'
-    if 'TPC' in nome: return 'TPC'
-    return nome.split('.')[0].upper()
-
 def tratar_arquivo_especial(df, nome_arquivo):
-    # Padroniza colunas para minúsculo para facilitar a busca
     df.columns = [str(c).strip().lower() for c in df.columns]
     
-    # 1. Identificar coluna de NOME (Agente, Colaborador, etc)
+    # 1. Identifica Coluna de Nome
     col_agente = None
-    possiveis_nomes = ['colaborador', 'agente', 'nome', 'employee', 'funcionario', 'operador']
+    possiveis_nomes = ['agente', 'colaborador', 'nome', 'employee', 'funcionario', 'operador']
     for c in df.columns:
         if any(p == c or p in c for p in possiveis_nomes):
             col_agente = c
             break
-            
-    if not col_agente:
-        return None, "Coluna de Nome não encontrada"
+    if not col_agente: return None, "Coluna de Nome não encontrada"
     
     df.rename(columns={col_agente: 'Colaborador'}, inplace=True)
 
-    # 2. DETECÇÃO DUPLA (CASO ESPECIAL: ADERÊNCIA E CONFORMIDADE JUNTOS)
-    col_ad = None
-    col_conf = None
-    
-    # Procura especificamente por colunas de Aderência e Conformidade no mesmo arquivo
-    for c in df.columns:
-        if 'ader' in c and ('%' in c or 'perc' in c or 'aderencia' in c or 'aderência' in c):
-            col_ad = c
-        if 'conform' in c and ('%' in c or 'perc' in c or 'conformidade' in c):
-            col_conf = c
-            
-    # Se achou AMBOS no mesmo arquivo, divide em dois dataframes
+    # 2. Lógica Especial: Arquivo Combinado (Aderência & Conformidade)
+    col_ad = next((c for c in df.columns if 'ader' in c and ('%' in c or 'perc' in c or 'aderencia' in c)), None)
+    col_conf = next((c for c in df.columns if 'conform' in c and ('%' in c or 'perc' in c or 'conformidade' in c)), None)
+
     if col_ad and col_conf:
         lista_retorno = []
-        
-        # Cria DataFrame de Aderência
+        # Processa Aderência
         df_ad = df[['Colaborador', col_ad]].copy()
         df_ad['% Atingimento'] = df_ad[col_ad].apply(processar_porcentagem_br)
         df_ad['Indicador'] = 'ADERENCIA'
         lista_retorno.append(df_ad[['Colaborador', 'Indicador', '% Atingimento']])
         
-        # Cria DataFrame de Conformidade
+        # Processa Conformidade
         df_conf = df[['Colaborador', col_conf]].copy()
         df_conf['% Atingimento'] = df_conf[col_conf].apply(processar_porcentagem_br)
         df_conf['Indicador'] = 'CONFORMIDADE'
         lista_retorno.append(df_conf[['Colaborador', 'Indicador', '% Atingimento']])
         
-        return pd.concat(lista_retorno), "Arquivo Combinado Detectado (Aderência + Conformidade)"
+        return pd.concat(lista_retorno), "Arquivo Duplo Processado"
 
-    # 3. Lógica PADRÃO (1 Arquivo = 1 Indicador)
+    # 3. Lógica Padrão (Arquivo Único)
     col_valor = None
     nome_kpi_limpo = nome_arquivo.split('.')[0].lower()
+    possiveis_valores = [nome_kpi_limpo, 'atingimento', 'resultado', 'nota', 'final', 'pontos', 'valor', 'score']
     
-    possiveis_valores = [
-        nome_kpi_limpo, 
-        'atingimento', 'resultado', 'nota', 'final', 'pontos', 'valor', 'score'
-    ]
-    
-    # Adiciona variações
+    # Helpers para encontrar coluna certa
     if 'ader' in nome_kpi_limpo: possiveis_valores.extend(['aderência', 'aderencia'])
     if 'conform' in nome_kpi_limpo: possiveis_valores.extend(['conformidade'])
     if 'intera' in nome_kpi_limpo: possiveis_valores.extend(['interações', 'interacoes'])
@@ -221,50 +199,43 @@ def tratar_arquivo_especial(df, nome_arquivo):
     if col_valor: 
         df.rename(columns={col_valor: '% Atingimento'}, inplace=True)
     else: 
-        return None, f"Coluna de Valor não encontrada. Colunas disponíveis: {list(df.columns)}"
+        return None, f"Coluna de Valor não encontrada ({possiveis_valores})"
 
-    # Padroniza Diamantes
     for c in df.columns:
         if 'diamantes' in c and 'max' not in c: df.rename(columns={c: 'Diamantes'}, inplace=True)
         if 'max' in c and 'diamantes' in c: df.rename(columns={c: 'Max. Diamantes'}, inplace=True)
 
     df['% Atingimento'] = df['% Atingimento'].apply(processar_porcentagem_br)
-    df['Indicador'] = normalizar_nome_indicador(nome_arquivo)
     
-    # Limpa colunas extras
-    cols_to_keep = ['Colaborador', 'Indicador', '% Atingimento']
-    if 'Diamantes' in df.columns: cols_to_keep.append('Diamantes')
-    if 'Max. Diamantes' in df.columns: cols_to_keep.append('Max. Diamantes')
+    # Define indicador baseado no nome do arquivo
+    indicador_nome = nome_arquivo.split('.')[0].upper()
+    if 'ADER' in indicador_nome: indicador_nome = 'ADERENCIA'
+    if 'CONFORM' in indicador_nome: indicador_nome = 'CONFORMIDADE'
     
-    return df[cols_to_keep], "OK - Indicador Único"
+    df['Indicador'] = indicador_nome
+    
+    cols = ['Colaborador', 'Indicador', '% Atingimento']
+    if 'Diamantes' in df.columns: cols.append('Diamantes')
+    if 'Max. Diamantes' in df.columns: cols.append('Max. Diamantes')
+    
+    return df[cols], "OK"
 
 def carregar_dados_completo():
     lista_final = []
     arquivos_ignorar = ['usuarios.csv', 'historico_consolidado.csv', 'config.json']
     arquivos = [f for f in os.listdir('.') if f.endswith('.csv') and f.lower() not in arquivos_ignorar]
-    
     for arquivo in arquivos:
         try:
             df_bruto = ler_csv_inteligente(arquivo)
             if df_bruto is not None:
-                # Aqui o tratamento pode retornar um DF único (padrão) ou um DF empilhado (se for combinado)
                 df_tratado, msg = tratar_arquivo_especial(df_bruto, arquivo)
                 if df_tratado is not None:
                     lista_final.append(df_tratado)
         except: pass
-        
     if lista_final: 
-        # Concatena tudo numa lista só
         df_final = pd.concat(lista_final, ignore_index=True)
-        
-        # Limpeza de duplicatas
         df_final['Key_Colab'] = df_final['Colaborador'].astype(str).str.strip().str.lower()
         df_final['Key_Ind'] = df_final['Indicador'].astype(str).str.strip().str.lower()
-        
-        # Se tiver diamantes, mantém o que tem diamantes, senão o último
-        if 'Diamantes' in df_final.columns:
-             df_final = df_final.sort_values(by='Diamantes', na_position='first')
-             
         df_final = df_final.drop_duplicates(subset=['Key_Colab', 'Key_Ind'], keep='last')
         df_final = df_final.drop(columns=['Key_Colab', 'Key_Ind'])
         return df_final
@@ -293,6 +264,12 @@ def filtrar_por_usuarios_cadastrados(df_dados, df_users):
     df_filtrado = df_dados[df_dados['temp_nome'].isin(lista_vip)].copy()
     df_filtrado = df_filtrado.drop(columns=['temp_nome'])
     return df_filtrado
+
+# --- NOVA LÓGICA DE CLASSIFICAÇÃO ---
+def classificar_farol(val):
+    if val >= 0.90: return '💎 Excelência' # >= 90%
+    elif val >= 0.80: return '🟢 Meta Batida' # 80% a 90%
+    else: return '🔴 Crítico' # < 80%
 
 # --- 4. LOGIN ---
 if 'logado' not in st.session_state:
@@ -375,16 +352,21 @@ if perfil == 'admin':
         if df_dados is not None and not df_dados.empty:
             st.markdown(f"### Resumo de Saúde: **{periodo_label}**")
             df_media_pessoas = df_dados.groupby('Colaborador')['% Atingimento'].mean().reset_index()
-            qtd_verde = len(df_media_pessoas[df_media_pessoas['% Atingimento'] >= 1.0])
-            qtd_amarelo = len(df_media_pessoas[(df_media_pessoas['% Atingimento'] >= 0.80) & (df_media_pessoas['% Atingimento'] < 1.0)])
-            qtd_vermelho = len(df_media_pessoas[df_media_pessoas['% Atingimento'] < 0.80])
+            
+            # NOVAS METAS
+            qtd_verde = len(df_media_pessoas[df_media_pessoas['% Atingimento'] >= 0.90]) # Excelência
+            qtd_amarelo = len(df_media_pessoas[(df_media_pessoas['% Atingimento'] >= 0.80) & (df_media_pessoas['% Atingimento'] < 0.90)]) # Meta Batida
+            qtd_vermelho = len(df_media_pessoas[df_media_pessoas['% Atingimento'] < 0.80]) # Crítico
+            
             c1, c2, c3 = st.columns(3)
-            c1.metric("🟢 Meta Batida", f"{qtd_verde}", delta=">=100%")
-            c2.metric("🟡 Atenção", f"{qtd_amarelo}", delta="80-99%", delta_color="off")
+            c1.metric("💎 Excelência", f"{qtd_verde}", delta=">=90%")
+            c2.metric("🟢 Meta Batida", f"{qtd_amarelo}", delta="80-90%", delta_color="off")
             c3.metric("🔴 Crítico", f"{qtd_vermelho}", delta="<80%", delta_color="inverse")
+            
             st.markdown("---")
             st.subheader("📋 Prioridade de Ação")
-            df_atencao = df_media_pessoas[df_media_pessoas['% Atingimento'] < 1.0].sort_values(by='% Atingimento')
+            df_atencao = df_media_pessoas[df_media_pessoas['% Atingimento'] < 0.80].sort_values(by='% Atingimento')
+            
             if not df_atencao.empty:
                 lista_detalhada = []
                 for colab in df_atencao['Colaborador']:
@@ -395,17 +377,13 @@ if perfil == 'admin':
                     lista_detalhada.append({
                         'Colaborador': colab,
                         'Média Geral': media_pessoa,
-                        'Status': '🔴 Crítico' if media_pessoa < 0.80 else '🟡 Atenção',
+                        'Status': '🔴 Crítico',
                         'Pior Indicador': f"{nome_kpi_bonito} ({pior_kpi_row['% Atingimento']:.1%})"
                     })
                 df_final_atencao = pd.DataFrame(lista_detalhada)
-                def colorir_status(val):
-                    if 'Crítico' in str(val): return 'color: #e74c3c; font-weight: bold;'
-                    if 'Atenção' in str(val): return 'color: #d35400; font-weight: bold;'
-                    return ''
-                try: st.dataframe(df_final_atencao.style.format({'Média Geral': '{:.1%}'}).map(colorir_status, subset=['Status']), use_container_width=True, height=500)
+                try: st.dataframe(df_final_atencao.style.format({'Média Geral': '{:.1%}'}), use_container_width=True, height=500)
                 except: st.dataframe(df_final_atencao, use_container_width=True, height=500)
-            else: st.success("🎉 Todos bateram a meta neste período.")
+            else: st.success("🎉 Ninguém na zona crítica (<80%) neste período.")
 
     with tabs[1]:
         st.markdown("### ⏳ Evolução Temporal")
@@ -419,7 +397,7 @@ if perfil == 'admin':
                 df_hist_user['Texto'] = df_hist_user['% Atingimento'].apply(lambda x: f"{x:.1%}")
                 fig_heat = px.density_heatmap(df_hist_user, x="Periodo", y="Indicador", z="% Atingimento", 
                                               text_auto=False, title=f"Mapa de Calor: {colab_sel}",
-                                              color_continuous_scale="RdYlGn", range_color=[0.7, 1.2])
+                                              color_continuous_scale="RdYlGn", range_color=[0.6, 1.0])
                 fig_heat.update_traces(texttemplate="%{z:.1%}", textfont={"size":12})
                 st.plotly_chart(fig_heat, use_container_width=True)
             else: st.warning("Sem histórico para este colaborador.")
@@ -430,16 +408,14 @@ if perfil == 'admin':
             st.markdown("### 🔬 Detalhe por Indicador")
             df_visual = df_dados.copy()
             df_visual['Indicador'] = df_visual['Indicador'].apply(formatar_nome_visual)
-            def classificar_farol(val):
-                if val >= 1.0: return '🟢 Meta Batida'
-                elif val >= 0.80: return '🟡 Atenção'
-                else: return '🔴 Crítico'
             df_visual['Status'] = df_visual['% Atingimento'].apply(classificar_farol)
+            
             df_agrupado = df_visual.groupby(['Indicador', 'Status']).size().reset_index(name='Quantidade')
             fig_farol = px.bar(df_agrupado, x='Indicador', y='Quantidade', color='Status', 
                                text='Quantidade', title="Farol de Performance",
-                               color_discrete_map={'🟢 Meta Batida': '#2ecc71', '🟡 Atenção': '#f1c40f', '🔴 Crítico': '#e74c3c'})
+                               color_discrete_map={'💎 Excelência': '#3498db', '🟢 Meta Batida': '#2ecc71', '🔴 Crítico': '#e74c3c'})
             st.plotly_chart(fig_farol, use_container_width=True)
+            
             lista_kpis = sorted(df_visual['Indicador'].unique())
             for kpi in lista_kpis:
                 with st.expander(f"📊 Ranking: {kpi}", expanded=False):
@@ -447,7 +423,7 @@ if perfil == 'admin':
                     fig_rank = px.bar(df_kpi, x='% Atingimento', y='Colaborador', orientation='h',
                                       text_auto='.1%', title=f"Ranking - {kpi}",
                                       color='% Atingimento', color_continuous_scale=['#e74c3c', '#f1c40f', '#2ecc71'])
-                    fig_rank.add_vline(x=1.0, line_dash="dash", line_color="black")
+                    fig_rank.add_vline(x=0.8, line_dash="dash", line_color="black", annotation_text="Meta 80%")
                     st.plotly_chart(fig_rank, use_container_width=True)
 
     with tabs[3]: 
@@ -459,7 +435,7 @@ if perfil == 'admin':
             df_show_visual = df_show.copy()
             df_show_visual['Indicador'] = df_show_visual['Indicador'].apply(formatar_nome_visual)
             pivot = df_show_visual.pivot_table(index='Colaborador', columns='Indicador', values='% Atingimento')
-            try: st.dataframe(pivot.style.background_gradient(cmap='RdYlGn', vmin=0.0, vmax=1.2).format("{:.1%}"), use_container_width=True, height=600)
+            try: st.dataframe(pivot.style.background_gradient(cmap='RdYlGn', vmin=0.7, vmax=1.0).format("{:.1%}"), use_container_width=True, height=600)
             except: st.dataframe(pivot.style.format("{:.1%}"), use_container_width=True, height=600)
 
     with tabs[4]:
@@ -468,7 +444,7 @@ if perfil == 'admin':
         st.markdown("#### 1. Configurar Período")
         nova_data = st.text_input("Mês/Ano de Referência:", value=data_sugestao)
         
-        st.markdown("#### 2. Atualizar Dados (Cria novo Mês)")
+        st.markdown("#### 2. Atualizar Arquivos (Upload Inteligente)")
         c1, c2 = st.columns(2)
         with c1:
             up_u = st.file_uploader("usuarios.csv", key="u")
@@ -480,7 +456,7 @@ if perfil == 'admin':
         with c2:
             up_k = st.file_uploader("Indicadores (CSVs)", accept_multiple_files=True, key="k")
             
-            # --- DIAGNÓSTICO DO UPLOAD ---
+            # DIAGNÓSTICO
             if up_k:
                 st.markdown("**🔎 Pré-visualização:**")
                 lista_diag = []
@@ -490,16 +466,13 @@ if perfil == 'admin':
                         if df_chk is not None:
                             df_p, msg = tratar_arquivo_especial(df_chk, f.name)
                             if df_p is not None:
-                                # Se for combinado, pega nomes unicos
-                                kpis_achados = df_p['Indicador'].unique()
-                                lista_diag.append({"Arquivo": f.name, "Status": "✅ OK", "Indicadores": str(kpis_achados)})
-                            else:
-                                lista_diag.append({"Arquivo": f.name, "Status": "❌ Erro", "Detalhe": msg})
+                                kpis = df_p['Indicador'].unique()
+                                lista_diag.append({"Arquivo": f.name, "Status": "✅ OK", "KPIs": str(kpis)})
+                            else: lista_diag.append({"Arquivo": f.name, "Status": "❌ Erro", "Detalhe": msg})
                     except Exception as e: lista_diag.append({"Arquivo": f.name, "Status": "❌ Erro", "Detalhe": str(e)})
                 st.dataframe(pd.DataFrame(lista_diag))
-                # -----------------------------
 
-                if st.button("Salvar e Atualizar Histórico"): 
+                if st.button("💾 Salvar e Atualizar Histórico"): 
                     try:
                         salvos = salvar_arquivos_padronizados(up_k)
                         salvar_config(nova_data)
@@ -507,34 +480,22 @@ if perfil == 'admin':
                         df_users_fresh = carregar_usuarios()
                         df_filtrado = filtrar_por_usuarios_cadastrados(df_novo_ciclo, df_users_fresh)
                         if df_filtrado.empty and not df_novo_ciclo.empty:
-                            st.error("⚠️ NENHUM dado foi salvo! O filtro de usuários removeu todos os nomes. Verifique o 'usuarios.csv'.")
+                            st.error("⚠️ NENHUM dado foi salvo! O filtro de usuários removeu todos os nomes.")
                         else:
                             atualizar_historico(df_filtrado, nova_data)
                             st.cache_data.clear()
                             st.balloons()
-                            st.success(f"✅ Sucesso! {len(df_filtrado)} registros salvos em **{nova_data}**.")
+                            st.success(f"✅ Sucesso! Dados salvos em **{nova_data}**.")
                             time.sleep(1)
                             st.rerun()
                     except Exception as e: st.error(f"Erro salvamento: {e}")
         
         st.markdown("---")
-        st.markdown("### 3. Restaurar Backup Antigo")
-        up_hist = st.file_uploader("Envie o 'historico_consolidado.csv' para restaurar:", type=['csv'], key="hist_up")
-        if up_hist:
-            if st.button("Restaurar Backup"):
-                with open("historico_consolidado.csv", "wb") as w: w.write(up_hist.getbuffer())
-                st.success("Backup restaurado! Reiniciando...")
-                time.sleep(2)
-                st.rerun()
-
-        st.markdown("---")
-        st.markdown("### 💾 Baixar Backup Atual")
+        st.markdown("### 3. Restaurar/Baixar")
         if os.path.exists('historico_consolidado.csv'):
             with open('historico_consolidado.csv', 'rb') as f:
                 st.download_button("⬇️ Baixar Histórico Consolidado", f, "historico_consolidado.csv", "text/csv")
-        else: st.info("Salve dados primeiro para gerar o histórico.")
         
-        st.markdown("---")
         if st.button("🗑️ Resetar Tudo"):
             limpar_base_dados()
             if os.path.exists('historico_consolidado.csv'): os.remove('historico_consolidado.csv')
@@ -567,11 +528,14 @@ else:
             desconto_diamantes = 0
             motivo_desconto = ""
             
-            if tem_dado_conf and atingimento_conf < 0.92:
+            # REGRA FINANCEIRA: GATILHO EM 92%
+            GATILHO_FINANCEIRO = 0.92
+            
+            if tem_dado_conf and atingimento_conf < GATILHO_FINANCEIRO:
                 df_pont = meus_dados[meus_dados['Indicador'] == 'PONTUALIDADE']
                 if not df_pont.empty:
                     desconto_diamantes = df_pont.iloc[0]['Diamantes']
-                    motivo_desconto = f"(Descontados {desconto_diamantes} de Pontualidade por baixa Conformidade)"
+                    motivo_desconto = f"(Descontados {desconto_diamantes} de Pontualidade)"
             
             total_dia_liquido = total_dia_bruto - desconto_diamantes
             valor_final = total_dia_liquido * 0.50
@@ -582,15 +546,14 @@ else:
             c2.metric("Valor por Diamante", "R$ 0,50")
             
             if not tem_dado_conf:
-                c3.metric("Valor a Receber", "Aguardando Conformidade", "Dado Indisponível", delta_color="off")
-                st.info("ℹ️ O cálculo final depende do lançamento da sua nota de **Conformidade**.")
+                c3.metric("Valor a Receber", "Aguardando", "Conformidade Indisponível", delta_color="off")
             elif desconto_diamantes > 0:
-                c3.metric("Valor a Receber", f"R$ {valor_final:.2f}", "⚠️ Conformidade < 92%", delta_color="inverse")
-                st.error(f"⚠️ Atenção: Sua Conformidade foi de **{atingimento_conf:.1%}**. Por ser menor que 92%, você deixou de ganhar os diamantes de Pontualidade.")
+                c3.metric("Valor a Receber", f"R$ {valor_final:.2f}", f"Gatilho não atingido (<{GATILHO_FINANCEIRO:.0%})", delta_color="inverse")
+                st.error(f"⚠️ **Gatilho Financeiro não atingido**: Sua conformidade foi **{atingimento_conf:.1%}**. Para receber os diamantes de Pontualidade, é necessário ter >= 92% de Conformidade.")
             else:
-                c3.metric("Valor a Receber", f"R$ {valor_final:.2f}", "Meta Batida! 🤑")
-                if atingimento_conf >= 0.92:
-                    st.success(f"✅ Parabéns! Conformidade **{atingimento_conf:.1%}** (>=92%). Todos os seus diamantes estão valendo!")
+                c3.metric("Valor a Receber", f"R$ {valor_final:.2f}", "Gatilho Atingido! 🤑")
+                if atingimento_conf >= GATILHO_FINANCEIRO:
+                    st.success(f"✅ **Gatilho Financeiro Atingido**: Conformidade **{atingimento_conf:.1%}** (>= 92%). Todos os diamantes computados.")
             st.markdown("---")
 
         cols = st.columns(len(meus_dados))
@@ -598,34 +561,32 @@ else:
             r = row[1]
             val = r['% Atingimento']
             nome_visual = formatar_nome_visual(r['Indicador'])
+            
+            # --- NOVA LÓGICA DE CORES DOS CARDS ---
+            delta_msg = "Meta 80%"
+            delta_cor = "normal"
+            if val >= 0.90: 
+                delta_msg = "💎 Excelência!"
+            elif val >= 0.80:
+                delta_msg = "✅ Meta Batida"
+            else:
+                delta_cor = "inverse"
+                delta_msg = "🔻 Abaixo da Meta"
+
             with cols[i]:
-                st.metric(label=nome_visual, value=f"{val:.1%}", delta="Meta 100%", delta_color="normal" if val >= 1.0 else "inverse")
+                st.metric(label=nome_visual, value=f"{val:.1%}", delta=delta_msg, delta_color=delta_cor)
         st.markdown("---")
         
-        st.subheader("📊 Comparativo: Eu vs Equipe")
+        # Gráficos
         media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
         media_equipe.rename(columns={'% Atingimento': 'Média Equipe'}, inplace=True)
         df_comp = pd.merge(meus_dados, media_equipe, on='Indicador')
         df_comp['Indicador'] = df_comp['Indicador'].apply(formatar_nome_visual)
         df_melt = df_comp.melt(id_vars=['Indicador'], value_vars=['% Atingimento', 'Média Equipe'], var_name='Tipo', value_name='Resultado')
+        
         fig_comp = px.bar(df_melt, x='Indicador', y='Resultado', color='Tipo', barmode='group',
                           text_auto='.1%', title="Minha Performance vs Média Geral",
                           color_discrete_map={'% Atingimento': '#F37021', 'Média Equipe': '#bdc3c7'})
-        fig_comp.add_hline(y=1.0, line_dash="dash", line_color="green", annotation_text="Meta")
-        fig_comp.update_layout(plot_bgcolor='white', legend_title_text='')
+        fig_comp.add_hline(y=0.8, line_dash="dash", line_color="green", annotation_text="Meta 80%")
         st.plotly_chart(fig_comp, use_container_width=True)
-        
-        c1, c2 = st.columns(2)
-        with c1:
-            st.subheader("🎯 Distância para a Meta")
-            fig_lol = go.Figure()
-            meus_dados['Indicador_Visual'] = meus_dados['Indicador'].apply(formatar_nome_visual)
-            fig_lol.add_trace(go.Scatter(x=meus_dados['% Atingimento'], y=meus_dados['Indicador_Visual'], mode='markers', marker=dict(color='#003366', size=15)))
-            for i, row in meus_dados.iterrows():
-                cor = 'green' if row['% Atingimento'] >= 1.0 else 'red'
-                fig_lol.add_shape(type='line', x0=0, y0=row['Indicador_Visual'], x1=row['% Atingimento'], y1=row['Indicador_Visual'], line=dict(color=cor, width=3))
-            fig_lol.add_vline(x=1.0, line_dash="dash", line_color="gray", annotation_text="Meta 100%")
-            fig_lol.update_xaxes(range=[0, 1.2], tickformat='.0%')
-            fig_lol.update_layout(title="Hastes de Atingimento", plot_bgcolor='white')
-            st.plotly_chart(fig_lol, use_container_width=True)
     else: st.error("Usuário sem dados vinculados.")
