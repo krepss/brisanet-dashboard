@@ -41,7 +41,6 @@ st.markdown("""
 
 # --- 3. FUNÇÕES DE BACKEND ---
 
-# --- FUNÇÃO: CORRETOR ORTOGRÁFICO VISUAL ---
 def formatar_nome_visual(nome_cru):
     nome = str(nome_cru).strip().upper()
     if "ADER" in nome: return "Aderência"
@@ -53,7 +52,6 @@ def formatar_nome_visual(nome_cru):
     if "TPC" in nome: return "TPC"
     if "QUALIDADE" in nome: return "Qualidade"
     return nome_cru 
-# ----------------------------------------------------
 
 def tentar_extrair_data_csv(df):
     colunas_possiveis = ['data', 'date', 'periodo', 'mês', 'mes', 'competencia', 'ref']
@@ -85,7 +83,6 @@ def limpar_base_dados():
     for f in arquivos:
         os.remove(f)
 
-# --- HISTÓRICO ---
 def atualizar_historico(df_atual, periodo):
     ARQUIVO_HIST = 'historico_consolidado.csv'
     df_save = df_atual.copy()
@@ -116,12 +113,13 @@ def listar_periodos_disponiveis():
     return []
 
 def salvar_arquivos_padronizados(files):
+    # Mapa expandido para capturar variações
     mapa_nomes = {
         'ir': 'IR.csv', 'csat': 'CSAT.csv', 'tpc': 'TPC.csv',
         'interacoes': 'INTERACOES.csv', 'interações': 'INTERACOES.csv',
         'pontualidade': 'PONTUALIDADE.csv',
         'aderência': 'ADERENCIA.csv', 'aderencia': 'ADERENCIA.csv',
-        'conformidade': 'CONFORMIDADE.csv'
+        'conformidade': 'CONFORMIDADE.csv', 'qualidade': 'CONFORMIDADE.csv'
     }
     arquivos_salvos = []
     for f in files:
@@ -152,9 +150,9 @@ def ler_csv_inteligente(arquivo_ou_caminho):
             try:
                 if hasattr(arquivo_ou_caminho, 'seek'): arquivo_ou_caminho.seek(0)
                 df = pd.read_csv(arquivo_ou_caminho, sep=sep, encoding=enc)
-                if len(df.columns) > 1:
-                    df.columns = df.columns.str.strip()
-                    return df
+                # Limpeza básica dos nomes das colunas
+                df.columns = df.columns.str.strip()
+                if len(df.columns) > 1: return df
             except: continue
     return None
 
@@ -162,38 +160,62 @@ def tratar_arquivo_especial(df, nome_arquivo):
     lista_dfs_processados = []
     colunas_lower = [c.lower() for c in df.columns]
     
+    # 1. Identificar coluna de NOME (Agente, Colaborador, etc)
+    col_agente = None
+    possiveis_nomes = ['agente', 'colaborador', 'nome', 'employee', 'funcionario', 'operador']
+    for c in df.columns:
+        if any(p in c.lower() for p in possiveis_nomes):
+            col_agente = c
+            break
+            
+    if col_agente:
+        df = df.rename(columns={col_agente: 'Colaborador'})
+    else:
+        # Se não achou coluna de nome, provavelmente o arquivo é inválido ou estrutura estranha
+        return []
+
+    # 2. Tentar encontrar Aderência e Conformidade especificamente
     tem_aderencia = any('aderência' in c or 'aderencia' in c for c in colunas_lower)
     tem_conformidade = any('conformidade' in c for c in colunas_lower)
-    tem_agente = any('agente' in c for c in colunas_lower)
 
-    if tem_agente and (tem_aderencia or tem_conformidade):
-        col_agente = next(c for c in df.columns if 'agente' in c.lower())
-        df = df.rename(columns={col_agente: 'Colaborador'})
+    if tem_aderencia or tem_conformidade:
+        # Lógica Especial para arquivos combinados ou específicos
         col_ad = next((c for c in df.columns if 'aderência' in c.lower() or 'aderencia' in c.lower()), None)
         if col_ad:
             df_ad = df[['Colaborador', col_ad]].copy()
             df_ad['% Atingimento'] = df_ad[col_ad].apply(processar_porcentagem_br)
             df_ad['Indicador'] = 'ADERENCIA'
             lista_dfs_processados.append(df_ad[['Colaborador', 'Indicador', '% Atingimento']])
+            
         col_conf = next((c for c in df.columns if 'conformidade' in c.lower()), None)
         if col_conf:
             df_conf = df[['Colaborador', col_conf]].copy()
             df_conf['% Atingimento'] = df_conf[col_conf].apply(processar_porcentagem_br)
             df_conf['Indicador'] = 'CONFORMIDADE'
             lista_dfs_processados.append(df_conf[['Colaborador', 'Indicador', '% Atingimento']])
-        return lista_dfs_processados
-    else:
-        for col in df.columns:
-            c_low = col.lower()
-            if 'atingimento' in c_low: df.rename(columns={col: '% Atingimento'}, inplace=True)
-            if 'colaborador' in c_low or 'nome' in c_low: df.rename(columns={col: 'Colaborador'}, inplace=True)
-            if 'diamantes' == c_low: df.rename(columns={col: 'Diamantes'}, inplace=True)
-            if 'max' in c_low and 'diamantes' in c_low: df.rename(columns={col: 'Max. Diamantes'}, inplace=True)
-        if '% Atingimento' in df.columns:
-            nome_kpi = nome_arquivo.split('.')[0].upper()
-            df['Indicador'] = nome_kpi
-            lista_dfs_processados.append(df)
+            
+        if lista_dfs_processados:
             return lista_dfs_processados
+
+    # 3. Lógica Genérica (Fallback)
+    # Se não caiu na lógica acima, tenta padronizar colunas comuns
+    for col in df.columns:
+        c_low = col.lower()
+        # Se a coluna tem o mesmo nome do arquivo (ex: coluna "Pontualidade" no arquivo PONTUALIDADE.csv)
+        nome_kpi_arquivo = nome_arquivo.split('.')[0].upper()
+        if nome_kpi_arquivo in c_low.upper() or 'atingimento' in c_low or 'resultado' in c_low or 'nota' in c_low:
+             if 'colaborador' not in c_low and 'nome' not in c_low: # Evita renomear a coluna de nome
+                df.rename(columns={col: '% Atingimento'}, inplace=True)
+        
+        if 'diamantes' == c_low: df.rename(columns={col: 'Diamantes'}, inplace=True)
+        if 'max' in c_low and 'diamantes' in c_low: df.rename(columns={col: 'Max. Diamantes'}, inplace=True)
+
+    if '% Atingimento' in df.columns:
+        nome_kpi = nome_arquivo.split('.')[0].upper()
+        df['Indicador'] = nome_kpi
+        lista_dfs_processados.append(df)
+        return lista_dfs_processados
+        
     return []
 
 def carregar_dados_completo():
@@ -470,7 +492,6 @@ else:
     
     if not meus_dados.empty:
         if 'Diamantes' in meus_dados.columns and 'Max. Diamantes' in meus_dados.columns:
-            # --- LÓGICA FINANCEIRA ---
             total_dia_bruto = meus_dados['Diamantes'].sum()
             total_max = meus_dados['Max. Diamantes'].sum()
             perc_dia = (total_dia_bruto / total_max) if total_max > 0 else 0
@@ -480,16 +501,13 @@ else:
             with col_bar: st.progress(perc_dia)
             with col_num: st.write(f"**{total_dia_bruto} / {total_max}** Diamantes")
             
-            # Pega valor da Conformidade (raw name é CONFORMIDADE)
             df_conf = meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE']
             atingimento_conf = df_conf.iloc[0]['% Atingimento'] if not df_conf.empty else 0.0
             
-            # Cálculo do Desconto (Pontualidade)
             desconto_diamantes = 0
             motivo_desconto = ""
             
             if atingimento_conf < 0.92:
-                # Procura a Pontualidade para remover os diamantes dela
                 df_pont = meus_dados[meus_dados['Indicador'] == 'PONTUALIDADE']
                 if not df_pont.empty:
                     desconto_diamantes = df_pont.iloc[0]['Diamantes']
