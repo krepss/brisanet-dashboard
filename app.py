@@ -129,7 +129,6 @@ def processar_porcentagem_br(valor):
         try: return float(v) / 100
         except: return 0.0
     if isinstance(valor, (int, float)):
-        # Se for número maior que 1 (ex: 95.5), divide por 100
         if valor > 1.1: return valor / 100
         return valor
     return 0.0
@@ -146,24 +145,38 @@ def ler_csv_inteligente(arquivo_ou_caminho):
             except: continue
     return None
 
+def normalizar_nome_indicador(nome_arquivo):
+    nome = nome_arquivo.upper()
+    if 'ADER' in nome: return 'ADERENCIA'
+    if 'CONFORM' in nome: return 'CONFORMIDADE'
+    if 'INTERA' in nome: return 'INTERACOES'
+    if 'PONTUAL' in nome: return 'PONTUALIDADE'
+    if 'CSAT' in nome: return 'CSAT'
+    if 'IR' in nome or 'RESOLU' in nome: return 'IR'
+    if 'TPC' in nome: return 'TPC'
+    return nome.split('.')[0].upper()
+
 def tratar_arquivo_especial(df, nome_arquivo):
     df.columns = [str(c).strip().lower() for c in df.columns]
     
-    # 1. Identifica Coluna de Nome
+    # 1. Identificar coluna de NOME
     col_agente = None
-    possiveis_nomes = ['agente', 'colaborador', 'nome', 'employee', 'funcionario', 'operador']
+    possiveis_nomes = ['colaborador', 'agente', 'nome', 'employee', 'funcionario', 'operador']
     for c in df.columns:
         if any(p == c or p in c for p in possiveis_nomes):
             col_agente = c
             break
+            
     if not col_agente: return None, "Coluna de Nome não encontrada"
     
     df.rename(columns={col_agente: 'Colaborador'}, inplace=True)
 
     # 2. Lógica Especial: Arquivo Combinado (Aderência & Conformidade)
+    # Procura TODAS as colunas que podem ser Aderência ou Conformidade
     col_ad = next((c for c in df.columns if 'ader' in c and ('%' in c or 'perc' in c or 'aderencia' in c)), None)
     col_conf = next((c for c in df.columns if 'conform' in c and ('%' in c or 'perc' in c or 'conformidade' in c)), None)
 
+    # Se achou as duas, força a separação
     if col_ad and col_conf:
         lista_retorno = []
         # Processa Aderência
@@ -178,14 +191,14 @@ def tratar_arquivo_especial(df, nome_arquivo):
         df_conf['Indicador'] = 'CONFORMIDADE'
         lista_retorno.append(df_conf[['Colaborador', 'Indicador', '% Atingimento']])
         
-        return pd.concat(lista_retorno), "Arquivo Duplo Processado"
+        return pd.concat(lista_retorno), "Arquivo Combinado Detectado (Aderência + Conformidade)"
 
     # 3. Lógica Padrão (Arquivo Único)
     col_valor = None
     nome_kpi_limpo = nome_arquivo.split('.')[0].lower()
     possiveis_valores = [nome_kpi_limpo, 'atingimento', 'resultado', 'nota', 'final', 'pontos', 'valor', 'score']
     
-    # Helpers para encontrar coluna certa
+    # Adiciona variações
     if 'ader' in nome_kpi_limpo: possiveis_valores.extend(['aderência', 'aderencia'])
     if 'conform' in nome_kpi_limpo: possiveis_valores.extend(['conformidade'])
     if 'intera' in nome_kpi_limpo: possiveis_valores.extend(['interações', 'interacoes'])
@@ -206,19 +219,13 @@ def tratar_arquivo_especial(df, nome_arquivo):
         if 'max' in c and 'diamantes' in c: df.rename(columns={c: 'Max. Diamantes'}, inplace=True)
 
     df['% Atingimento'] = df['% Atingimento'].apply(processar_porcentagem_br)
+    df['Indicador'] = normalizar_nome_indicador(nome_arquivo)
     
-    # Define indicador baseado no nome do arquivo
-    indicador_nome = nome_arquivo.split('.')[0].upper()
-    if 'ADER' in indicador_nome: indicador_nome = 'ADERENCIA'
-    if 'CONFORM' in indicador_nome: indicador_nome = 'CONFORMIDADE'
+    cols_to_keep = ['Colaborador', 'Indicador', '% Atingimento']
+    if 'Diamantes' in df.columns: cols_to_keep.append('Diamantes')
+    if 'Max. Diamantes' in df.columns: cols_to_keep.append('Max. Diamantes')
     
-    df['Indicador'] = indicador_nome
-    
-    cols = ['Colaborador', 'Indicador', '% Atingimento']
-    if 'Diamantes' in df.columns: cols.append('Diamantes')
-    if 'Max. Diamantes' in df.columns: cols.append('Max. Diamantes')
-    
-    return df[cols], "OK"
+    return df[cols_to_keep], "OK"
 
 def carregar_dados_completo():
     lista_final = []
@@ -480,7 +487,7 @@ if perfil == 'admin':
                         df_users_fresh = carregar_usuarios()
                         df_filtrado = filtrar_por_usuarios_cadastrados(df_novo_ciclo, df_users_fresh)
                         if df_filtrado.empty and not df_novo_ciclo.empty:
-                            st.error("⚠️ NENHUM dado foi salvo! O filtro de usuários removeu todos os nomes.")
+                            st.error("⚠️ NENHUM dado foi salvo! O filtro de usuários removeu todos os nomes. Verifique o 'usuarios.csv'.")
                         else:
                             atualizar_historico(df_filtrado, nova_data)
                             st.cache_data.clear()
