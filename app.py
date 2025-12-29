@@ -75,13 +75,19 @@ def limpar_base_dados():
 # --- HISTÓRICO ---
 def atualizar_historico(df_atual, periodo):
     ARQUIVO_HIST = 'historico_consolidado.csv'
-    df_atual['Periodo'] = periodo
+    
+    # Prepara o DataFrame atual
+    df_save = df_atual.copy()
+    df_save['Periodo'] = periodo
+    
     if os.path.exists(ARQUIVO_HIST):
         df_hist = pd.read_csv(ARQUIVO_HIST)
+        # Remove dados antigos deste mesmo período (para evitar duplicidade no histórico)
         df_hist = df_hist[df_hist['Periodo'] != periodo]
-        df_final = pd.concat([df_hist, df_atual], ignore_index=True)
+        df_final = pd.concat([df_hist, df_save], ignore_index=True)
     else:
-        df_final = df_atual
+        df_final = df_save
+        
     df_final.to_csv(ARQUIVO_HIST, index=False)
 
 def carregar_historico_completo():
@@ -141,6 +147,7 @@ def tratar_arquivo_especial(df, nome_arquivo):
     lista_dfs_processados = []
     colunas_lower = [c.lower() for c in df.columns]
     
+    # Verifica tipos especiais
     tem_aderencia = any('aderência' in c or 'aderencia' in c for c in colunas_lower)
     tem_conformidade = any('conformidade' in c for c in colunas_lower)
     tem_agente = any('agente' in c for c in colunas_lower)
@@ -162,6 +169,7 @@ def tratar_arquivo_especial(df, nome_arquivo):
             lista_dfs_processados.append(df_conf[['Colaborador', 'Indicador', '% Atingimento']])
         return lista_dfs_processados
     else:
+        # Padronização normal
         for col in df.columns:
             c_low = col.lower()
             if 'atingimento' in c_low: df.rename(columns={col: '% Atingimento'}, inplace=True)
@@ -169,6 +177,7 @@ def tratar_arquivo_especial(df, nome_arquivo):
             if 'diamantes' == c_low: df.rename(columns={col: 'Diamantes'}, inplace=True)
             if 'max' in c_low and 'diamantes' in c_low: df.rename(columns={col: 'Max. Diamantes'}, inplace=True)
         if '% Atingimento' in df.columns:
+            # Usa o nome do arquivo para definir o indicador, se não tiver coluna especifica
             nome_kpi = nome_arquivo.split('.')[0].upper()
             df['Indicador'] = nome_kpi
             lista_dfs_processados.append(df)
@@ -177,8 +186,10 @@ def tratar_arquivo_especial(df, nome_arquivo):
 
 def carregar_dados_completo():
     lista_final = []
+    # Lista arquivos mas IGNORA arquivos de sistema e histórico para não duplicar
     arquivos_ignorar = ['usuarios.csv', 'historico_consolidado.csv', 'config.json']
     arquivos = [f for f in os.listdir('.') if f.endswith('.csv') and f.lower() not in arquivos_ignorar]
+    
     for arquivo in arquivos:
         try:
             df_bruto = ler_csv_inteligente(arquivo)
@@ -186,17 +197,21 @@ def carregar_dados_completo():
                 dfs_tratados = tratar_arquivo_especial(df_bruto, arquivo)
                 lista_final.extend(dfs_tratados)
         except: pass
+    
     if lista_final: 
         df_final = pd.concat(lista_final, ignore_index=True)
-        # Limpeza de Duplicatas
+        
+        # --- LIMPEZA DE DUPLICATAS ---
         df_final['Key_Colab'] = df_final['Colaborador'].astype(str).str.strip().str.lower()
         df_final['Key_Ind'] = df_final['Indicador'].astype(str).str.strip().str.lower()
         df_final = df_final.drop_duplicates(subset=['Key_Colab', 'Key_Ind'], keep='last')
         df_final = df_final.drop(columns=['Key_Colab', 'Key_Ind'])
+        
         return df_final
     return None
 
 def carregar_usuarios():
+    # Tenta carregar usuarios.csv
     arquivos = [f for f in os.listdir('.') if f.endswith('.csv') and 'usuario' in f.lower()]
     if arquivos:
         df = ler_csv_inteligente(arquivos[0])
@@ -211,6 +226,7 @@ def carregar_usuarios():
                 return df
     return None
 
+# --- FILTRO MESTRE DE USUÁRIOS ---
 def filtrar_por_usuarios_cadastrados(df_dados, df_users):
     if df_dados is None or df_dados.empty: return df_dados
     if df_users is None or df_users.empty: return df_dados
@@ -266,7 +282,10 @@ with st.sidebar:
         periodo_label = ler_config()
     else:
         df_hist_full = carregar_historico_completo()
-        df_raw = df_hist_full[df_hist_full['Periodo'] == periodo_selecionado].copy()
+        if df_hist_full is not None:
+            df_raw = df_hist_full[df_hist_full['Periodo'] == periodo_selecionado].copy()
+        else:
+            df_raw = None
         periodo_label = periodo_selecionado
     
     df_users_cadastrados = carregar_usuarios()
@@ -432,10 +451,23 @@ if perfil == 'admin':
                     except Exception as e:
                         st.error(f"Erro salvamento: {e}")
         
-        # --- BOTÃO DE DOWNLOAD DO HISTÓRICO ---
-        if os.path.exists('historico_consolidado.csv'):
-            with open('historico_consolidado.csv', 'rb') as f:
-                st.download_button("💾 Baixar Histórico Completo (Para Backup/GitHub)", f, "historico_consolidado.csv", "text/csv")
+        # --- LÓGICA DE DOWNLOAD ROBUSTA (AGORA COM BOTÃO EM MEMÓRIA) ---
+        st.markdown("### 💾 Backup do Histórico")
+        df_historico_final = carregar_historico_completo()
+        
+        if df_historico_final is not None and not df_historico_final.empty:
+            # Converte para CSV em memória (mais seguro que ler arquivo)
+            csv_historico = df_historico_final.to_csv(index=False).encode('utf-8')
+            
+            st.download_button(
+                label="⬇️ Baixar Histórico Consolidado (Atualizado)",
+                data=csv_historico,
+                file_name="historico_consolidado.csv",
+                mime="text/csv",
+                key="download_hist"
+            )
+        else:
+            st.warning("O arquivo de histórico ainda não foi gerado ou está vazio.")
         # --------------------------------------
 
         st.markdown("---")
