@@ -371,7 +371,8 @@ if perfil == 'admin':
             with c2: filtro = st.multiselect("🔍 Filtrar:", df_dados['Colaborador'].unique())
             df_show = df_dados if not filtro else df_dados[df_dados['Colaborador'].isin(filtro)]
             pivot = df_show.pivot_table(index='Colaborador', columns='Indicador', values='% Atingimento')
-            st.dataframe(pivot.style.background_gradient(cmap='RdYlGn', vmin=0.8, vmax=1.2).format("{:.1%}"), use_container_width=True, height=600)
+            # --- CORREÇÃO AQUI: Removemos o background_gradient que causava erro ---
+            st.dataframe(pivot.style.format("{:.1%}"), use_container_width=True, height=600)
 
     with tabs[4]:
         st.markdown("### 📂 Gestão de Arquivos")
