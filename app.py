@@ -21,7 +21,6 @@ st.markdown("""
         border-radius: 12px; border-left: 5px solid #F37021;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s;
     }
-    div.stMetric:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
     div.stButton > button {
         background: linear-gradient(90deg, #F37021 0%, #d35400 100%); color: white; border: none;
         padding: 0.5rem 1rem; border-radius: 8px; font-weight: bold; transition: 0.3s;
@@ -86,7 +85,7 @@ def formatar_nome_indicador(nome_bruto):
         'TPC': 'TPC'
     }
     chave = nome_bruto.strip().upper().replace('.CSV', '')
-    return mapa.get(chave, chave) # Se não achar, devolve o original
+    return mapa.get(chave, chave.capitalize()) 
 
 # --- HISTÓRICO ---
 def atualizar_historico(df_atual, periodo):
@@ -121,7 +120,6 @@ def listar_periodos_disponiveis():
     return []
 
 def salvar_arquivos_padronizados(files):
-    # Mapa apenas para salvar no disco de forma organizada
     mapa_nomes = {
         'ir': 'IR.csv', 'csat': 'CSAT.csv', 'tpc': 'TPC.csv',
         'interacoes': 'INTERACOES.csv', 'interações': 'INTERACOES.csv',
@@ -175,20 +173,19 @@ def tratar_arquivo_especial(df, nome_arquivo):
         col_agente = next(c for c in df.columns if 'agente' in c.lower())
         df = df.rename(columns={col_agente: 'Colaborador'})
         
-        # Aderência (Com acento)
+        # --- CORREÇÃO AQUI: Forçando nomes com acento ---
         col_ad = next((c for c in df.columns if 'aderência' in c.lower() or 'aderencia' in c.lower()), None)
         if col_ad:
             df_ad = df[['Colaborador', col_ad]].copy()
             df_ad['% Atingimento'] = df_ad[col_ad].apply(processar_porcentagem_br)
-            df_ad['Indicador'] = 'Aderência' # Nome Bonito
+            df_ad['Indicador'] = 'Aderência' # Nome com Acento
             lista_dfs_processados.append(df_ad[['Colaborador', 'Indicador', '% Atingimento']])
             
-        # Conformidade (Com acento)
         col_conf = next((c for c in df.columns if 'conformidade' in c.lower()), None)
         if col_conf:
             df_conf = df[['Colaborador', col_conf]].copy()
             df_conf['% Atingimento'] = df_conf[col_conf].apply(processar_porcentagem_br)
-            df_conf['Indicador'] = 'Conformidade' # Nome Bonito
+            df_conf['Indicador'] = 'Conformidade' # Nome com Acento
             lista_dfs_processados.append(df_conf[['Colaborador', 'Indicador', '% Atingimento']])
         return lista_dfs_processados
     else:
@@ -201,7 +198,7 @@ def tratar_arquivo_especial(df, nome_arquivo):
             if 'max' in c_low and 'diamantes' in c_low: df.rename(columns={col: 'Max. Diamantes'}, inplace=True)
         
         if '% Atingimento' in df.columns:
-            # Pega o nome do arquivo e aplica o "Embelezador"
+            # Aplica o formatador bonito
             nome_kpi_raw = nome_arquivo.split('.')[0]
             df['Indicador'] = formatar_nome_indicador(nome_kpi_raw)
             lista_dfs_processados.append(df)
@@ -495,7 +492,7 @@ else:
     st.markdown(f"## 🚀 Olá, **{nome.split()[0]}**!")
     st.caption(f"📅 Dados referentes a: **{periodo_label}**")
     
-    # --- FILTRO DO OPERADOR (INSENSÍVEL A CAIXA) ---
+    # Filtro Insensível a Caixa
     nome_login_norm = nome.strip().lower()
     df_dados['colab_norm'] = df_dados['Colaborador'].astype(str).str.strip().str.lower()
     meus_dados = df_dados[df_dados['colab_norm'] == nome_login_norm].copy()
