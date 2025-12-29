@@ -83,6 +83,7 @@ def limpar_base_dados():
     for f in arquivos:
         os.remove(f)
 
+# --- HISTÓRICO ---
 def atualizar_historico(df_atual, periodo):
     ARQUIVO_HIST = 'historico_consolidado.csv'
     df_save = df_atual.copy()
@@ -113,7 +114,7 @@ def listar_periodos_disponiveis():
     return []
 
 def salvar_arquivos_padronizados(files):
-    # Mapa expandido para capturar variações
+    # Dicionário expandido para garantir que nomes diferentes caiam no lugar certo
     mapa_nomes = {
         'ir': 'IR.csv', 'csat': 'CSAT.csv', 'tpc': 'TPC.csv',
         'interacoes': 'INTERACOES.csv', 'interações': 'INTERACOES.csv',
@@ -150,73 +151,64 @@ def ler_csv_inteligente(arquivo_ou_caminho):
             try:
                 if hasattr(arquivo_ou_caminho, 'seek'): arquivo_ou_caminho.seek(0)
                 df = pd.read_csv(arquivo_ou_caminho, sep=sep, encoding=enc)
-                # Limpeza básica dos nomes das colunas
-                df.columns = df.columns.str.strip()
                 if len(df.columns) > 1: return df
             except: continue
     return None
 
 def tratar_arquivo_especial(df, nome_arquivo):
-    lista_dfs_processados = []
-    colunas_lower = [c.lower() for c in df.columns]
+    # --- NOVA LÓGICA DE LEITURA UNIVERSAL ---
+    # 1. Normaliza os nomes das colunas
+    df.columns = [str(c).strip().lower() for c in df.columns]
     
-    # 1. Identificar coluna de NOME (Agente, Colaborador, etc)
+    # 2. Identifica a coluna de NOME (Agente)
     col_agente = None
-    possiveis_nomes = ['agente', 'colaborador', 'nome', 'employee', 'funcionario', 'operador']
+    possiveis_nomes = ['colaborador', 'agente', 'nome', 'employee', 'funcionario', 'operador']
     for c in df.columns:
-        if any(p in c.lower() for p in possiveis_nomes):
+        if any(p in c for p in possiveis_nomes):
             col_agente = c
             break
             
-    if col_agente:
-        df = df.rename(columns={col_agente: 'Colaborador'})
+    if not col_agente: return [] # Arquivo inválido se não tiver nome
+    
+    df.rename(columns={col_agente: 'Colaborador'}, inplace=True)
+
+    # 3. Identifica a coluna de VALOR (% Atingimento)
+    col_valor = None
+    nome_kpi_limpo = nome_arquivo.split('.')[0].lower() # ex: 'aderencia'
+    
+    # Lista de prioridade para encontrar o valor
+    possiveis_valores = [
+        nome_kpi_limpo, # Prioridade 1: Nome do arquivo (ex: coluna 'aderencia')
+        'atingimento', 'resultado', 'nota', 'final', 'pontos', 'valor'
+    ]
+    
+    # Adiciona variações com acento se necessário
+    if 'aderencia' in nome_kpi_limpo: possiveis_valores.insert(1, 'aderência')
+    if 'conformidade' in nome_kpi_limpo: possiveis_valores.insert(1, 'conformidade')
+    if 'interacoes' in nome_kpi_limpo: possiveis_valores.insert(1, 'interações')
+
+    for c in df.columns:
+        if c == 'colaborador': continue # Pula a coluna de nome já identificada
+        if any(pv in c for pv in possiveis_valores):
+            col_valor = c
+            break
+            
+    if col_valor:
+        df.rename(columns={col_valor: '% Atingimento'}, inplace=True)
     else:
-        # Se não achou coluna de nome, provavelmente o arquivo é inválido ou estrutura estranha
+        # Se não achou coluna de valor, retorna vazio para não quebrar
         return []
 
-    # 2. Tentar encontrar Aderência e Conformidade especificamente
-    tem_aderencia = any('aderência' in c or 'aderencia' in c for c in colunas_lower)
-    tem_conformidade = any('conformidade' in c for c in colunas_lower)
+    # 4. Padroniza Diamantes (se houver)
+    for c in df.columns:
+        if 'diamantes' in c and 'max' not in c: df.rename(columns={c: 'Diamantes'}, inplace=True)
+        if 'max' in c and 'diamantes' in c: df.rename(columns={c: 'Max. Diamantes'}, inplace=True)
 
-    if tem_aderencia or tem_conformidade:
-        # Lógica Especial para arquivos combinados ou específicos
-        col_ad = next((c for c in df.columns if 'aderência' in c.lower() or 'aderencia' in c.lower()), None)
-        if col_ad:
-            df_ad = df[['Colaborador', col_ad]].copy()
-            df_ad['% Atingimento'] = df_ad[col_ad].apply(processar_porcentagem_br)
-            df_ad['Indicador'] = 'ADERENCIA'
-            lista_dfs_processados.append(df_ad[['Colaborador', 'Indicador', '% Atingimento']])
-            
-        col_conf = next((c for c in df.columns if 'conformidade' in c.lower()), None)
-        if col_conf:
-            df_conf = df[['Colaborador', col_conf]].copy()
-            df_conf['% Atingimento'] = df_conf[col_conf].apply(processar_porcentagem_br)
-            df_conf['Indicador'] = 'CONFORMIDADE'
-            lista_dfs_processados.append(df_conf[['Colaborador', 'Indicador', '% Atingimento']])
-            
-        if lista_dfs_processados:
-            return lista_dfs_processados
-
-    # 3. Lógica Genérica (Fallback)
-    # Se não caiu na lógica acima, tenta padronizar colunas comuns
-    for col in df.columns:
-        c_low = col.lower()
-        # Se a coluna tem o mesmo nome do arquivo (ex: coluna "Pontualidade" no arquivo PONTUALIDADE.csv)
-        nome_kpi_arquivo = nome_arquivo.split('.')[0].upper()
-        if nome_kpi_arquivo in c_low.upper() or 'atingimento' in c_low or 'resultado' in c_low or 'nota' in c_low:
-             if 'colaborador' not in c_low and 'nome' not in c_low: # Evita renomear a coluna de nome
-                df.rename(columns={col: '% Atingimento'}, inplace=True)
-        
-        if 'diamantes' == c_low: df.rename(columns={col: 'Diamantes'}, inplace=True)
-        if 'max' in c_low and 'diamantes' in c_low: df.rename(columns={col: 'Max. Diamantes'}, inplace=True)
-
-    if '% Atingimento' in df.columns:
-        nome_kpi = nome_arquivo.split('.')[0].upper()
-        df['Indicador'] = nome_kpi
-        lista_dfs_processados.append(df)
-        return lista_dfs_processados
-        
-    return []
+    # 5. Finalização
+    df['% Atingimento'] = df['% Atingimento'].apply(processar_porcentagem_br)
+    df['Indicador'] = nome_arquivo.split('.')[0].upper() # Define o KPI pelo nome do arquivo
+    
+    return [df]
 
 def carregar_dados_completo():
     lista_final = []
