@@ -102,9 +102,9 @@ def carregar_historico_completo():
 def listar_periodos_disponiveis():
     df = carregar_historico_completo()
     if df is not None and 'Periodo' in df.columns:
-        # Pega valores únicos e ordena
+        # Pega lista de periodos unicos
         periodos = df['Periodo'].unique().tolist()
-        # Tenta ordenar por data se possível, senão alfabético reverso
+        # Tenta ordenar por data, se falhar ordena texto reverso
         try:
             periodos.sort(key=lambda x: datetime.strptime(x, "%m/%Y"), reverse=True)
         except:
@@ -273,7 +273,7 @@ if not st.session_state['logado']:
     st.stop()
 
 # --- 5. DASHBOARD ---
-# Lógica Nova de Datas na Sidebar
+# Lógica do Menu Lateral (SOMENTE MESES)
 lista_periodos = listar_periodos_disponiveis()
 opcoes_periodo = lista_periodos if lista_periodos else ["Nenhum histórico disponível"]
 
@@ -283,21 +283,19 @@ with st.sidebar:
     
     periodo_selecionado = st.selectbox("📅 Visualizar Mês:", opcoes_periodo)
     
-    # Lógica de Carregamento (Sem opção 'Atual')
     if periodo_selecionado == "Nenhum histórico disponível":
         df_raw = None
         periodo_label = "Aguardando Upload"
-        st.warning("⚠️ Histórico vazio. Vá em 'Admin / Upload' para salvar dados.")
+        st.warning("⚠️ Histórico vazio. Vá em 'Admin / Upload' e salve os dados.")
     else:
         df_hist_full = carregar_historico_completo()
         if df_hist_full is not None:
-            # Filtro rigoroso pelo mês
             df_raw = df_hist_full[df_hist_full['Periodo'] == periodo_selecionado].copy()
         else:
             df_raw = None
         periodo_label = periodo_selecionado
     
-    # Aplica filtros de segurança
+    # Filtro de Usuários + Duplicatas
     df_users_cadastrados = carregar_usuarios()
     df_dados = filtrar_por_usuarios_cadastrados(df_raw, df_users_cadastrados)
     
@@ -419,8 +417,8 @@ if perfil == 'admin':
     with tabs[4]:
         st.markdown("### 📂 Gestão de Arquivos")
         data_sugestao = obter_data_hoje()
-        st.markdown("#### 1. Configurar Período (Novo Mês)")
-        nova_data = st.text_input("Referência:", value=data_sugestao)
+        st.markdown("#### 1. Configurar Período")
+        nova_data = st.text_input("Mês/Ano de Referência:", value=data_sugestao)
         
         st.markdown("#### 2. Atualizar Arquivos")
         c1, c2 = st.columns(2)
@@ -437,10 +435,10 @@ if perfil == 'admin':
                 try:
                     df_preview = ler_csv_inteligente(up_k[0])
                     data_csv = tentar_extrair_data_csv(df_preview)
-                    if data_csv: st.info(f"💡 Data detectada: {data_csv}")
+                    if data_csv: st.info(f"💡 Data detectada no arquivo: {data_csv}")
                 except: pass
 
-                if st.button("💾 Salvar e Atualizar Histórico"): 
+                if st.button("Salvar e Atualizar Histórico"): 
                     try:
                         salvos = salvar_arquivos_padronizados(up_k)
                         salvar_config(nova_data)
@@ -448,7 +446,6 @@ if perfil == 'admin':
                         df_novo_ciclo = carregar_dados_completo()
                         df_users_fresh = carregar_usuarios()
                         
-                        # Filtro com diagnóstico
                         df_filtrado = filtrar_por_usuarios_cadastrados(df_novo_ciclo, df_users_fresh)
                         
                         if df_filtrado.empty and not df_novo_ciclo.empty:
@@ -458,7 +455,7 @@ if perfil == 'admin':
                             st.cache_data.clear()
                             st.balloons()
                             st.success(f"✅ Sucesso! {len(df_filtrado)} registros salvos em **{nova_data}**.")
-                            time.sleep(2)
+                            time.sleep(1)
                             st.rerun()
                     except Exception as e:
                         st.error(f"Erro salvamento: {e}")
