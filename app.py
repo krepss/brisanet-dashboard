@@ -74,14 +74,12 @@ def limpar_base_dados():
 # --- HISTÓRICO ---
 def atualizar_historico(df_atual, periodo):
     ARQUIVO_HIST = 'historico_consolidado.csv'
-    
     df_save = df_atual.copy()
     df_save['Periodo'] = periodo
     
     if os.path.exists(ARQUIVO_HIST):
         try:
             df_hist = pd.read_csv(ARQUIVO_HIST)
-            # Remove dados antigos deste mesmo período
             df_hist = df_hist[df_hist['Periodo'] != periodo]
             df_final = pd.concat([df_hist, df_save], ignore_index=True)
         except:
@@ -187,7 +185,6 @@ def tratar_arquivo_especial(df, nome_arquivo):
 
 def carregar_dados_completo():
     lista_final = []
-    # Lista arquivos mas IGNORA arquivos de sistema e histórico para não duplicar
     arquivos_ignorar = ['usuarios.csv', 'historico_consolidado.csv', 'config.json']
     arquivos = [f for f in os.listdir('.') if f.endswith('.csv') and f.lower() not in arquivos_ignorar]
     
@@ -440,11 +437,11 @@ if perfil == 'admin':
                         df_novo_ciclo = carregar_dados_completo()
                         df_users_fresh = carregar_usuarios()
                         
-                        # --- FILTRO COM DIAGNÓSTICO ---
+                        # Filtro com diagnóstico
                         df_filtrado = filtrar_por_usuarios_cadastrados(df_novo_ciclo, df_users_fresh)
                         
                         if df_filtrado.empty and not df_novo_ciclo.empty:
-                            st.error("🚨 ERRO CRÍTICO: Todos os dados foram filtrados! Verifique se os nomes no 'usuarios.csv' batem com os nomes nos indicadores. NADA FOI SALVO NO HISTÓRICO.")
+                            st.error("🚨 ATENÇÃO: Os dados foram lidos, mas nenhum nome bateu com 'usuarios.csv'. NADA FOI SALVO.")
                         else:
                             atualizar_historico(df_filtrado, nova_data)
                             st.cache_data.clear()
@@ -458,7 +455,6 @@ if perfil == 'admin':
         
         st.markdown("---")
         st.markdown("### 💾 Backup do Histórico")
-        # BOTÃO FORÇADO (Sem checagem de empty, apenas existência)
         if os.path.exists('historico_consolidado.csv'):
             with open('historico_consolidado.csv', 'rb') as f:
                 st.download_button("⬇️ Baixar Histórico Consolidado", f, "historico_consolidado.csv", "text/csv")
@@ -478,7 +474,13 @@ if perfil == 'admin':
 else:
     st.markdown(f"## 🚀 Olá, **{nome.split()[0]}**!")
     st.caption(f"📅 Dados referentes a: **{periodo_label}**")
-    meus_dados = df_dados[df_dados['Colaborador'] == nome].copy()
+    
+    # --- LÓGICA DE FILTRO DO OPERADOR (NORMALIZADA) ---
+    nome_login_norm = nome.strip().lower()
+    df_dados['colab_norm'] = df_dados['Colaborador'].astype(str).str.strip().str.lower()
+    meus_dados = df_dados[df_dados['colab_norm'] == nome_login_norm].copy()
+    # ---------------------------------------------------
+    
     if not meus_dados.empty:
         if 'Diamantes' in meus_dados.columns and 'Max. Diamantes' in meus_dados.columns:
             total_dia = meus_dados['Diamantes'].sum()
