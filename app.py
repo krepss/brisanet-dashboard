@@ -59,8 +59,7 @@ def salvar_config(data_texto):
     try:
         with open('config.json', 'w') as f:
             json.dump({'periodo': data_texto}, f)
-    except Exception as e:
-        st.error(f"Erro ao salvar config: {e}")
+    except Exception as e: st.error(f"Erro config: {e}")
 
 def ler_config():
     if os.path.exists('config.json'):
@@ -104,10 +103,6 @@ def salvar_arquivos_padronizados(files):
         'aderência': 'ADERENCIA.csv', 'aderencia': 'ADERENCIA.csv'
     }
     arquivos_salvos = []
-    
-    # Debug: Mostra o diretório atual
-    # st.write(f"Diretório de trabalho: {os.getcwd()}")
-    
     for f in files:
         nome_original = f.name.lower()
         nome_final = f.name 
@@ -115,15 +110,10 @@ def salvar_arquivos_padronizados(files):
             if chave in nome_original:
                 nome_final = valor
                 break
-        
-        # Salvamento blindado
         try:
-            with open(nome_final, "wb") as w:
-                w.write(f.getbuffer())
+            with open(nome_final, "wb") as w: w.write(f.getbuffer())
             arquivos_salvos.append(nome_final)
-        except Exception as e:
-            st.error(f"Erro crítico ao salvar o arquivo {nome_final}: {e}")
-            
+        except Exception as e: st.error(f"Erro salvar {nome_final}: {e}")
     return arquivos_salvos
 
 def processar_porcentagem_br(valor):
@@ -150,7 +140,6 @@ def ler_csv_inteligente(arquivo_ou_caminho):
 def tratar_arquivo_especial(df, nome_arquivo):
     lista_dfs_processados = []
     colunas_lower = [c.lower() for c in df.columns]
-    
     tem_aderencia = any('aderência' in c or 'aderencia' in c for c in colunas_lower)
     tem_conformidade = any('conformidade' in c for c in colunas_lower)
     tem_agente = any('agente' in c for c in colunas_lower)
@@ -324,8 +313,16 @@ if perfil == 'admin':
                     })
                 df_final_atencao = pd.DataFrame(lista_detalhada)
                 
-                # REMOVIDO STYLE COMPLEXO QUE CAUSAVA ERRO
-                st.dataframe(df_final_atencao, use_container_width=True, height=500)
+                # --- VISUAL RESTAURADO: Destaque Colorido na Lista de Prioridade ---
+                def colorir_status(val):
+                    if 'Crítico' in str(val): return 'color: red; font-weight: bold;'
+                    if 'Atenção' in str(val): return 'color: #d35400; font-weight: bold;'
+                    return ''
+                
+                st.dataframe(
+                    df_final_atencao.style.format({'Média Geral': '{:.1%}'}).applymap(colorir_status, subset=['Status']),
+                    use_container_width=True, height=500
+                )
             else: st.success("🎉 Todos bateram a meta neste período.")
 
     with tabs[1]:
@@ -384,8 +381,12 @@ if perfil == 'admin':
             with c2: filtro = st.multiselect("🔍 Filtrar:", df_dados['Colaborador'].unique())
             df_show = df_dados if not filtro else df_dados[df_dados['Colaborador'].isin(filtro)]
             pivot = df_show.pivot_table(index='Colaborador', columns='Indicador', values='% Atingimento')
-            # REMOVIDO FORMATO COMPLEXO
-            st.dataframe(pivot, use_container_width=True, height=600)
+            
+            # --- VISUAL RESTAURADO: Degradê de Cores na Tabela Geral ---
+            st.dataframe(
+                pivot.style.background_gradient(cmap='RdYlGn', vmin=0.7, vmax=1.2).format("{:.1%}"),
+                use_container_width=True, height=600
+            )
 
     with tabs[4]:
         st.markdown("### 📂 Gestão de Arquivos")
