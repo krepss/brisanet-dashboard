@@ -89,19 +89,28 @@ def atualizar_historico(df_atual, periodo):
     ARQUIVO_HIST = 'historico_consolidado.csv'
     df_save = df_atual.copy()
     df_save['Periodo'] = periodo
+    
+    # Padroniza nome para evitar duplicidade
+    df_save['Colaborador'] = df_save['Colaborador'].astype(str).str.strip().str.upper()
+    
     if os.path.exists(ARQUIVO_HIST):
         try:
             df_hist = pd.read_csv(ARQUIVO_HIST)
+            # Remove dados antigos deste mesmo período para sobrescrever
             df_hist = df_hist[df_hist['Periodo'] != periodo]
             df_final = pd.concat([df_hist, df_save], ignore_index=True)
         except: df_final = df_save
     else: df_final = df_save
+    
     df_final.to_csv(ARQUIVO_HIST, index=False)
     return True
 
 def carregar_historico_completo():
     if os.path.exists('historico_consolidado.csv'):
-        try: return pd.read_csv('historico_consolidado.csv')
+        try: 
+            df = pd.read_csv('historico_consolidado.csv')
+            df['Colaborador'] = df['Colaborador'].astype(str).str.strip().str.upper()
+            return df
         except: return None
     return None
 
@@ -159,7 +168,6 @@ def normalizar_nome_indicador(nome_arquivo):
 def tratar_arquivo_especial(df, nome_arquivo):
     df.columns = [str(c).strip().lower() for c in df.columns]
     
-    # 1. Identificar coluna de NOME
     col_agente = None
     possiveis_nomes = ['colaborador', 'agente', 'nome', 'employee', 'funcionario', 'operador']
     for c in df.columns:
@@ -170,8 +178,9 @@ def tratar_arquivo_especial(df, nome_arquivo):
     if not col_agente: return None, "Coluna de Nome não encontrada"
     
     df.rename(columns={col_agente: 'Colaborador'}, inplace=True)
+    df['Colaborador'] = df['Colaborador'].astype(str).str.strip().str.upper()
 
-    # 2. Lógica Especial: Arquivo Combinado
+    # 2. Lógica Especial: Arquivo Combinado (Aderência & Conformidade)
     col_ad = next((c for c in df.columns if 'ader' in c and ('%' in c or 'perc' in c or 'aderencia' in c)), None)
     col_conf = next((c for c in df.columns if 'conform' in c and ('%' in c or 'perc' in c or 'conformidade' in c)), None)
 
@@ -238,7 +247,6 @@ def carregar_dados_completo():
         
     if lista_final: 
         df_concat = pd.concat(lista_final, ignore_index=True)
-        # Padroniza antes de agrupar
         df_concat['Colaborador'] = df_concat['Colaborador'].astype(str).str.strip().str.upper()
         
         agg_rules = {'% Atingimento': 'mean'}
@@ -268,7 +276,7 @@ def carregar_usuarios():
 def filtrar_por_usuarios_cadastrados(df_dados, df_users):
     if df_dados is None or df_dados.empty: return df_dados
     if df_users is None or df_users.empty: return df_dados
-    lista_vip = df_users['nome'].astype(str).str.strip().str.upper().unique()
+    lista_vip = df_users['nome'].unique()
     df_dados['temp_nome'] = df_dados['Colaborador'].astype(str).str.strip().str.upper()
     df_filtrado = df_dados[df_dados['temp_nome'].isin(lista_vip)].copy()
     df_filtrado = df_filtrado.drop(columns=['temp_nome'])
@@ -406,6 +414,11 @@ if perfil == 'admin':
             colab_sel = st.selectbox("Selecione o Colaborador:", sorted(df_hist['Colaborador'].unique()))
             df_hist_user = df_hist[df_hist['Colaborador'] == colab_sel].copy()
             if not df_hist_user.empty:
+                # --- ORDENAÇÃO TEMPORAL CORRIGIDA ---
+                df_hist_user['dt_temp'] = pd.to_datetime(df_hist_user['Periodo'], format='%m/%Y', errors='coerce')
+                df_hist_user = df_hist_user.sort_values('dt_temp')
+                # ------------------------------------
+                
                 df_hist_user['Indicador'] = df_hist_user['Indicador'].apply(formatar_nome_visual)
                 df_hist_user['Texto'] = df_hist_user['% Atingimento'].apply(lambda x: f"{x:.1%}")
                 fig_heat = px.density_heatmap(df_hist_user, x="Periodo", y="Indicador", z="% Atingimento", 
@@ -519,13 +532,10 @@ if perfil == 'admin':
 
 # --- COLABORADOR ---
 else:
-    # Ajusta o nome para Title Case na exibição
     nome_visual_user = nome_logado
     st.markdown(f"## 🚀 Olá, **{nome_visual_user.split()[0]}**!")
     st.caption(f"📅 Dados referentes a: **{periodo_label}**")
     
-    # O df_dados já foi convertido para Title Case no bloco do Dashboard
-    # Mas precisamos garantir o match com o nome logado (que também está Title Case)
     meus_dados = df_dados[df_dados['Colaborador'] == nome_visual_user].copy()
     
     if not meus_dados.empty:
@@ -546,7 +556,6 @@ else:
             desconto_diamantes = 0
             motivo_desconto = ""
             
-            # REGRA FINANCEIRA: GATILHO EM 92%
             GATILHO_FINANCEIRO = 0.92
             
             if tem_dado_conf and atingimento_conf < GATILHO_FINANCEIRO:
@@ -622,26 +631,22 @@ else:
             fig_lol.update_layout(title="Hastes de Atingimento", plot_bgcolor='white')
             st.plotly_chart(fig_lol, use_container_width=True)
             
-        # --- NOVO: GRÁFICO DE HISTÓRICO MENSAL ---
+        # --- NOVO: GRÁFICO DE HISTÓRICO MENSAL ORDENADO ---
         st.markdown("---")
         st.subheader("📅 Minha Evolução Mensal")
         
         df_full_hist = carregar_historico_completo()
         if df_full_hist is not None and not df_full_hist.empty:
-            # Filtra pelo usuário logado (usando o nome padronizado em Upper no histórico)
-            # Precisamos garantir que o match ocorra. 
-            # O histórico tem nomes UPPER. O nome_logado está Title Case.
-            nome_upper_match = nome_logado.upper()
+            nome_upper_match = nome_visual_user.upper()
             df_user_hist = df_full_hist[df_full_hist['Colaborador'] == nome_upper_match].copy()
             
             if not df_user_hist.empty:
-                # Cria data para ordenar
+                # --- ORDENAÇÃO TEMPORAL CORRIGIDA ---
                 df_user_hist['dt_temp'] = pd.to_datetime(df_user_hist['Periodo'], format='%m/%Y', errors='coerce')
                 df_user_hist = df_user_hist.sort_values('dt_temp')
+                # ------------------------------------
                 
-                # Visual
                 df_user_hist['Indicador'] = df_user_hist['Indicador'].apply(formatar_nome_visual)
-                
                 fig_hist = px.line(df_user_hist, x='Periodo', y='% Atingimento', color='Indicador', markers=True)
                 fig_hist.update_yaxes(tickformat=".0%")
                 st.plotly_chart(fig_hist, use_container_width=True)
