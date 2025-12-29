@@ -466,4 +466,166 @@ if perfil == 'admin':
         st.markdown("### 📂 Gestão de Arquivos")
         data_sugestao = obter_data_hoje()
         st.markdown("#### 1. Configurar Período")
-        nova_data = st.
+        nova_data = st.text_input("Mês/Ano de Referência:", value=data_sugestao)
+        
+        st.markdown("#### 2. Atualizar Dados (Cria novo Mês)")
+        c1, c2 = st.columns(2)
+        with c1:
+            up_u = st.file_uploader("usuarios.csv", key="u")
+            if up_u: 
+                try:
+                    with open("usuarios.csv", "wb") as w: w.write(up_u.getbuffer())
+                    st.success("Usuarios OK!")
+                except Exception as e: st.error(f"Erro ao salvar usuarios.csv: {e}")
+        with c2:
+            up_k = st.file_uploader("Indicadores (CSVs)", accept_multiple_files=True, key="k")
+            
+            # --- DIAGNÓSTICO DO UPLOAD ---
+            if up_k:
+                st.markdown("**🔎 Pré-visualização:**")
+                lista_diag = []
+                for f in up_k:
+                    try:
+                        df_chk = ler_csv_inteligente(f)
+                        if df_chk is not None:
+                            df_p, msg = tratar_arquivo_especial(df_chk, f.name)
+                            if df_p is not None:
+                                # Se for combinado, pega nomes unicos
+                                kpis_achados = df_p['Indicador'].unique()
+                                lista_diag.append({"Arquivo": f.name, "Status": "✅ OK", "Indicadores": str(kpis_achados)})
+                            else:
+                                lista_diag.append({"Arquivo": f.name, "Status": "❌ Erro", "Detalhe": msg})
+                    except Exception as e: lista_diag.append({"Arquivo": f.name, "Status": "❌ Erro", "Detalhe": str(e)})
+                st.dataframe(pd.DataFrame(lista_diag))
+                # -----------------------------
+
+                if st.button("Salvar e Atualizar Histórico"): 
+                    try:
+                        salvos = salvar_arquivos_padronizados(up_k)
+                        salvar_config(nova_data)
+                        df_novo_ciclo = carregar_dados_completo()
+                        df_users_fresh = carregar_usuarios()
+                        df_filtrado = filtrar_por_usuarios_cadastrados(df_novo_ciclo, df_users_fresh)
+                        if df_filtrado.empty and not df_novo_ciclo.empty:
+                            st.error("⚠️ NENHUM dado foi salvo! O filtro de usuários removeu todos os nomes. Verifique o 'usuarios.csv'.")
+                        else:
+                            atualizar_historico(df_filtrado, nova_data)
+                            st.cache_data.clear()
+                            st.balloons()
+                            st.success(f"✅ Sucesso! {len(df_filtrado)} registros salvos em **{nova_data}**.")
+                            time.sleep(1)
+                            st.rerun()
+                    except Exception as e: st.error(f"Erro salvamento: {e}")
+        
+        st.markdown("---")
+        st.markdown("### 3. Restaurar Backup Antigo")
+        up_hist = st.file_uploader("Envie o 'historico_consolidado.csv' para restaurar:", type=['csv'], key="hist_up")
+        if up_hist:
+            if st.button("Restaurar Backup"):
+                with open("historico_consolidado.csv", "wb") as w: w.write(up_hist.getbuffer())
+                st.success("Backup restaurado! Reiniciando...")
+                time.sleep(2)
+                st.rerun()
+
+        st.markdown("---")
+        st.markdown("### 💾 Baixar Backup Atual")
+        if os.path.exists('historico_consolidado.csv'):
+            with open('historico_consolidado.csv', 'rb') as f:
+                st.download_button("⬇️ Baixar Histórico Consolidado", f, "historico_consolidado.csv", "text/csv")
+        else: st.info("Salve dados primeiro para gerar o histórico.")
+        
+        st.markdown("---")
+        if st.button("🗑️ Resetar Tudo"):
+            limpar_base_dados()
+            if os.path.exists('historico_consolidado.csv'): os.remove('historico_consolidado.csv')
+            st.cache_data.clear()
+            st.warning("Tudo limpo!")
+            time.sleep(2)
+            st.rerun()
+
+# --- COLABORADOR ---
+else:
+    st.markdown(f"## 🚀 Olá, **{nome.split()[0]}**!")
+    st.caption(f"📅 Dados referentes a: **{periodo_label}**")
+    meus_dados = df_dados[df_dados['Colaborador'] == nome].copy()
+    
+    if not meus_dados.empty:
+        if 'Diamantes' in meus_dados.columns and 'Max. Diamantes' in meus_dados.columns:
+            total_dia_bruto = meus_dados['Diamantes'].sum()
+            total_max = meus_dados['Max. Diamantes'].sum()
+            perc_dia = (total_dia_bruto / total_max) if total_max > 0 else 0
+            
+            st.markdown("### 💎 Gamificação")
+            col_bar, col_num = st.columns([3, 1])
+            with col_bar: st.progress(perc_dia)
+            with col_num: st.write(f"**{total_dia_bruto} / {total_max}** Diamantes")
+            
+            df_conf = meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE']
+            atingimento_conf = df_conf.iloc[0]['% Atingimento'] if not df_conf.empty else 0.0
+            tem_dado_conf = not df_conf.empty
+            
+            desconto_diamantes = 0
+            motivo_desconto = ""
+            
+            if tem_dado_conf and atingimento_conf < 0.92:
+                df_pont = meus_dados[meus_dados['Indicador'] == 'PONTUALIDADE']
+                if not df_pont.empty:
+                    desconto_diamantes = df_pont.iloc[0]['Diamantes']
+                    motivo_desconto = f"(Descontados {desconto_diamantes} de Pontualidade por baixa Conformidade)"
+            
+            total_dia_liquido = total_dia_bruto - desconto_diamantes
+            valor_final = total_dia_liquido * 0.50
+            
+            st.markdown("#### 💰 Extrato Financeiro")
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Diamantes Válidos", f"{total_dia_liquido}", f"{motivo_desconto}", delta_color="inverse" if desconto_diamantes > 0 else "normal")
+            c2.metric("Valor por Diamante", "R$ 0,50")
+            
+            if not tem_dado_conf:
+                c3.metric("Valor a Receber", "Aguardando Conformidade", "Dado Indisponível", delta_color="off")
+                st.info("ℹ️ O cálculo final depende do lançamento da sua nota de **Conformidade**.")
+            elif desconto_diamantes > 0:
+                c3.metric("Valor a Receber", f"R$ {valor_final:.2f}", "⚠️ Conformidade < 92%", delta_color="inverse")
+                st.error(f"⚠️ Atenção: Sua Conformidade foi de **{atingimento_conf:.1%}**. Por ser menor que 92%, você deixou de ganhar os diamantes de Pontualidade.")
+            else:
+                c3.metric("Valor a Receber", f"R$ {valor_final:.2f}", "Meta Batida! 🤑")
+                if atingimento_conf >= 0.92:
+                    st.success(f"✅ Parabéns! Conformidade **{atingimento_conf:.1%}** (>=92%). Todos os seus diamantes estão valendo!")
+            st.markdown("---")
+
+        cols = st.columns(len(meus_dados))
+        for i, row in enumerate(meus_dados.iterrows()):
+            r = row[1]
+            val = r['% Atingimento']
+            nome_visual = formatar_nome_visual(r['Indicador'])
+            with cols[i]:
+                st.metric(label=nome_visual, value=f"{val:.1%}", delta="Meta 100%", delta_color="normal" if val >= 1.0 else "inverse")
+        st.markdown("---")
+        
+        st.subheader("📊 Comparativo: Eu vs Equipe")
+        media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
+        media_equipe.rename(columns={'% Atingimento': 'Média Equipe'}, inplace=True)
+        df_comp = pd.merge(meus_dados, media_equipe, on='Indicador')
+        df_comp['Indicador'] = df_comp['Indicador'].apply(formatar_nome_visual)
+        df_melt = df_comp.melt(id_vars=['Indicador'], value_vars=['% Atingimento', 'Média Equipe'], var_name='Tipo', value_name='Resultado')
+        fig_comp = px.bar(df_melt, x='Indicador', y='Resultado', color='Tipo', barmode='group',
+                          text_auto='.1%', title="Minha Performance vs Média Geral",
+                          color_discrete_map={'% Atingimento': '#F37021', 'Média Equipe': '#bdc3c7'})
+        fig_comp.add_hline(y=1.0, line_dash="dash", line_color="green", annotation_text="Meta")
+        fig_comp.update_layout(plot_bgcolor='white', legend_title_text='')
+        st.plotly_chart(fig_comp, use_container_width=True)
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            st.subheader("🎯 Distância para a Meta")
+            fig_lol = go.Figure()
+            meus_dados['Indicador_Visual'] = meus_dados['Indicador'].apply(formatar_nome_visual)
+            fig_lol.add_trace(go.Scatter(x=meus_dados['% Atingimento'], y=meus_dados['Indicador_Visual'], mode='markers', marker=dict(color='#003366', size=15)))
+            for i, row in meus_dados.iterrows():
+                cor = 'green' if row['% Atingimento'] >= 1.0 else 'red'
+                fig_lol.add_shape(type='line', x0=0, y0=row['Indicador_Visual'], x1=row['% Atingimento'], y1=row['Indicador_Visual'], line=dict(color=cor, width=3))
+            fig_lol.add_vline(x=1.0, line_dash="dash", line_color="gray", annotation_text="Meta 100%")
+            fig_lol.update_xaxes(range=[0, 1.2], tickformat='.0%')
+            fig_lol.update_layout(title="Hastes de Atingimento", plot_bgcolor='white')
+            st.plotly_chart(fig_lol, use_container_width=True)
+    else: st.error("Usuário sem dados vinculados.")
