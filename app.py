@@ -16,18 +16,22 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
     html, body, [class*="css"] { font-family: 'Roboto', sans-serif; }
     .stApp { background-color: #f4f7f6; }
+    
     div.stMetric {
         background-color: white; border: 1px solid #e0e0e0; padding: 15px 20px;
         border-radius: 12px; border-left: 5px solid #F37021;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s;
     }
     div.stMetric:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
+    
     div.stButton > button {
         background: linear-gradient(90deg, #F37021 0%, #d35400 100%); color: white; border: none;
         padding: 0.5rem 1rem; border-radius: 8px; font-weight: bold; transition: 0.3s;
     }
     div.stButton > button:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(243, 112, 33, 0.4); }
+    
     h1, h2, h3 { color: #003366 !important; }
+    
     .login-container {
         background: white; padding: 40px; border-radius: 15px;
         box-shadow: 0 10px 25px rgba(0,0,0,0.08); text-align: center; border-top: 6px solid #003366;
@@ -313,14 +317,16 @@ if perfil == 'admin':
                     })
                 df_final_atencao = pd.DataFrame(lista_detalhada)
                 
-                # --- VISUAL RESTAURADO: Destaque Colorido na Lista de Prioridade ---
+                # --- VISUAL COLORIDO (RESTAURADO) ---
                 def colorir_status(val):
-                    if 'Crítico' in str(val): return 'color: red; font-weight: bold;'
+                    if 'Crítico' in str(val): return 'color: #e74c3c; font-weight: bold;'
                     if 'Atenção' in str(val): return 'color: #d35400; font-weight: bold;'
                     return ''
                 
+                # Aplica as cores no texto da coluna Status
                 st.dataframe(
-                    df_final_atencao.style.format({'Média Geral': '{:.1%}'}).applymap(colorir_status, subset=['Status']),
+                    df_final_atencao.style.format({'Média Geral': '{:.1%}'})
+                    .map(colorir_status, subset=['Status']),
                     use_container_width=True, height=500
                 )
             else: st.success("🎉 Todos bateram a meta neste período.")
@@ -382,11 +388,15 @@ if perfil == 'admin':
             df_show = df_dados if not filtro else df_dados[df_dados['Colaborador'].isin(filtro)]
             pivot = df_show.pivot_table(index='Colaborador', columns='Indicador', values='% Atingimento')
             
-            # --- VISUAL RESTAURADO: Degradê de Cores na Tabela Geral ---
-            st.dataframe(
-                pivot.style.background_gradient(cmap='RdYlGn', vmin=0.7, vmax=1.2).format("{:.1%}"),
-                use_container_width=True, height=600
-            )
+            # --- VISUAL COLORIDO (RESTAURADO): Degradê de Fundo ---
+            try:
+                st.dataframe(
+                    pivot.style.background_gradient(cmap='RdYlGn', vmin=0.7, vmax=1.2).format("{:.1%}"),
+                    use_container_width=True, height=600
+                )
+            except:
+                st.warning("⚠️ Biblioteca visual não carregada. Mostrando tabela simples.")
+                st.dataframe(pivot.style.format("{:.1%}"), use_container_width=True, height=600)
 
     with tabs[4]:
         st.markdown("### 📂 Gestão de Arquivos")
