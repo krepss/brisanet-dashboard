@@ -21,6 +21,7 @@ st.markdown("""
         border-radius: 12px; border-left: 5px solid #F37021;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s;
     }
+    div.stMetric:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
     div.stButton > button {
         background: linear-gradient(90deg, #F37021 0%, #d35400 100%); color: white; border: none;
         padding: 0.5rem 1rem; border-radius: 8px; font-weight: bold; transition: 0.3s;
@@ -53,6 +54,16 @@ def formatar_nome_visual(nome_cru):
     if "QUALIDADE" in nome: return "Qualidade"
     return nome_cru 
 
+def tentar_extrair_data_csv(df):
+    colunas_possiveis = ['data', 'date', 'periodo', 'mês', 'mes', 'competencia', 'ref']
+    for col in df.columns:
+        if any(x in col.lower() for x in colunas_possiveis):
+            try:
+                data = pd.to_datetime(df[col], dayfirst=True, errors='coerce').dropna().max()
+                if pd.notnull(data): return data.strftime("%m/%Y")
+            except: continue
+    return None
+
 def obter_data_hoje():
     return datetime.now().strftime("%m/%Y")
 
@@ -73,50 +84,41 @@ def limpar_base_dados():
     for f in arquivos:
         os.remove(f)
 
-# --- HISTÓRICO AFINADO ---
+# --- HISTÓRICO ---
 def atualizar_historico(df_atual, periodo):
     ARQUIVO_HIST = 'historico_consolidado.csv'
-    
-    # 1. Prepara o lote novo
     df_save = df_atual.copy()
-    df_save['Periodo'] = periodo.strip() # Garante que não tem espaço extra
+    df_save['Periodo'] = periodo
     
-    # Arredonda valores para evitar dízimas infinitas
-    if '% Atingimento' in df_save.columns:
-        df_save['% Atingimento'] = df_save['% Atingimento'].round(4)
+    # Garante padronização
+    df_save['Colaborador'] = df_save['Colaborador'].astype(str).str.strip().str.upper()
     
     if os.path.exists(ARQUIVO_HIST):
         try:
-            # 2. Carrega histórico existente
             df_hist = pd.read_csv(ARQUIVO_HIST)
-            
-            # 3. FILTRAGEM CIRÚRGICA: Remove TUDO que tiver o mesmo período do upload atual
-            # Isso garante que estamos SUBSTITUINDO o mês, e não duplicando
-            df_hist = df_hist[df_hist['Periodo'] != periodo.strip()]
-            
-            # 4. Concatena (Histórico Limpo + Novo Lote)
+            # Remove dados antigos deste mesmo período
+            df_hist = df_hist[df_hist['Periodo'] != periodo]
             df_final = pd.concat([df_hist, df_save], ignore_index=True)
-        except:
-            df_final = df_save
-    else:
-        df_final = df_save
+        except: df_final = df_save
+    else: df_final = df_save
     
-    # 5. Ordenação para o CSV ficar bonito
+    # Ordenação
     cols_order = ['Periodo', 'Colaborador', 'Indicador', '% Atingimento']
     if 'Diamantes' in df_final.columns: cols_order.append('Diamantes')
     if 'Max. Diamantes' in df_final.columns: cols_order.append('Max. Diamantes')
     
-    # Garante que as colunas existem antes de ordenar
     existing_cols = [c for c in cols_order if c in df_final.columns]
     df_final = df_final[existing_cols]
     
-    # Salva
     df_final.to_csv(ARQUIVO_HIST, index=False)
     return True
 
 def carregar_historico_completo():
     if os.path.exists('historico_consolidado.csv'):
-        try: return pd.read_csv('historico_consolidado.csv')
+        try: 
+            df = pd.read_csv('historico_consolidado.csv')
+            df['Colaborador'] = df['Colaborador'].astype(str).str.strip().str.upper()
+            return df
         except: return None
     return None
 
@@ -184,13 +186,13 @@ def tratar_arquivo_especial(df, nome_arquivo):
     if not col_agente: return None, "Coluna de Nome não encontrada"
     
     df.rename(columns={col_agente: 'Colaborador'}, inplace=True)
-    
-    # --- PADRONIZAÇÃO DE NOME ---
     df['Colaborador'] = df['Colaborador'].astype(str).str.strip().str.upper()
 
+    # DETECÇÃO HÍBRIDA (COMBO OU ÚNICO)
     col_ad = next((c for c in df.columns if 'ader' in c and ('%' in c or 'perc' in c or 'aderencia' in c)), None)
     col_conf = next((c for c in df.columns if 'conform' in c and ('%' in c or 'perc' in c or 'conformidade' in c)), None)
 
+    # Caso 1: Arquivo Combo (Aderência + Conformidade)
     if col_ad and col_conf:
         lista_retorno = []
         df_ad = df[['Colaborador', col_ad]].copy()
@@ -205,6 +207,7 @@ def tratar_arquivo_especial(df, nome_arquivo):
         
         return pd.concat(lista_retorno), "Arquivo Combinado"
 
+    # Caso 2: Arquivo Único
     col_valor = None
     nome_kpi_limpo = nome_arquivo.split('.')[0].lower()
     possiveis_valores = [nome_kpi_limpo, 'atingimento', 'resultado', 'nota', 'final', 'pontos', 'valor', 'score']
@@ -251,12 +254,9 @@ def carregar_dados_completo():
         except: pass
     if lista_final: 
         df_concat = pd.concat(lista_final, ignore_index=True)
-        
-        # --- AGREGADOR DE DUPLICATAS (SOMA E MÉDIA) ---
         agg_rules = {'% Atingimento': 'mean'}
         if 'Diamantes' in df_concat.columns: agg_rules['Diamantes'] = 'sum'
         if 'Max. Diamantes' in df_concat.columns: agg_rules['Max. Diamantes'] = 'sum'
-        
         df_final = df_concat.groupby(['Colaborador', 'Indicador'], as_index=False).agg(agg_rules)
         return df_final
     return None
@@ -371,6 +371,7 @@ if perfil == 'admin':
         if df_dados is not None and not df_dados.empty:
             st.markdown(f"### Resumo de Saúde: **{periodo_label}**")
             df_media_pessoas = df_dados.groupby('Colaborador')['% Atingimento'].mean().reset_index()
+            
             qtd_verde = len(df_media_pessoas[df_media_pessoas['% Atingimento'] >= 0.90]) 
             qtd_amarelo = len(df_media_pessoas[(df_media_pessoas['% Atingimento'] >= 0.80) & (df_media_pessoas['% Atingimento'] < 0.90)]) 
             qtd_vermelho = len(df_media_pessoas[df_media_pessoas['% Atingimento'] < 0.80]) 
@@ -475,7 +476,6 @@ if perfil == 'admin':
         with c2:
             up_k = st.file_uploader("Indicadores (CSVs)", accept_multiple_files=True, key="k")
             
-            # DIAGNÓSTICO
             if up_k:
                 st.markdown("**🔎 Pré-visualização:**")
                 lista_diag = []
@@ -492,19 +492,45 @@ if perfil == 'admin':
                 st.dataframe(pd.DataFrame(lista_diag))
 
                 if st.button("💾 Salvar e Atualizar Histórico"): 
+                    
+                    # --- VALIDAÇÃO 1: CAMPO DATA ---
+                    if not nova_data.strip():
+                        st.error("⚠️ O campo 'Mês/Ano de Referência' não pode ficar vazio!")
+                        st.stop()
+
+                    # --- VALIDAÇÃO 2: DUPLICIDADE DE MÊS ---
+                    df_check_dup = carregar_historico_completo()
+                    if df_check_dup is not None and 'Periodo' in df_check_dup.columns:
+                        if nova_data.strip() in df_check_dup['Periodo'].unique():
+                            st.error(f"⛔ Erro: O mês {nova_data} JÁ EXISTE no histórico. Para sobrescrever, apague o histórico antigo ou use um nome diferente.")
+                            st.stop()
+
                     try:
                         salvos = salvar_arquivos_padronizados(up_k)
                         salvar_config(nova_data)
                         df_novo_ciclo = carregar_dados_completo()
                         df_users_fresh = carregar_usuarios()
+                        
+                        # --- VALIDAÇÃO 3: USUÁRIOS FANTASMAS ---
+                        if df_users_fresh is not None:
+                            nomes_metrics = set(df_novo_ciclo['Colaborador'].unique())
+                            nomes_users = set(df_users_fresh['nome'].unique())
+                            fantasmas = nomes_metrics - nomes_users
+                            if fantasmas:
+                                st.warning(f"⚠️ Atenção: {len(fantasmas)} colaboradores no arquivo de métricas não foram encontrados no usuarios.csv e serão ignorados: {', '.join(list(fantasmas)[:10])}...")
+                        else:
+                            st.error("❌ Arquivo 'usuarios.csv' não encontrado! O upload foi cancelado para evitar dados corrompidos. Suba o usuarios.csv primeiro.")
+                            st.stop()
+                        
                         df_filtrado = filtrar_por_usuarios_cadastrados(df_novo_ciclo, df_users_fresh)
-                        if df_filtrado.empty and not df_novo_ciclo.empty:
-                            st.error("⚠️ NENHUM dado foi salvo! O filtro de usuários removeu todos os nomes. Verifique o 'usuarios.csv'.")
+                        
+                        if df_filtrado.empty:
+                            st.error("⚠️ ERRO CRÍTICO: Nenhum dado sobrou após o filtro! Verifique se os nomes nos arquivos batem com o usuarios.csv.")
                         else:
                             atualizar_historico(df_filtrado, nova_data)
                             st.cache_data.clear()
                             st.balloons()
-                            st.success(f"✅ Sucesso! Dados salvos em **{nova_data}**.")
+                            st.success(f"✅ Sucesso! {len(df_filtrado)} registros salvos em **{nova_data}**.")
                             time.sleep(1)
                             st.rerun()
                     except Exception as e: st.error(f"Erro salvamento: {e}")
@@ -525,13 +551,9 @@ if perfil == 'admin':
 
 # --- COLABORADOR ---
 else:
-    # Ajusta o nome para Title Case na exibição
     nome_visual_user = nome_logado
     st.markdown(f"## 🚀 Olá, **{nome_visual_user.split()[0]}**!")
     st.caption(f"📅 Dados referentes a: **{periodo_label}**")
-    
-    # O df_dados já foi convertido para Title Case no bloco do Dashboard
-    # Mas precisamos garantir o match com o nome logado (que também está Title Case)
     meus_dados = df_dados[df_dados['Colaborador'] == nome_visual_user].copy()
     
     if not meus_dados.empty:
@@ -551,8 +573,6 @@ else:
             
             desconto_diamantes = 0
             motivo_desconto = ""
-            
-            # REGRA FINANCEIRA: GATILHO EM 92%
             GATILHO_FINANCEIRO = 0.92
             
             if tem_dado_conf and atingimento_conf < GATILHO_FINANCEIRO:
@@ -586,13 +606,10 @@ else:
             val = r['% Atingimento']
             nome_visual = formatar_nome_visual(r['Indicador'])
             
-            # --- NOVA LÓGICA DE CORES DOS CARDS ---
             delta_msg = "Meta 80%"
             delta_cor = "normal"
-            if val >= 0.90: 
-                delta_msg = "💎 Excelência!"
-            elif val >= 0.80:
-                delta_msg = "✅ Meta Batida"
+            if val >= 0.90: delta_msg = "💎 Excelência!"
+            elif val >= 0.80: delta_msg = "✅ Meta Batida"
             else:
                 delta_cor = "inverse"
                 delta_msg = "🔻 Abaixo da Meta"
@@ -601,13 +618,11 @@ else:
                 st.metric(label=nome_visual, value=f"{val:.1%}", delta=delta_msg, delta_color=delta_cor)
         st.markdown("---")
         
-        # Gráficos
         media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
         media_equipe.rename(columns={'% Atingimento': 'Média Equipe'}, inplace=True)
         df_comp = pd.merge(meus_dados, media_equipe, on='Indicador')
         df_comp['Indicador'] = df_comp['Indicador'].apply(formatar_nome_visual)
         df_melt = df_comp.melt(id_vars=['Indicador'], value_vars=['% Atingimento', 'Média Equipe'], var_name='Tipo', value_name='Resultado')
-        
         fig_comp = px.bar(df_melt, x='Indicador', y='Resultado', color='Tipo', barmode='group',
                           text_auto='.1%', title="Minha Performance vs Média Geral",
                           color_discrete_map={'% Atingimento': '#F37021', 'Média Equipe': '#bdc3c7'})
