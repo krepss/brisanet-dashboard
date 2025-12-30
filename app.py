@@ -7,7 +7,7 @@ import json
 import time
 from datetime import datetime
 
-# --- CONFIGURAÇÃO DA LOGO ---
+# --- CONFIGURAÇÃO DA LOGO (Apenas para Sidebar e Favicon) ---
 LOGO_FILE = "logo.ico"
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
@@ -38,11 +38,10 @@ st.markdown("""
         margin: 0 auto;
     }
     
-    /* CENTRALIZAR ELEMENTOS DO LOGIN */
-    [data-testid="stForm"] .stButton, [data-testid="stForm"] > div:first-child { display: flex; justify-content: center; }
+    /* CENTRALIZAR BOTÃO DO LOGIN */
+    [data-testid="stForm"] .stButton { display: flex; justify-content: center; }
     [data-testid="stForm"] div.stButton > button { width: 100%; display: block; margin: 0 auto; background: linear-gradient(90deg, #003366 0%, #00528b 100%); color: white; border: none; padding: 0.6rem; font-weight: bold; text-transform: uppercase; }
     [data-testid="stForm"] div.stButton > button:hover { background: linear-gradient(90deg, #F37021 0%, #d35400 100%); transform: scale(1.02); }
-    [data-testid="stForm"] img { display: block; margin: 0 auto 15px auto; max-width: 120px; }
 
     /* FONTS */
     .login-title { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 2.2em; color: #003366; text-align: center; margin-bottom: 0; letter-spacing: -1px; }
@@ -209,7 +208,7 @@ def normalizar_nome_indicador(nome_arquivo):
     if 'CSAT' in nome: return 'CSAT'
     if 'IR' in nome or 'RESOLU' in nome: return 'IR'
     if 'TPC' in nome: return 'TPC'
-    if 'TAM' in nome: return 'TAM' # NOVO: Suporte ao TAM (Total Agregado)
+    if 'TAM' in nome: return 'TAM'
     return nome.split('.')[0].upper()
 
 def tratar_arquivo_especial(df, nome_arquivo):
@@ -315,7 +314,7 @@ def classificar_farol(val):
     elif val >= 0.80: return '🟢 Meta Batida'
     else: return '🔴 Crítico'
 
-# --- 4. LOGIN RENOVADO ---
+# --- 4. LOGIN RENOVADO (SEM IMAGEM) ---
 if 'logado' not in st.session_state:
     st.session_state.update({'logado': False, 'usuario_nome': '', 'perfil': ''})
 
@@ -324,8 +323,6 @@ if not st.session_state['logado']:
     with c2:
         st.markdown("<br><br>", unsafe_allow_html=True)
         with st.form("form_login"):
-            if os.path.exists(LOGO_FILE):
-                st.image(LOGO_FILE, width=120)
             st.markdown('<p class="login-title">Team Sofistas</p>', unsafe_allow_html=True)
             st.markdown('<p class="login-subtitle">Analytics & Performance</p>', unsafe_allow_html=True)
             email = st.text_input("E-mail Corporativo", placeholder="seu.email@brisanet.com.br").strip().lower()
@@ -345,6 +342,7 @@ if not st.session_state['logado']:
                             st.rerun()
                         else: st.error("Acesso negado.")
                     else: st.error("Erro: Base de usuários não carregada.")
+    
     st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
     st.stop()
 
@@ -427,13 +425,13 @@ if perfil == 'admin':
             else: st.success("🎉 Equipe performando bem! Ninguém abaixo de 80%.")
 
     with tabs[1]:
-        st.markdown(f"### 🏆 Ranking Geral (Consolidado)")
+        st.markdown(f"### 🏆 Ranking Geral")
         if df_dados is not None and not df_dados.empty:
             if tem_tam:
-                st.info("ℹ️ Usando indicador **TAM** como Ranking Oficial.")
+                st.info("ℹ️ Usando indicador **TAM** (Total Agregado Mensal).")
                 df_rank = df_dados[df_dados['Indicador'] == 'TAM'].sort_values(by='% Atingimento', ascending=False)
             else:
-                st.info("ℹ️ Calculando média de todos os indicadores (TAM não encontrado).")
+                st.info("ℹ️ Calculando soma dos indicadores (TAM não encontrado).")
                 df_rank = df_dados.groupby('Colaborador').agg({'Diamantes': 'sum', 'Max. Diamantes': 'sum'}).reset_index()
                 df_rank['% Atingimento'] = df_rank['Diamantes'] / df_rank['Max. Diamantes']
                 df_rank = df_rank.sort_values(by='% Atingimento', ascending=False)
@@ -461,7 +459,6 @@ if perfil == 'admin':
     with tabs[3]:
         if df_dados is not None and not df_dados.empty:
             st.markdown("### 🔬 Detalhe por Indicador")
-            # Remove TAM dos gráficos de detalhe para não poluir, ou mantém? Melhor manter para transparência.
             df_visual = df_dados.copy()
             df_visual['Indicador'] = df_visual['Indicador'].apply(formatar_nome_visual)
             df_visual['Status'] = df_visual['% Atingimento'].apply(classificar_farol)
@@ -497,7 +494,7 @@ if perfil == 'admin':
                     if not row_tam.empty:
                         total_diamantes = row_tam.iloc[0]['Diamantes']
                     else:
-                        total_diamantes = df_user['Diamantes'].sum() # Fallback
+                        total_diamantes = df_user['Diamantes'].sum()
                 else:
                     total_diamantes = df_user['Diamantes'].sum()
 
