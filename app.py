@@ -666,33 +666,47 @@ else:
     meus_dados = df_dados[df_dados['Colaborador'] == nome_logado].copy()
     
     if not meus_dados.empty:
-        # Gamificação
         if 'Diamantes' in meus_dados.columns:
-            total_dia = meus_dados['Diamantes'].sum()
+            total_dia_bruto = meus_dados['Diamantes'].sum()
             total_max = meus_dados['Max. Diamantes'].sum()
-            perc = (total_dia / total_max) if total_max > 0 else 0
+            perc = (total_dia_bruto / total_max) if total_max > 0 else 0
             st.markdown("### 💎 Gamificação")
             c1, c2 = st.columns([3, 1])
             c1.progress(perc)
-            c2.write(f"**{int(total_dia)} / {int(total_max)}**")
+            c2.write(f"**{int(total_dia_bruto)} / {int(total_max)}**")
             
+            # --- LÓGICA DETALHADA DO GATILHO FINANCEIRO ---
             df_conf = meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE']
-            conf = df_conf.iloc[0]['% Atingimento'] if not df_conf.empty else 0.0
+            atingimento_conf = df_conf.iloc[0]['% Atingimento'] if not df_conf.empty else 0.0
+            tem_dado_conf = not df_conf.empty
             
-            desc = 0
-            obs = ""
-            if conf < 0.92:
+            desconto_diamantes = 0
+            motivo_desconto = ""
+            GATILHO_FINANCEIRO = 0.92
+            
+            if tem_dado_conf and atingimento_conf < GATILHO_FINANCEIRO:
                 df_pont = meus_dados[meus_dados['Indicador'] == 'PONTUALIDADE']
-                desc = df_pont.iloc[0]['Diamantes'] if not df_pont.empty else 0
-                obs = "(Penalidade: Pontualidade)"
+                if not df_pont.empty:
+                    desconto_diamantes = df_pont.iloc[0]['Diamantes']
+                    motivo_desconto = f"(Perdeu {desconto_diamantes} de Pontualidade)"
             
-            val = (total_dia - desc) * 0.50
+            total_dia_liquido = total_dia_bruto - desconto_diamantes
+            valor_final = total_dia_liquido * 0.50
             
-            st.markdown("#### 💰 Extrato")
+            st.markdown("#### 💰 Extrato Financeiro")
             c1, c2, c3 = st.columns(3)
-            c1.metric("Diamantes Válidos", int(total_dia - desc), obs)
-            c2.metric("Valor Unit.", "R$ 0,50")
-            c3.metric("A Receber", f"R$ {val:.2f}")
+            c1.metric("Diamantes Válidos", f"{int(total_dia_liquido)}", f"{motivo_desconto}", delta_color="inverse" if desconto_diamantes > 0 else "normal")
+            c2.metric("Valor por Diamante", "R$ 0,50")
+            
+            if not tem_dado_conf:
+                c3.metric("Valor a Receber", "Aguardando", "Conformidade Indisponível", delta_color="off")
+            elif desconto_diamantes > 0:
+                c3.metric("Valor a Receber", f"R$ {valor_final:.2f}", f"Gatilho não atingido (<{GATILHO_FINANCEIRO:.0%})", delta_color="inverse")
+                st.error(f"⚠️ **Gatilho Financeiro não atingido**: Sua conformidade foi **{atingimento_conf:.1%}**. Para receber os diamantes de Pontualidade, é necessário ter >= 92% de Conformidade.")
+            else:
+                c3.metric("Valor a Receber", f"R$ {valor_final:.2f}", "Gatilho Atingido! 🤑")
+                if atingimento_conf >= GATILHO_FINANCEIRO:
+                    st.success(f"✅ **Gatilho Financeiro Atingido**: Conformidade **{atingimento_conf:.1%}** (>= 92%). Todos os diamantes computados.")
             st.divider()
 
         cols = st.columns(len(meus_dados))
