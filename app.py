@@ -39,27 +39,15 @@ st.markdown("""
         margin: 0 auto;
     }
     
-    /* --- CORREÇÃO DEFINITIVA: CENTRALIZAR BOTÃO E IMAGEM --- */
-    
-    /* 1. Centralizar Imagem (Logo) */
-    [data-testid="stForm"] > div:first-child img {
-        display: block !important;
-        margin-left: auto !important;
-        margin-right: auto !important;
-        max-width: 120px;
-    }
-    
-    /* 2. Centralizar Botão (Força Bruta) */
-    /* O container do botão */
+    /* --- CENTRALIZAR BOTÃO DE LOGIN --- */
     div[data-testid="stForm"] .stButton {
         width: 100% !important;
         display: flex !important;
         justify-content: center !important;
     }
     
-    /* O botão em si */
     div[data-testid="stForm"] .stButton > button {
-        width: 100% !important; /* Ocupa todo o espaço */
+        width: 100% !important; 
         display: block !important;
         margin: 0 auto !important;
         background: linear-gradient(90deg, #003366 0%, #00528b 100%);
@@ -376,16 +364,10 @@ if not st.session_state['logado']:
     with c2:
         st.markdown("<br><br>", unsafe_allow_html=True)
         with st.form("form_login"):
-            # Exibe logo se existir
-            if os.path.exists(LOGO_FILE):
-                st.image(LOGO_FILE, width=120)
-            
             st.markdown('<p class="login-title">Team Sofistas</p>', unsafe_allow_html=True)
             st.markdown('<p class="login-subtitle">Analytics & Performance</p>', unsafe_allow_html=True)
-            
             email = st.text_input("E-mail Corporativo", placeholder="seu.email@brisanet.com.br").strip().lower()
             senha = st.text_input("Senha", type="password", placeholder="Apenas para Gestores")
-            
             st.markdown("<br>", unsafe_allow_html=True)
             if st.form_submit_button("ACESSAR SISTEMA"):
                 if email in ['gestor', 'admin'] and senha == 'admin':
