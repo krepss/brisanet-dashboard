@@ -10,20 +10,19 @@ from datetime import datetime
 # --- 1. CONFIGURAÇÃO ---
 st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
-# --- 2. CSS PREMIUM (LOGIN + DASHBOARD) ---
+# --- 2. CSS PREMIUM (LOGIN) + AJUSTES GERAIS ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
-    
     html, body, [class*="css"] { font-family: 'Roboto', sans-serif; }
     
-    /* --- ESTILO GERAL --- */
+    /* LOGIN MODERNIZADO */
     .stApp { 
         background: linear-gradient(135deg, #002b55 0%, #004e92 50%, #F37021 100%);
         background-attachment: fixed;
     }
     
-    /* --- LOGIN CARD (Centralizado e Moderno) --- */
+    /* Formulário de Login */
     [data-testid="stForm"] {
         background-color: rgba(255, 255, 255, 0.95);
         padding: 50px;
@@ -31,67 +30,41 @@ st.markdown("""
         box-shadow: 0 15px 35px rgba(0,0,0,0.3);
         border-top: 5px solid #F37021;
         max-width: 450px;
-        margin: 0 auto; /* Centraliza horizontalmente */
+        margin: 0 auto;
     }
-    
-    /* Título do Login */
     .login-title {
-        font-family: 'Montserrat', sans-serif;
-        font-weight: 800;
-        font-size: 2.5em;
-        color: #003366;
-        text-align: center;
-        margin-bottom: 0;
-        letter-spacing: -1px;
+        font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 2.5em;
+        color: #003366; text-align: center; margin-bottom: 0; letter-spacing: -1px;
     }
     .login-subtitle {
-        font-family: 'Montserrat', sans-serif;
-        font-size: 1.1em;
-        color: #F37021;
-        text-align: center;
-        margin-bottom: 30px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 2px;
+        font-family: 'Montserrat', sans-serif; font-size: 1.1em; color: #F37021;
+        text-align: center; margin-bottom: 30px; font-weight: 600; letter-spacing: 2px;
     }
     
-    /* Botões */
-    div.stButton > button {
-        background: linear-gradient(90deg, #003366 0%, #00528b 100%);
-        color: white; border: none;
-        padding: 0.6rem 1.2rem; border-radius: 8px; 
-        font-weight: bold; transition: 0.3s;
-        width: 100%; /* Botão full width no login */
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-    div.stButton > button:hover { 
-        transform: scale(1.02); 
-        box-shadow: 0 4px 12px rgba(0, 51, 102, 0.4); 
-        background: linear-gradient(90deg, #F37021 0%, #d35400 100%);
-    }
-
-    /* Ajustes para quando logado (Fundo mais limpo) */
-    .main-container {
-        background-color: #f4f7f6; 
-        border-radius: 15px; 
-        padding: 20px;
-        margin-top: 20px;
-    }
-    
-    /* Metrics */
+    /* Métricas e Botões */
     div.stMetric {
-        background-color: white; 
-        border: 1px solid #e0e0e0; 
-        padding: 15px 20px;
-        border-radius: 12px; 
-        border-left: 5px solid #F37021;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        background-color: white; border: 1px solid #e0e0e0; padding: 15px 20px;
+        border-radius: 12px; border-left: 5px solid #F37021;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s;
+    }
+    div.stMetric:hover { transform: translateY(-5px); }
+    
+    div.stButton > button {
+        background: linear-gradient(90deg, #F37021 0%, #d35400 100%); color: white; border: none;
+        padding: 0.5rem 1rem; border-radius: 8px; font-weight: bold; transition: 0.3s;
+    }
+    div.stButton > button:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(243, 112, 33, 0.4); }
+    
+    h1, h2, h3 { color: #003366 !important; }
+    .date-box {
+        background-color: #e3f2fd; color: #003366; padding: 10px; 
+        border-radius: 8px; text-align: center; font-size: 0.9em; font-weight: bold;
+        margin-bottom: 20px; border: 1px solid #bbdefb;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. FUNÇÕES DE BACKEND (MANTIDAS) ---
+# --- 3. FUNÇÕES DE BACKEND ---
 
 def formatar_nome_visual(nome_cru):
     nome = str(nome_cru).strip().upper()
@@ -352,26 +325,16 @@ if 'logado' not in st.session_state:
     st.session_state.update({'logado': False, 'usuario_nome': '', 'perfil': ''})
 
 if not st.session_state['logado']:
-    # Layout de colunas para centralizar o cartão
-    c1, c2, c3 = st.columns([1, 2, 1]) # O meio é maior
-    
+    c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
-        # Espaçador vertical
         st.markdown("<br><br>", unsafe_allow_html=True)
-        
-        # Início do formulário que foi estilizado pelo CSS [data-testid="stForm"]
         with st.form("form_login"):
-            # Cabeçalho dentro do card
             st.markdown('<p class="login-title">Team Sofistas</p>', unsafe_allow_html=True)
             st.markdown('<p class="login-subtitle">Analytics & Performance</p>', unsafe_allow_html=True)
-            
             email = st.text_input("E-mail Corporativo", placeholder="seu.email@brisanet.com.br").strip().lower()
             senha = st.text_input("Senha", type="password", placeholder="Apenas para Gestores")
-            
             st.markdown("<br>", unsafe_allow_html=True)
-            submit = st.form_submit_button("ACESSAR SISTEMA")
-            
-            if submit:
+            if st.form_submit_button("ACESSAR SISTEMA"):
                 if email in ['gestor', 'admin'] and senha == 'admin':
                     st.session_state.update({'logado': True, 'usuario_nome': 'Gestor', 'perfil': 'admin'})
                     st.rerun()
@@ -383,23 +346,14 @@ if not st.session_state['logado']:
                             nome_upper = user.iloc[0]['nome']
                             st.session_state.update({'logado': True, 'usuario_nome': nome_upper, 'perfil': 'user'})
                             st.rerun()
-                        else: st.error("Acesso negado: E-mail não encontrado na base de usuários.")
-                    else: st.error("Erro: Base de usuários não carregada. Contate o suporte.")
-    
-    # Rodapé simples
-    st.markdown('<div style="text-align: center; margin-top: 50px; color: rgba(255,255,255,0.7); font-size: 0.8em;">© 2025 Brisanet | Desenvolvido por Team Sofistas</div>', unsafe_allow_html=True)
+                        else: st.error("Acesso negado.")
+                    else: st.error("Erro: Base de usuários não carregada.")
     st.stop()
 
-# --- 5. SISTEMA LOGADO (BACKGROUND BRANCO PARA DADOS) ---
-# Aqui mudamos o estilo para quem já logou, para facilitar a leitura dos gráficos
-st.markdown("""
-<style>
-    /* Remove o gradiente quando logado e volta para fundo claro */
-    .stApp { background: #f4f7f6; }
-</style>
-""", unsafe_allow_html=True)
+# --- 5. SISTEMA LOGADO (BACKGROUND LIMPO) ---
+st.markdown("""<style>.stApp { background: #f4f7f6; }</style>""", unsafe_allow_html=True)
 
-# --- 6. SIDEBAR E NAVEGAÇÃO ---
+# --- 6. SIDEBAR ---
 lista_periodos = listar_periodos_disponiveis()
 opcoes_periodo = lista_periodos if lista_periodos else ["Nenhum histórico disponível"]
 
@@ -407,7 +361,6 @@ with st.sidebar:
     st.title("🦁 Team Sofistas")
     st.caption("Performance Analytics")
     st.markdown("---")
-    
     periodo_selecionado = st.selectbox("📅 Mês de Referência:", opcoes_periodo)
     
     if periodo_selecionado == "Nenhum histórico disponível":
@@ -422,7 +375,6 @@ with st.sidebar:
     
     df_users_cadastrados = carregar_usuarios()
     df_dados = filtrar_por_usuarios_cadastrados(df_raw, df_users_cadastrados)
-    
     if df_dados is not None and not df_dados.empty:
         df_dados['Colaborador'] = df_dados['Colaborador'].str.title()
 
@@ -436,155 +388,197 @@ with st.sidebar:
 perfil = st.session_state['perfil']
 
 if df_dados is None and perfil == 'user':
-    st.info(f"👋 Olá, **{nome_logado}**! Os dados de **{periodo_label}** ainda não estão disponíveis ou você não possui métricas neste mês.")
+    st.info(f"👋 Olá, **{nome_logado}**! Dados de **{periodo_label}** indisponíveis.")
     st.stop()
 
-# --- CONTEÚDO PRINCIPAL (GESTOR OU USER) ---
+# --- GESTOR (VISUAL CLÁSSICO RESTAURADO) ---
 if perfil == 'admin':
-    st.title(f"📊 Painel do Gestor")
+    st.title(f"📊 Visão Gerencial")
     
-    tabs = st.tabs(["🚦 Visão Geral", "⏳ Evolução", "🔍 Indicadores", "💰 Comissões", "📋 Tabela Detalhada", "⚙️ Admin"])
+    tabs = st.tabs(["🚦 Painel de Semáforo", "⏳ Evolução (Heatmap)", "🔍 Detalhe por Indicador", "📋 Tabela Geral", "⚙️ Admin / Upload"])
     
     with tabs[0]: 
         if df_dados is not None and not df_dados.empty:
             st.markdown(f"### Resumo de Saúde: **{periodo_label}**")
             df_media_pessoas = df_dados.groupby('Colaborador')['% Atingimento'].mean().reset_index()
-            
             qtd_verde = len(df_media_pessoas[df_media_pessoas['% Atingimento'] >= 0.90]) 
             qtd_amarelo = len(df_media_pessoas[(df_media_pessoas['% Atingimento'] >= 0.80) & (df_media_pessoas['% Atingimento'] < 0.90)]) 
             qtd_vermelho = len(df_media_pessoas[df_media_pessoas['% Atingimento'] < 0.80]) 
-            
             c1, c2, c3 = st.columns(3)
             c1.metric("💎 Excelência", f"{qtd_verde}", delta=">=90%")
             c2.metric("🟢 Meta Batida", f"{qtd_amarelo}", delta="80-90%", delta_color="off")
             c3.metric("🔴 Crítico", f"{qtd_vermelho}", delta="<80%", delta_color="inverse")
-            
             st.markdown("---")
-            st.subheader("📋 Atenção Prioritária")
+            st.subheader("📋 Prioridade de Ação")
             df_atencao = df_media_pessoas[df_media_pessoas['% Atingimento'] < 0.80].sort_values(by='% Atingimento')
-            
             if not df_atencao.empty:
                 lista_detalhada = []
                 for colab in df_atencao['Colaborador']:
                     dados_pessoa = df_dados[df_dados['Colaborador'] == colab]
                     media_pessoa = dados_pessoa['% Atingimento'].mean()
                     pior_kpi_row = dados_pessoa.loc[dados_pessoa['% Atingimento'].idxmin()]
+                    nome_kpi_bonito = formatar_nome_visual(pior_kpi_row['Indicador'])
                     lista_detalhada.append({
                         'Colaborador': colab,
                         'Média Geral': media_pessoa,
-                        'Pior KPI': f"{formatar_nome_visual(pior_kpi_row['Indicador'])} ({pior_kpi_row['% Atingimento']:.1%})"
+                        'Status': '🔴 Crítico',
+                        'Pior Indicador': f"{nome_kpi_bonito} ({pior_kpi_row['% Atingimento']:.1%})"
                     })
-                st.dataframe(pd.DataFrame(lista_detalhada).style.format({'Média Geral': '{:.1%}'}), use_container_width=True)
+                df_final_atencao = pd.DataFrame(lista_detalhada)
+                try: st.dataframe(df_final_atencao.style.format({'Média Geral': '{:.1%}'}), use_container_width=True, height=500)
+                except: st.dataframe(df_final_atencao, use_container_width=True, height=500)
             else: st.success("🎉 Equipe performando bem! Ninguém abaixo de 80%.")
 
     with tabs[1]:
         st.markdown("### ⏳ Evolução Temporal")
         df_hist = carregar_historico_completo()
         df_hist = filtrar_por_usuarios_cadastrados(df_hist, df_users_cadastrados)
-        if df_hist is not None:
+        if df_hist is not None and not df_hist.empty:
             df_hist['Colaborador'] = df_hist['Colaborador'].str.title()
-            colab_sel = st.selectbox("Selecione:", sorted(df_hist['Colaborador'].unique()))
-            df_user_hist = df_hist[df_hist['Colaborador'] == colab_sel]
-            fig = px.line(df_user_hist, x='Periodo', y='% Atingimento', color='Indicador', markers=True)
-            st.plotly_chart(fig, use_container_width=True)
+            colab_sel = st.selectbox("Selecione o Colaborador:", sorted(df_hist['Colaborador'].unique()))
+            df_hist_user = df_hist[df_hist['Colaborador'] == colab_sel].copy()
+            if not df_hist_user.empty:
+                df_hist_user['Indicador'] = df_hist_user['Indicador'].apply(formatar_nome_visual)
+                df_hist_user['Texto'] = df_hist_user['% Atingimento'].apply(lambda x: f"{x:.1%}")
+                fig_heat = px.density_heatmap(df_hist_user, x="Periodo", y="Indicador", z="% Atingimento", 
+                                              text_auto=False, title=f"Mapa de Calor: {colab_sel}",
+                                              color_continuous_scale="RdYlGn", range_color=[0.6, 1.0])
+                fig_heat.update_traces(texttemplate="%{z:.1%}", textfont={"size":12})
+                st.plotly_chart(fig_heat, use_container_width=True)
+            else: st.warning("Sem histórico para este colaborador.")
+        else: st.info("O histórico está vazio.")
 
     with tabs[2]:
-        st.markdown("### 🔍 Detalhe por Indicador")
-        if df_dados is not None:
-            df_dados['Status'] = df_dados['% Atingimento'].apply(classificar_farol)
-            fig = px.bar(df_dados, x='Indicador', y='% Atingimento', color='Status', 
-                         color_discrete_map={'💎 Excelência': '#003366', '🟢 Meta Batida': '#2ecc71', '🔴 Crítico': '#e74c3c'},
-                         hover_data=['Colaborador'])
-            st.plotly_chart(fig, use_container_width=True)
+        if df_dados is not None and not df_dados.empty:
+            st.markdown("### 🔬 Detalhe por Indicador")
+            df_visual = df_dados.copy()
+            df_visual['Indicador'] = df_visual['Indicador'].apply(formatar_nome_visual)
+            df_visual['Status'] = df_visual['% Atingimento'].apply(classificar_farol)
+            df_agrupado = df_visual.groupby(['Indicador', 'Status']).size().reset_index(name='Quantidade')
+            fig_farol = px.bar(df_agrupado, x='Indicador', y='Quantidade', color='Status', 
+                               text='Quantidade', title="Farol de Performance",
+                               color_discrete_map={'💎 Excelência': '#003366', '🟢 Meta Batida': '#2ecc71', '🔴 Crítico': '#e74c3c'})
+            st.plotly_chart(fig_farol, use_container_width=True)
+            lista_kpis = sorted(df_visual['Indicador'].unique())
+            for kpi in lista_kpis:
+                with st.expander(f"📊 Ranking: {kpi}", expanded=False):
+                    df_kpi = df_visual[df_visual['Indicador'] == kpi].sort_values(by='% Atingimento', ascending=True)
+                    fig_rank = px.bar(df_kpi, x='% Atingimento', y='Colaborador', orientation='h',
+                                      text_auto='.1%', title=f"Ranking - {kpi}",
+                                      color='% Atingimento', color_continuous_scale=['#e74c3c', '#f1c40f', '#2ecc71'])
+                    fig_rank.add_vline(x=0.8, line_dash="dash", line_color="black", annotation_text="Meta 80%")
+                    st.plotly_chart(fig_rank, use_container_width=True)
 
-    with tabs[3]:
-        st.markdown(f"### 💰 Relatório de Comissões")
-        if df_dados is not None:
-            st.info("Regra: R$ 0,50/Diamante. Trava: Conformidade >= 92%.")
-            lista_pgto = []
-            df_upper = df_dados.copy()
-            df_upper['Colaborador_Key'] = df_upper['Colaborador'].str.upper()
-            
-            for colab_key in df_upper['Colaborador_Key'].unique():
-                d_user = df_upper[df_upper['Colaborador_Key'] == colab_key]
-                total_dia = d_user['Diamantes'].sum() if 'Diamantes' in d_user.columns else 0
-                
-                # Checa Conformidade
-                row_conf = d_user[d_user['Indicador'] == 'CONFORMIDADE']
-                conf = row_conf.iloc[0]['% Atingimento'] if not row_conf.empty else 0.0
-                
-                desconto = 0
-                if conf < 0.92:
-                    row_pont = d_user[d_user['Indicador'] == 'PONTUALIDADE']
-                    desconto = row_pont.iloc[0]['Diamantes'] if not row_pont.empty and 'Diamantes' in row_pont.columns else 0
-                
-                final_dia = total_dia - desconto
-                pgto = final_dia * 0.50
-                
-                lista_pgto.append({
-                    "Colaborador": colab_key.title(),
-                    "Conformidade": conf,
-                    "Total Diamantes": int(total_dia),
-                    "Desconto": int(desconto),
-                    "A Pagar (R$)": pgto
-                })
-            
-            df_pgto = pd.DataFrame(lista_pgto)
-            st.dataframe(df_pgto.style.format({"Conformidade": "{:.1%}", "A Pagar (R$)": "R$ {:.2f}"}), use_container_width=True)
+    with tabs[3]: 
+        if df_dados is not None and not df_dados.empty:
+            c1, c2 = st.columns([3, 1])
+            with c1: st.markdown(f"### Mapa de Resultados: {periodo_label}")
+            with c2: filtro = st.multiselect("🔍 Filtrar:", df_dados['Colaborador'].unique())
+            df_show = df_dados if not filtro else df_dados[df_dados['Colaborador'].isin(filtro)]
+            df_show_visual = df_show.copy()
+            df_show_visual['Indicador'] = df_show_visual['Indicador'].apply(formatar_nome_visual)
+            pivot = df_show_visual.pivot_table(index='Colaborador', columns='Indicador', values='% Atingimento')
+            try: st.dataframe(pivot.style.background_gradient(cmap='RdYlGn', vmin=0.7, vmax=1.0).format("{:.1%}"), use_container_width=True, height=600)
+            except: st.dataframe(pivot.style.format("{:.1%}"), use_container_width=True, height=600)
 
     with tabs[4]:
-        st.markdown("### 📋 Dados Brutos")
-        if df_dados is not None:
-            st.dataframe(df_dados, use_container_width=True)
-
-    with tabs[5]:
-        st.markdown("### ⚙️ Administração")
-        subtabs = st.tabs(["📤 Upload", "🗑️ Limpeza", "💾 Backup"])
+        st.markdown("### 📂 Gestão de Arquivos")
+        subtabs = st.tabs(["📤 Upload & Atualização", "🗑️ Limpeza de Histórico", "💾 Backup"])
         
         with subtabs[0]:
             data_sugestao = obter_data_hoje()
-            nova_data = st.text_input("Mês/Ano Ref:", value=data_sugestao)
+            st.markdown("#### 1. Configurar Período")
+            nova_data = st.text_input("Mês/Ano de Referência:", value=data_sugestao)
+            st.markdown("#### 2. Atualizar Arquivos (Upload Inteligente)")
             c1, c2 = st.columns(2)
-            with c1: st.file_uploader("usuarios.csv", key="u")
-            with c2: 
-                up_k = st.file_uploader("Métricas (CSVs)", accept_multiple_files=True, key="k")
-                if up_k and st.button("Salvar"):
-                    faxina_arquivos_temporarios()
-                    salvar_arquivos_padronizados(up_k)
-                    salvar_config(nova_data)
-                    df_novo = carregar_dados_completo()
-                    df_users = carregar_usuarios()
-                    df_final = filtrar_por_usuarios_cadastrados(df_novo, df_users)
-                    if not df_final.empty:
-                        atualizar_historico(df_final, nova_data)
-                        st.success("Atualizado!")
-                        time.sleep(1)
-                        st.rerun()
-                    else: st.error("Erro: Sem dados após filtro.")
+            with c1:
+                up_u = st.file_uploader("usuarios.csv", key="u")
+                if up_u: 
+                    try:
+                        with open("usuarios.csv", "wb") as w: w.write(up_u.getbuffer())
+                        st.success("Usuarios OK!")
+                    except Exception as e: st.error(f"Erro ao salvar usuarios.csv: {e}")
+            with c2:
+                up_k = st.file_uploader("Indicadores (CSVs)", accept_multiple_files=True, key="k")
+                if up_k:
+                    st.markdown("**🔎 Pré-visualização:**")
+                    lista_diag = []
+                    for f in up_k:
+                        try:
+                            df_chk = ler_csv_inteligente(f)
+                            if df_chk is not None:
+                                df_p, msg = tratar_arquivo_especial(df_chk, f.name)
+                                if df_p is not None:
+                                    kpis = df_p['Indicador'].unique()
+                                    lista_diag.append({"Arquivo": f.name, "Status": "✅ OK", "KPIs": str(kpis)})
+                                else: lista_diag.append({"Arquivo": f.name, "Status": "❌ Erro", "Detalhe": msg})
+                        except Exception as e: lista_diag.append({"Arquivo": f.name, "Status": "❌ Erro", "Detalhe": str(e)})
+                    st.dataframe(pd.DataFrame(lista_diag))
+
+                    if st.button("💾 Salvar e Atualizar Histórico"): 
+                        if not nova_data.strip():
+                            st.error("⚠️ O campo 'Mês/Ano' não pode estar vazio!")
+                            st.stop()
+                        try:
+                            faxina_arquivos_temporarios()
+                            salvos = salvar_arquivos_padronizados(up_k)
+                            salvar_config(nova_data)
+                            df_novo_ciclo = carregar_dados_completo()
+                            df_users_fresh = carregar_usuarios()
+                            if df_users_fresh is not None:
+                                nomes_metrics = set(df_novo_ciclo['Colaborador'].unique())
+                                nomes_users = set(df_users_fresh['nome'].unique())
+                                fantasmas = nomes_metrics - nomes_users
+                                if fantasmas: st.warning(f"⚠️ Atenção: {len(fantasmas)} nomes ignorados.")
+                            else:
+                                st.error("❌ 'usuarios.csv' obrigatório!")
+                                st.stop()
+                            df_filtrado = filtrar_por_usuarios_cadastrados(df_novo_ciclo, df_users_fresh)
+                            if df_filtrado.empty: st.error("⚠️ Erro: Filtro removeu todos os dados.")
+                            else:
+                                atualizar_historico(df_filtrado, nova_data)
+                                st.cache_data.clear()
+                                st.balloons()
+                                st.success(f"✅ Sucesso! Mês {nova_data} atualizado.")
+                                time.sleep(1)
+                                st.rerun()
+                        except Exception as e: st.error(f"Erro salvamento: {e}")
 
         with subtabs[1]:
-            df_h = carregar_historico_completo()
-            if df_h is not None:
-                for per in df_h['Periodo'].unique():
-                    c1, c2 = st.columns([3, 1])
-                    c1.write(f"📅 {per}")
-                    if c2.button(f"Apagar {per}"):
-                        excluir_periodo_historico(per)
-                        st.rerun()
+            st.markdown("#### 🗑️ Gerenciar Meses no Sistema")
+            df_atual_hist = carregar_historico_completo()
+            if df_atual_hist is not None and not df_atual_hist.empty:
+                st.write("Se houver duplicidade ou erro, exclua o mês e faça o upload novamente.")
+                resumo = df_atual_hist.groupby('Periodo').size().reset_index(name='Registros')
+                for i, row in resumo.iterrows():
+                    c1, c2, c3 = st.columns([2, 1, 1])
+                    c1.write(f"📅 **{row['Periodo']}**")
+                    c2.write(f"{row['Registros']} linhas")
+                    if c3.button(f"Excluir {row['Periodo']}", key=f"del_{i}"):
+                        if excluir_periodo_historico(row['Periodo']):
+                            st.success(f"Mês {row['Periodo']} excluído!")
+                            time.sleep(1)
+                            st.rerun()
+            else: st.info("Histórico vazio.")
 
         with subtabs[2]:
+            st.markdown("#### 💾 Backup e Reset")
             if os.path.exists('historico_consolidado.csv'):
                 with open('historico_consolidado.csv', 'rb') as f:
-                    st.download_button("Baixar Backup", f, "backup.csv", "text/csv")
-            if st.button("Resetar Tudo"):
+                    st.download_button("⬇️ Baixar Histórico Consolidado", f, "historico_consolidado.csv", "text/csv")
+            st.divider()
+            if st.button("🗑️ Resetar Tudo (Apaga Todo o Histórico)"):
                 limpar_base_dados_completa()
+                if os.path.exists('historico_consolidado.csv'): os.remove('historico_consolidado.csv')
+                st.cache_data.clear()
+                st.warning("Tudo limpo!")
+                time.sleep(2)
                 st.rerun()
 
 # --- VISÃO OPERADOR ---
 else:
     st.markdown(f"## 🚀 Olá, **{nome_logado.split()[0]}**!")
     st.caption(f"📅 Referência: **{periodo_label}**")
-    
     meus_dados = df_dados[df_dados['Colaborador'] == nome_logado].copy()
     
     if not meus_dados.empty:
@@ -598,7 +592,6 @@ else:
             c1.progress(perc)
             c2.write(f"**{int(total_dia)} / {int(total_max)}**")
             
-            # Calculo Financeiro Individual
             df_conf = meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE']
             conf = df_conf.iloc[0]['% Atingimento'] if not df_conf.empty else 0.0
             
