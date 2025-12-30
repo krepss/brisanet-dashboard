@@ -84,26 +84,23 @@ def limpar_base_dados():
     for f in arquivos:
         os.remove(f)
 
-# --- HISTÓRICO COM LIMPEZA DE MÊS ---
+# --- HISTÓRICO ---
 def atualizar_historico(df_atual, periodo):
     ARQUIVO_HIST = 'historico_consolidado.csv'
     
-    # Prepara dados novos
+    # Padronização Rigorosa
     df_save = df_atual.copy()
-    df_save['Periodo'] = periodo.strip()
+    df_save['Periodo'] = str(periodo).strip()
     df_save['Colaborador'] = df_save['Colaborador'].astype(str).str.strip().str.upper()
     
     if os.path.exists(ARQUIVO_HIST):
         try:
             df_hist = pd.read_csv(ARQUIVO_HIST)
-            # AQUI ESTÁ A CORREÇÃO: Removemos TUDO que for desse mês antes de salvar
-            # Se já tinha dados do mês 10 duplicados, eles morrem aqui.
-            linhas_antes = len(df_hist)
-            df_hist = df_hist[df_hist['Periodo'] != periodo.strip()]
-            linhas_depois = len(df_hist)
+            # Garante que a coluna Periodo é string para comparação
+            df_hist['Periodo'] = df_hist['Periodo'].astype(str).str.strip()
             
-            if linhas_antes > linhas_depois:
-                st.toast(f"♻️ Limpando dados antigos de {periodo}...", icon="🧹")
+            # REMOVE O MÊS ANTES DE SALVAR (Substituição)
+            df_hist = df_hist[df_hist['Periodo'] != str(periodo).strip()]
             
             df_final = pd.concat([df_hist, df_save], ignore_index=True)
         except:
@@ -111,7 +108,6 @@ def atualizar_historico(df_atual, periodo):
     else:
         df_final = df_save
     
-    # Ordenação e Salvamento
     cols_order = ['Periodo', 'Colaborador', 'Indicador', '% Atingimento']
     if 'Diamantes' in df_final.columns: cols_order.append('Diamantes')
     if 'Max. Diamantes' in df_final.columns: cols_order.append('Max. Diamantes')
@@ -121,6 +117,23 @@ def atualizar_historico(df_atual, periodo):
     
     df_final.to_csv(ARQUIVO_HIST, index=False)
     return True
+
+def excluir_periodo_historico(periodo_alvo):
+    ARQUIVO_HIST = 'historico_consolidado.csv'
+    if os.path.exists(ARQUIVO_HIST):
+        try:
+            df_hist = pd.read_csv(ARQUIVO_HIST)
+            df_hist['Periodo'] = df_hist['Periodo'].astype(str).str.strip()
+            
+            # Filtra removendo o alvo
+            df_novo = df_hist[df_hist['Periodo'] != str(periodo_alvo).strip()]
+            
+            df_novo.to_csv(ARQUIVO_HIST, index=False)
+            return True
+        except Exception as e:
+            st.error(f"Erro ao excluir: {e}")
+            return False
+    return False
 
 def carregar_historico_completo():
     if os.path.exists('historico_consolidado.csv'):
@@ -260,12 +273,10 @@ def carregar_dados_completo():
         except: pass
     if lista_final: 
         df_concat = pd.concat(lista_final, ignore_index=True)
+        # Agregação segura
         agg_rules = {'% Atingimento': 'mean'}
         if 'Diamantes' in df_concat.columns: agg_rules['Diamantes'] = 'sum'
         if 'Max. Diamantes' in df_concat.columns: agg_rules['Max. Diamantes'] = 'sum'
-        
-        # Garante que não soma se for duplicado do MESMO arquivo, só se for de arquivos diferentes
-        # Mas como a função de histórico já limpa o mês, aqui o groupby é apenas para segurança interna do lote
         df_final = df_concat.groupby(['Colaborador', 'Indicador'], as_index=False).agg(agg_rules)
         return df_final
     return None
@@ -469,85 +480,117 @@ if perfil == 'admin':
 
     with tabs[4]:
         st.markdown("### 📂 Gestão de Arquivos")
-        data_sugestao = obter_data_hoje()
-        st.markdown("#### 1. Configurar Período")
-        nova_data = st.text_input("Mês/Ano de Referência:", value=data_sugestao)
         
-        st.markdown("#### 2. Atualizar Arquivos (Upload Inteligente)")
-        c1, c2 = st.columns(2)
-        with c1:
-            up_u = st.file_uploader("usuarios.csv", key="u")
-            if up_u: 
-                try:
-                    with open("usuarios.csv", "wb") as w: w.write(up_u.getbuffer())
-                    st.success("Usuarios OK!")
-                except Exception as e: st.error(f"Erro ao salvar usuarios.csv: {e}")
-        with c2:
-            up_k = st.file_uploader("Indicadores (CSVs)", accept_multiple_files=True, key="k")
+        # --- SUB-ABAS PARA ORGANIZAR ---
+        subtabs = st.tabs(["📤 Upload & Atualização", "🗑️ Limpeza de Histórico", "💾 Backup"])
+        
+        # --- ABA DE UPLOAD ---
+        with subtabs[0]:
+            data_sugestao = obter_data_hoje()
+            st.markdown("#### 1. Configurar Período")
+            nova_data = st.text_input("Mês/Ano de Referência:", value=data_sugestao)
             
-            if up_k:
-                st.markdown("**🔎 Pré-visualização:**")
-                lista_diag = []
-                for f in up_k:
+            st.markdown("#### 2. Atualizar Arquivos (Upload Inteligente)")
+            c1, c2 = st.columns(2)
+            with c1:
+                up_u = st.file_uploader("usuarios.csv", key="u")
+                if up_u: 
                     try:
-                        df_chk = ler_csv_inteligente(f)
-                        if df_chk is not None:
-                            df_p, msg = tratar_arquivo_especial(df_chk, f.name)
-                            if df_p is not None:
-                                kpis = df_p['Indicador'].unique()
-                                lista_diag.append({"Arquivo": f.name, "Status": "✅ OK", "KPIs": str(kpis)})
-                            else: lista_diag.append({"Arquivo": f.name, "Status": "❌ Erro", "Detalhe": msg})
-                    except Exception as e: lista_diag.append({"Arquivo": f.name, "Status": "❌ Erro", "Detalhe": str(e)})
-                st.dataframe(pd.DataFrame(lista_diag))
+                        with open("usuarios.csv", "wb") as w: w.write(up_u.getbuffer())
+                        st.success("Usuarios OK!")
+                    except Exception as e: st.error(f"Erro ao salvar usuarios.csv: {e}")
+            with c2:
+                up_k = st.file_uploader("Indicadores (CSVs)", accept_multiple_files=True, key="k")
+                
+                # DIAGNÓSTICO
+                if up_k:
+                    st.markdown("**🔎 Pré-visualização:**")
+                    lista_diag = []
+                    for f in up_k:
+                        try:
+                            df_chk = ler_csv_inteligente(f)
+                            if df_chk is not None:
+                                df_p, msg = tratar_arquivo_especial(df_chk, f.name)
+                                if df_p is not None:
+                                    kpis = df_p['Indicador'].unique()
+                                    lista_diag.append({"Arquivo": f.name, "Status": "✅ OK", "KPIs": str(kpis)})
+                                else: lista_diag.append({"Arquivo": f.name, "Status": "❌ Erro", "Detalhe": msg})
+                        except Exception as e: lista_diag.append({"Arquivo": f.name, "Status": "❌ Erro", "Detalhe": str(e)})
+                    st.dataframe(pd.DataFrame(lista_diag))
 
-                if st.button("💾 Salvar e Atualizar Histórico"): 
-                    
-                    if not nova_data.strip():
-                        st.error("⚠️ O campo 'Mês/Ano' não pode estar vazio!")
-                        st.stop()
-
-                    try:
-                        salvos = salvar_arquivos_padronizados(up_k)
-                        salvar_config(nova_data)
-                        df_novo_ciclo = carregar_dados_completo()
-                        df_users_fresh = carregar_usuarios()
-                        
-                        if df_users_fresh is not None:
-                            nomes_metrics = set(df_novo_ciclo['Colaborador'].unique())
-                            nomes_users = set(df_users_fresh['nome'].unique())
-                            fantasmas = nomes_metrics - nomes_users
-                            if fantasmas:
-                                st.warning(f"⚠️ Atenção: {len(fantasmas)} nomes ignorados (não estão no usuarios.csv).")
-                        else:
-                            st.error("❌ 'usuarios.csv' obrigatório!")
+                    if st.button("💾 Salvar e Atualizar Histórico"): 
+                        if not nova_data.strip():
+                            st.error("⚠️ O campo 'Mês/Ano' não pode estar vazio!")
                             st.stop()
-                        
-                        df_filtrado = filtrar_por_usuarios_cadastrados(df_novo_ciclo, df_users_fresh)
-                        
-                        if df_filtrado.empty:
-                            st.error("⚠️ Erro: Filtro removeu todos os dados.")
-                        else:
-                            atualizar_historico(df_filtrado, nova_data)
-                            st.cache_data.clear()
-                            st.balloons()
-                            st.success(f"✅ Sucesso! Mês {nova_data} atualizado (dados antigos removidos).")
+
+                        try:
+                            salvos = salvar_arquivos_padronizados(up_k)
+                            salvar_config(nova_data)
+                            df_novo_ciclo = carregar_dados_completo()
+                            df_users_fresh = carregar_usuarios()
+                            
+                            if df_users_fresh is not None:
+                                nomes_metrics = set(df_novo_ciclo['Colaborador'].unique())
+                                nomes_users = set(df_users_fresh['nome'].unique())
+                                fantasmas = nomes_metrics - nomes_users
+                                if fantasmas:
+                                    st.warning(f"⚠️ Atenção: {len(fantasmas)} nomes ignorados (não estão no usuarios.csv).")
+                            else:
+                                st.error("❌ 'usuarios.csv' obrigatório!")
+                                st.stop()
+                            
+                            df_filtrado = filtrar_por_usuarios_cadastrados(df_novo_ciclo, df_users_fresh)
+                            
+                            if df_filtrado.empty:
+                                st.error("⚠️ Erro: Filtro removeu todos os dados.")
+                            else:
+                                atualizar_historico(df_filtrado, nova_data)
+                                st.cache_data.clear()
+                                st.balloons()
+                                st.success(f"✅ Sucesso! Mês {nova_data} atualizado.")
+                                time.sleep(1)
+                                st.rerun()
+                        except Exception as e: st.error(f"Erro salvamento: {e}")
+
+        # --- ABA DE LIMPEZA ---
+        with subtabs[1]:
+            st.markdown("#### 🗑️ Gerenciar Meses no Sistema")
+            df_atual_hist = carregar_historico_completo()
+            if df_atual_hist is not None and not df_atual_hist.empty:
+                st.write("Abaixo estão os meses gravados no histórico. Se houver duplicidade ou erro, exclua o mês e faça o upload novamente.")
+                
+                # Agrupa para mostrar resumo
+                resumo = df_atual_hist.groupby('Periodo').size().reset_index(name='Registros')
+                
+                for i, row in resumo.iterrows():
+                    c1, c2, c3 = st.columns([2, 1, 1])
+                    c1.write(f"📅 **{row['Periodo']}**")
+                    c2.write(f"{row['Registros']} linhas")
+                    if c3.button(f"Excluir {row['Periodo']}", key=f"del_{i}"):
+                        if excluir_periodo_historico(row['Periodo']):
+                            st.success(f"Mês {row['Periodo']} excluído!")
                             time.sleep(1)
                             st.rerun()
-                    except Exception as e: st.error(f"Erro salvamento: {e}")
-        
-        st.markdown("---")
-        st.markdown("### 3. Restaurar/Baixar")
-        if os.path.exists('historico_consolidado.csv'):
-            with open('historico_consolidado.csv', 'rb') as f:
-                st.download_button("⬇️ Baixar Histórico Consolidado", f, "historico_consolidado.csv", "text/csv")
-        
-        if st.button("🗑️ Resetar Tudo"):
-            limpar_base_dados()
-            if os.path.exists('historico_consolidado.csv'): os.remove('historico_consolidado.csv')
-            st.cache_data.clear()
-            st.warning("Tudo limpo!")
-            time.sleep(2)
-            st.rerun()
+            else:
+                st.info("Histórico vazio.")
+
+        # --- ABA DE BACKUP ---
+        with subtabs[2]:
+            st.markdown("#### 💾 Backup e Reset")
+            st.markdown("Baixe o histórico atual para segurança.")
+            if os.path.exists('historico_consolidado.csv'):
+                with open('historico_consolidado.csv', 'rb') as f:
+                    st.download_button("⬇️ Baixar Histórico Consolidado", f, "historico_consolidado.csv", "text/csv")
+            
+            st.divider()
+            st.markdown("**Zona de Perigo**")
+            if st.button("🗑️ Resetar Tudo (Apaga Todo o Histórico)"):
+                limpar_base_dados()
+                if os.path.exists('historico_consolidado.csv'): os.remove('historico_consolidado.csv')
+                st.cache_data.clear()
+                st.warning("Tudo limpo!")
+                time.sleep(2)
+                st.rerun()
 
 # --- COLABORADOR ---
 else:
