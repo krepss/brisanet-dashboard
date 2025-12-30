@@ -7,7 +7,7 @@ import json
 import time
 from datetime import datetime
 
-# --- CONFIGURAÇÃO DA LOGO (Apenas para Sidebar e Favicon) ---
+# --- CONFIGURAÇÃO DA LOGO ---
 LOGO_FILE = "logo.ico"
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
@@ -208,7 +208,6 @@ def normalizar_nome_indicador(nome_arquivo):
     if 'CSAT' in nome: return 'CSAT'
     if 'IR' in nome or 'RESOLU' in nome: return 'IR'
     if 'TPC' in nome: return 'TPC'
-    if 'TAM' in nome: return 'TAM'
     return nome.split('.')[0].upper()
 
 def tratar_arquivo_especial(df, nome_arquivo):
@@ -396,47 +395,53 @@ if perfil == 'admin':
     st.title(f"📊 Visão Gerencial")
     tabs = st.tabs(["🚦 Semáforo", "🏆 Ranking Geral", "⏳ Evolução", "🔍 Indicadores", "💰 Comissões", "📋 Tabela Geral", "⚙️ Admin"])
     
-    # Prepara dados (Verifica se existe TAM para usar como base)
-    tem_tam = False
-    if df_dados is not None:
-        tem_tam = 'TAM' in df_dados['Indicador'].unique()
-
     with tabs[0]: 
+        # SEMÁFORO: Lógica Clássica (Média dos indicadores)
         if df_dados is not None and not df_dados.empty:
             st.markdown(f"### Resumo de Saúde: **{periodo_label}**")
-            # Se tem TAM, usa ele para o farol geral. Se não, usa média.
-            if tem_tam:
-                df_resumo = df_dados[df_dados['Indicador'] == 'TAM'].copy()
-            else:
-                df_resumo = df_dados.groupby('Colaborador')['% Atingimento'].mean().reset_index()
+            df_media_pessoas = df_dados.groupby('Colaborador')['% Atingimento'].mean().reset_index()
             
-            qtd_verde = len(df_resumo[df_resumo['% Atingimento'] >= 0.90]) 
-            qtd_amarelo = len(df_resumo[(df_resumo['% Atingimento'] >= 0.80) & (df_resumo['% Atingimento'] < 0.90)]) 
-            qtd_vermelho = len(df_resumo[df_resumo['% Atingimento'] < 0.80]) 
+            qtd_verde = len(df_media_pessoas[df_media_pessoas['% Atingimento'] >= 0.90]) 
+            qtd_amarelo = len(df_media_pessoas[(df_media_pessoas['% Atingimento'] >= 0.80) & (df_media_pessoas['% Atingimento'] < 0.90)]) 
+            qtd_vermelho = len(df_media_pessoas[df_media_pessoas['% Atingimento'] < 0.80]) 
             c1, c2, c3 = st.columns(3)
             c1.metric("💎 Excelência", f"{qtd_verde}", delta=">=90%")
             c2.metric("🟢 Meta Batida", f"{qtd_amarelo}", delta="80-90%", delta_color="off")
             c3.metric("🔴 Crítico", f"{qtd_vermelho}", delta="<80%", delta_color="inverse")
             st.markdown("---")
             st.subheader("📋 Atenção Prioritária")
-            df_atencao = df_resumo[df_resumo['% Atingimento'] < 0.80].sort_values(by='% Atingimento')
+            df_atencao = df_media_pessoas[df_media_pessoas['% Atingimento'] < 0.80].sort_values(by='% Atingimento')
             if not df_atencao.empty:
-                st.dataframe(df_atencao[['Colaborador', '% Atingimento']].style.format({'% Atingimento': '{:.1%}'}), use_container_width=True)
+                lista_detalhada = []
+                for colab in df_atencao['Colaborador']:
+                    dados_pessoa = df_dados[df_dados['Colaborador'] == colab]
+                    media_pessoa = dados_pessoa['% Atingimento'].mean()
+                    pior_kpi_row = dados_pessoa.loc[dados_pessoa['% Atingimento'].idxmin()]
+                    nome_kpi_bonito = formatar_nome_visual(pior_kpi_row['Indicador'])
+                    lista_detalhada.append({
+                        'Colaborador': colab,
+                        'Média Geral': media_pessoa,
+                        'Pior KPI': f"{nome_kpi_bonito} ({pior_kpi_row['% Atingimento']:.1%})"
+                    })
+                df_final_atencao = pd.DataFrame(lista_detalhada)
+                st.dataframe(df_final_atencao.style.format({'Média Geral': '{:.2%}'}), use_container_width=True)
             else: st.success("🎉 Equipe performando bem! Ninguém abaixo de 80%.")
 
     with tabs[1]:
-        st.markdown(f"### 🏆 Ranking Geral")
+        # RANKING GERAL: Lógica Silenciosa (Soma tudo o que tem)
+        st.markdown(f"### 🏆 Ranking Geral (Consolidado)")
         if df_dados is not None and not df_dados.empty:
-            if tem_tam:
-                st.info("ℹ️ Usando indicador **TAM** (Total Agregado Mensal).")
-                df_rank = df_dados[df_dados['Indicador'] == 'TAM'].sort_values(by='% Atingimento', ascending=False)
-            else:
-                st.info("ℹ️ Calculando soma dos indicadores (TAM não encontrado).")
-                df_rank = df_dados.groupby('Colaborador').agg({'Diamantes': 'sum', 'Max. Diamantes': 'sum'}).reset_index()
-                df_rank['% Atingimento'] = df_rank['Diamantes'] / df_rank['Max. Diamantes']
-                df_rank = df_rank.sort_values(by='% Atingimento', ascending=False)
+            df_rank = df_dados.groupby('Colaborador').agg({'Diamantes': 'sum', 'Max. Diamantes': 'sum'}).reset_index()
+            # Evita divisão por zero
+            df_rank['% Atingimento'] = df_rank.apply(lambda row: (row['Diamantes'] / row['Max. Diamantes']) if row['Max. Diamantes'] > 0 else 0, axis=1)
+            df_rank = df_rank.sort_values(by='% Atingimento', ascending=False)
             
-            st.dataframe(df_rank.style.format({'% Atingimento': '{:.1%}'}).background_gradient(subset=['% Atingimento'], cmap='RdYlGn'), use_container_width=True, height=600)
+            # Formatação: 2 casas decimais
+            st.dataframe(
+                df_rank.style.format({'% Atingimento': '{:.2%}'}).background_gradient(subset=['% Atingimento'], cmap='RdYlGn'), 
+                use_container_width=True, 
+                height=600
+            )
 
     with tabs[2]:
         st.markdown("### ⏳ Evolução Temporal")
@@ -487,17 +492,7 @@ if perfil == 'admin':
             
             for colab in df_calc['Colaborador_Key'].unique():
                 df_user = df_calc[df_calc['Colaborador_Key'] == colab]
-                
-                # SE EXISTE TAM, USA ELE. SE NÃO, SOMA TUDO.
-                if tem_tam:
-                    row_tam = df_user[df_user['Indicador'] == 'TAM']
-                    if not row_tam.empty:
-                        total_diamantes = row_tam.iloc[0]['Diamantes']
-                    else:
-                        total_diamantes = df_user['Diamantes'].sum()
-                else:
-                    total_diamantes = df_user['Diamantes'].sum()
-
+                total_diamantes = df_user['Diamantes'].sum() # Soma tudo (silencioso)
                 row_conf = df_user[df_user['Indicador'] == 'CONFORMIDADE']
                 conf_val = row_conf.iloc[0]['% Atingimento'] if not row_conf.empty else 0.0
                 desconto = 0
@@ -524,7 +519,7 @@ if perfil == 'admin':
                 })
             
             df_comissao = pd.DataFrame(lista_comissoes)
-            st.dataframe(df_comissao.style.format({"Conformidade": "{:.1%}", "A Pagar (R$)": "R$ {:.2f}"}).background_gradient(subset=['A Pagar (R$)'], cmap='Greens'), use_container_width=True, height=600)
+            st.dataframe(df_comissao.style.format({"Conformidade": "{:.2%}", "A Pagar (R$)": "R$ {:.2f}"}).background_gradient(subset=['A Pagar (R$)'], cmap='Greens'), use_container_width=True, height=600)
             csv = df_comissao.to_csv(index=False).encode('utf-8')
             st.download_button("⬇️ Baixar CSV", csv, "comissoes.csv", "text/csv")
 
@@ -537,8 +532,8 @@ if perfil == 'admin':
             df_show_visual = df_show.copy()
             df_show_visual['Indicador'] = df_show_visual['Indicador'].apply(formatar_nome_visual)
             pivot = df_show_visual.pivot_table(index='Colaborador', columns='Indicador', values='% Atingimento')
-            try: st.dataframe(pivot.style.background_gradient(cmap='RdYlGn', vmin=0.7, vmax=1.0).format("{:.1%}"), use_container_width=True, height=600)
-            except: st.dataframe(pivot.style.format("{:.1%}"), use_container_width=True, height=600)
+            try: st.dataframe(pivot.style.background_gradient(cmap='RdYlGn', vmin=0.7, vmax=1.0).format("{:.2%}"), use_container_width=True, height=600)
+            except: st.dataframe(pivot.style.format("{:.2%}"), use_container_width=True, height=600)
 
     with tabs[6]:
         st.markdown("### 📂 Gestão de Arquivos")
@@ -558,7 +553,7 @@ if perfil == 'admin':
                         st.success("Usuarios OK!")
                     except Exception as e: st.error(f"Erro ao salvar usuarios.csv: {e}")
             with c2:
-                up_k = st.file_uploader("Indicadores (CSVs, incluindo TAM)", accept_multiple_files=True, key="k")
+                up_k = st.file_uploader("Indicadores (CSVs)", accept_multiple_files=True, key="k")
                 if up_k:
                     st.markdown("**🔎 Pré-visualização:**")
                     lista_diag = []
@@ -640,27 +635,13 @@ else:
     meus_dados = df_dados[df_dados['Colaborador'] == nome_logado].copy()
     
     if not meus_dados.empty:
-        # Verifica se TAM existe
-        tem_tam = 'TAM' in meus_dados['Indicador'].unique()
-        
         if 'Diamantes' in meus_dados.columns:
-            # Usa TAM como fonte de verdade se existir
-            if tem_tam:
-                row_tam = meus_dados[meus_dados['Indicador'] == 'TAM']
-                if not row_tam.empty:
-                    total_dia_bruto = row_tam.iloc[0]['Diamantes']
-                    total_max = row_tam.iloc[0]['Max. Diamantes']
-                    resultado_global = row_tam.iloc[0]['% Atingimento']
-                else:
-                    total_dia_bruto = meus_dados['Diamantes'].sum()
-                    total_max = meus_dados['Max. Diamantes'].sum()
-                    resultado_global = 0
-            else:
-                total_dia_bruto = meus_dados['Diamantes'].sum()
-                total_max = meus_dados['Max. Diamantes'].sum()
-                resultado_global = (total_dia_bruto / total_max) if total_max > 0 else 0
+            # Cálculo Global (Soma de tudo o que tem)
+            total_dia_bruto = meus_dados['Diamantes'].sum()
+            total_max = meus_dados['Max. Diamantes'].sum()
+            resultado_global = (total_dia_bruto / total_max) if total_max > 0 else 0
             
-            # --- VELOCÍMETRO GLOBAL ---
+            # --- VELOCÍMETRO GLOBAL (SEM META EXTERNA) ---
             fig_gauge = go.Figure(go.Indicator(
                 mode = "gauge+number",
                 value = resultado_global * 100,
@@ -712,11 +693,11 @@ else:
                 c3.metric("Valor a Receber", "Aguardando", "Conformidade Indisponível", delta_color="off")
             elif desconto_diamantes > 0:
                 c3.metric("Valor a Receber", f"R$ {valor_final:.2f}", f"Gatilho não atingido (<{GATILHO_FINANCEIRO:.0%})", delta_color="inverse")
-                st.error(f"⚠️ **Gatilho Financeiro não atingido**: Sua conformidade foi **{atingimento_conf:.1%}**. Para receber os diamantes de Pontualidade, é necessário ter >= 92% de Conformidade.")
+                st.error(f"⚠️ **Gatilho Financeiro não atingido**: Sua conformidade foi **{atingimento_conf:.2%}**. Para receber os diamantes de Pontualidade, é necessário ter >= 92% de Conformidade.")
             else:
                 c3.metric("Valor a Receber", f"R$ {valor_final:.2f}", "Gatilho Atingido! 🤑")
                 if atingimento_conf >= GATILHO_FINANCEIRO:
-                    st.success(f"✅ **Gatilho Financeiro Atingido**: Conformidade **{atingimento_conf:.1%}** (>= 92%). Todos os diamantes computados.")
+                    st.success(f"✅ **Gatilho Financeiro Atingido**: Conformidade **{atingimento_conf:.2%}** (>= 92%). Todos os diamantes computados.")
             st.divider()
 
         cols = st.columns(len(meus_dados))
@@ -731,7 +712,7 @@ else:
                 delta_msg = "🔻 Abaixo"
                 color = "inverse"
             with cols[i]:
-                st.metric(label, f"{val:.1%}", delta_msg, delta_color=color)
+                st.metric(label, f"{val:.2%}", delta_msg, delta_color=color)
         
         st.markdown("---")
         media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
