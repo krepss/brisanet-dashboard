@@ -391,11 +391,11 @@ if df_dados is None and perfil == 'user':
     st.info(f"👋 Olá, **{nome_logado}**! Dados de **{periodo_label}** indisponíveis.")
     st.stop()
 
-# --- GESTOR (VISUAL CLÁSSICO RESTAURADO) ---
+# --- GESTOR (VISUAL CLÁSSICO RESTAURADO + ABA COMISSÕES) ---
 if perfil == 'admin':
     st.title(f"📊 Visão Gerencial")
     
-    tabs = st.tabs(["🚦 Painel de Semáforo", "⏳ Evolução (Heatmap)", "🔍 Detalhe por Indicador", "📋 Tabela Geral", "⚙️ Admin / Upload"])
+    tabs = st.tabs(["🚦 Painel de Semáforo", "⏳ Evolução (Heatmap)", "🔍 Detalhe por Indicador", "💰 Comissões", "📋 Tabela Geral", "⚙️ Admin / Upload"])
     
     with tabs[0]: 
         if df_dados is not None and not df_dados.empty:
@@ -469,7 +469,48 @@ if perfil == 'admin':
                     fig_rank.add_vline(x=0.8, line_dash="dash", line_color="black", annotation_text="Meta 80%")
                     st.plotly_chart(fig_rank, use_container_width=True)
 
-    with tabs[3]: 
+    with tabs[3]:
+        st.markdown(f"### 💰 Relatório de Comissões")
+        if df_dados is not None and not df_dados.empty:
+            st.info("ℹ️ Regra: R$ 0,50 por Diamante. **Trava:** Conformidade >= 92%. Se não atingir, perde os diamantes de Pontualidade.")
+            lista_comissoes = []
+            df_calc = df_dados.copy()
+            df_calc['Colaborador_Key'] = df_calc['Colaborador'].str.upper()
+            
+            for colab in df_calc['Colaborador_Key'].unique():
+                df_user = df_calc[df_calc['Colaborador_Key'] == colab]
+                total_diamantes = df_user['Diamantes'].sum() if 'Diamantes' in df_user.columns else 0
+                row_conf = df_user[df_user['Indicador'] == 'CONFORMIDADE']
+                conf_val = row_conf.iloc[0]['% Atingimento'] if not row_conf.empty else 0.0
+                desconto = 0
+                obs = "✅ Elegível"
+                
+                if conf_val < 0.92:
+                    row_pont = df_user[df_user['Indicador'] == 'PONTUALIDADE']
+                    if not row_pont.empty:
+                        desconto = row_pont.iloc[0]['Diamantes'] if 'Diamantes' in row_pont.columns else 0
+                        obs = "⚠️ Penalidade (Pontualidade)"
+                    else: obs = "⚠️ Conformidade Baixa"
+                
+                diamantes_validos = total_diamantes - desconto
+                valor_final = diamantes_validos * 0.50
+                
+                lista_comissoes.append({
+                    "Colaborador": colab.title(),
+                    "Conformidade": conf_val,
+                    "Total Diamantes": int(total_diamantes),
+                    "Desconto": int(desconto),
+                    "Diamantes Líquidos": int(diamantes_validos),
+                    "A Pagar (R$)": valor_final,
+                    "Status": obs
+                })
+            
+            df_comissao = pd.DataFrame(lista_comissoes)
+            st.dataframe(df_comissao.style.format({"Conformidade": "{:.1%}", "A Pagar (R$)": "R$ {:.2f}"}).background_gradient(subset=['A Pagar (R$)'], cmap='Greens'), use_container_width=True, height=600)
+            csv = df_comissao.to_csv(index=False).encode('utf-8')
+            st.download_button("⬇️ Baixar CSV", csv, "comissoes.csv", "text/csv")
+
+    with tabs[4]: 
         if df_dados is not None and not df_dados.empty:
             c1, c2 = st.columns([3, 1])
             with c1: st.markdown(f"### Mapa de Resultados: {periodo_label}")
@@ -481,7 +522,7 @@ if perfil == 'admin':
             try: st.dataframe(pivot.style.background_gradient(cmap='RdYlGn', vmin=0.7, vmax=1.0).format("{:.1%}"), use_container_width=True, height=600)
             except: st.dataframe(pivot.style.format("{:.1%}"), use_container_width=True, height=600)
 
-    with tabs[4]:
+    with tabs[5]:
         st.markdown("### 📂 Gestão de Arquivos")
         subtabs = st.tabs(["📤 Upload & Atualização", "🗑️ Limpeza de Histórico", "💾 Backup"])
         
@@ -582,7 +623,6 @@ else:
     meus_dados = df_dados[df_dados['Colaborador'] == nome_logado].copy()
     
     if not meus_dados.empty:
-        # Gamificação
         if 'Diamantes' in meus_dados.columns:
             total_dia = meus_dados['Diamantes'].sum()
             total_max = meus_dados['Max. Diamantes'].sum()
@@ -611,7 +651,6 @@ else:
             c3.metric("A Receber", f"R$ {val:.2f}")
             st.divider()
 
-        # Cards KPIs
         cols = st.columns(len(meus_dados))
         for i, (_, row) in enumerate(meus_dados.iterrows()):
             val = row['% Atingimento']
@@ -623,18 +662,15 @@ else:
             else: 
                 delta_msg = "🔻 Abaixo"
                 color = "inverse"
-            
             with cols[i]:
                 st.metric(label, f"{val:.1%}", delta_msg, delta_color=color)
         
         st.markdown("---")
-        # Gráfico Comparativo
         media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
         media_equipe.rename(columns={'% Atingimento': 'Média Equipe'}, inplace=True)
         df_comp = pd.merge(meus_dados, media_equipe, on='Indicador')
         df_comp['Indicador'] = df_comp['Indicador'].apply(formatar_nome_visual)
         df_melt = df_comp.melt(id_vars=['Indicador'], value_vars=['% Atingimento', 'Média Equipe'], var_name='Tipo', value_name='Resultado')
-        
         fig = px.bar(df_melt, x='Indicador', y='Resultado', color='Tipo', barmode='group',
                      color_discrete_map={'% Atingimento': '#F37021', 'Média Equipe': '#003366'})
         fig.add_hline(y=0.8, line_dash="dash", line_color="green", annotation_text="Meta 80%")
