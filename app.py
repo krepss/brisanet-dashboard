@@ -399,6 +399,7 @@ if perfil == 'admin':
     with tabs[0]: 
         if df_dados is not None and not df_dados.empty:
             st.markdown(f"### Resumo de Saúde: **{periodo_label}**")
+            
             # Semáforo Clássico (Média dos Atingimentos)
             df_media_pessoas = df_dados.groupby('Colaborador')['% Atingimento'].mean().reset_index()
             
@@ -431,7 +432,8 @@ if perfil == 'admin':
                     lista_detalhada.append({
                         'Colaborador': colab,
                         'Média Geral': media_pessoa,
-                        'Pior KPI': f"{nome_kpi_bonito} ({pior_kpi_row['% Atingimento']:.2%})"
+                        'Status': '🔴 Crítico',
+                        'Pior KPI': f"{nome_kpi_bonito} ({pior_kpi_row['% Atingimento']:.1%})"
                     })
                 df_final_atencao = pd.DataFrame(lista_detalhada)
                 st.dataframe(df_final_atencao.style.format({'Média Geral': '{:.2%}'}), use_container_width=True)
@@ -556,7 +558,7 @@ if perfil == 'admin':
                         st.success("Usuarios OK!")
                     except Exception as e: st.error(f"Erro ao salvar usuarios.csv: {e}")
             with c2:
-                up_k = st.file_uploader("Indicadores (CSVs)", accept_multiple_files=True, key="k")
+                up_k = st.file_uploader("Indicadores (CSVs, incluindo TAM)", accept_multiple_files=True, key="k")
                 if up_k:
                     st.markdown("**🔎 Pré-visualização:**")
                     lista_diag = []
@@ -639,12 +641,12 @@ else:
     
     if not meus_dados.empty:
         if 'Diamantes' in meus_dados.columns:
-            # Cálculo Global (Soma tudo o que tiver)
+            # Cálculo Global (Soma de tudo o que tem)
             total_dia_bruto = meus_dados['Diamantes'].sum()
             total_max = meus_dados['Max. Diamantes'].sum()
             resultado_global = (total_dia_bruto / total_max) if total_max > 0 else 0
             
-            # --- VELOCÍMETRO GLOBAL ---
+            # --- VELOCÍMETRO GLOBAL (SEM META EXTERNA) ---
             fig_gauge = go.Figure(go.Indicator(
                 mode = "gauge+number",
                 value = resultado_global * 100,
