@@ -417,6 +417,20 @@ if perfil == 'admin':
             c3.metric("🔴 Crítico", f"{qtd_vermelho}", delta="<80%", delta_color="inverse")
             st.markdown("---")
             
+            # --- Farol de Performance (Restaurado para Aba Semáforo) ---
+            df_dados['Status_Farol'] = df_dados['% Atingimento'].apply(classificar_farol)
+            # Para o Farol, usa nomes formatados para ficar bonito
+            df_farol = df_dados.copy()
+            df_farol['Indicador'] = df_farol['Indicador'].apply(formatar_nome_visual)
+            
+            df_agrupado = df_farol.groupby(['Indicador', 'Status_Farol']).size().reset_index(name='Quantidade')
+            fig_farol = px.bar(df_agrupado, x='Indicador', y='Quantidade', color='Status_Farol', 
+                               text='Quantidade', title="Farol de Performance (Distribuição por Indicador)",
+                               color_discrete_map={'💎 Excelência': '#003366', '🟢 Meta Batida': '#2ecc71', '🔴 Crítico': '#e74c3c'})
+            st.plotly_chart(fig_farol, use_container_width=True)
+            
+            st.markdown("---")
+
             # --- Velocímetro da Equipe (TAM) com Checkbox ---
             st.markdown("### 🦁 Performance Global da Equipe")
             
@@ -529,25 +543,27 @@ if perfil == 'admin':
     with tabs[3]:
         if df_dados is not None and not df_dados.empty:
             st.markdown("### 🔬 Detalhe por Indicador")
-            # Farol movido para cá
-            df_visual = df_dados.copy()
-            df_visual['Indicador'] = df_visual['Indicador'].apply(formatar_nome_visual)
-            df_visual['Status'] = df_visual['% Atingimento'].apply(classificar_farol)
-            df_agrupado = df_visual.groupby(['Indicador', 'Status']).size().reset_index(name='Quantidade')
-            fig_farol = px.bar(df_agrupado, x='Indicador', y='Quantidade', color='Status', 
-                               text='Quantidade', title="Farol de Performance (Distribuição)",
-                               color_discrete_map={'💎 Excelência': '#003366', '🟢 Meta Batida': '#2ecc71', '🔴 Crítico': '#e74c3c'})
-            st.plotly_chart(fig_farol, use_container_width=True)
             
-            lista_kpis = sorted(df_visual['Indicador'].unique())
-            for kpi in lista_kpis:
-                with st.expander(f"📊 Ranking: {formatar_nome_visual(kpi)}", expanded=False):
-                    df_kpi = df_dados[df_dados['Indicador'] == kpi].sort_values(by='% Atingimento', ascending=True)
-                    fig_rank = px.bar(df_kpi, x='% Atingimento', y='Colaborador', orientation='h',
-                                      text_auto='.1%', title=f"Ranking - {kpi}",
-                                      color='% Atingimento', color_continuous_scale=['#e74c3c', '#f1c40f', '#2ecc71'])
-                    fig_rank.add_vline(x=0.8, line_dash="dash", line_color="black", annotation_text="Meta 80%")
-                    st.plotly_chart(fig_rank, use_container_width=True)
+            # Cria DataFrame para visualização com nomes bonitos
+            df_visual_rank = df_dados.copy()
+            df_visual_rank['Indicador_Fmt'] = df_visual_rank['Indicador'].apply(formatar_nome_visual)
+            
+            # Itera sobre os indicadores UNICOS do dataframe
+            lista_kpis = sorted(df_visual_rank['Indicador_Fmt'].unique())
+            
+            for kpi_fmt in lista_kpis:
+                with st.expander(f"📊 Ranking: {kpi_fmt}", expanded=False):
+                    # Filtra usando a coluna formatada para garantir que pegamos os dados certos
+                    df_kpi = df_visual_rank[df_visual_rank['Indicador_Fmt'] == kpi_fmt].sort_values(by='% Atingimento', ascending=True)
+                    
+                    if not df_kpi.empty:
+                        fig_rank = px.bar(df_kpi, x='% Atingimento', y='Colaborador', orientation='h',
+                                          text_auto='.1%', title=f"Ranking - {kpi_fmt}",
+                                          color='% Atingimento', color_continuous_scale=['#e74c3c', '#f1c40f', '#2ecc71'])
+                        fig_rank.add_vline(x=0.8, line_dash="dash", line_color="black", annotation_text="Meta 80%")
+                        st.plotly_chart(fig_rank, use_container_width=True)
+                    else:
+                        st.warning("Sem dados para este indicador.")
 
     with tabs[4]:
         st.markdown(f"### 💰 Relatório de Comissões")
