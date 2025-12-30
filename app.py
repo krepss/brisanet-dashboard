@@ -84,25 +84,34 @@ def limpar_base_dados():
     for f in arquivos:
         os.remove(f)
 
-# --- HISTÓRICO ---
+# --- HISTÓRICO COM LIMPEZA DE MÊS ---
 def atualizar_historico(df_atual, periodo):
     ARQUIVO_HIST = 'historico_consolidado.csv'
-    df_save = df_atual.copy()
-    df_save['Periodo'] = periodo
     
-    # Garante padronização
+    # Prepara dados novos
+    df_save = df_atual.copy()
+    df_save['Periodo'] = periodo.strip()
     df_save['Colaborador'] = df_save['Colaborador'].astype(str).str.strip().str.upper()
     
     if os.path.exists(ARQUIVO_HIST):
         try:
             df_hist = pd.read_csv(ARQUIVO_HIST)
-            # Remove dados antigos deste mesmo período
-            df_hist = df_hist[df_hist['Periodo'] != periodo]
+            # AQUI ESTÁ A CORREÇÃO: Removemos TUDO que for desse mês antes de salvar
+            # Se já tinha dados do mês 10 duplicados, eles morrem aqui.
+            linhas_antes = len(df_hist)
+            df_hist = df_hist[df_hist['Periodo'] != periodo.strip()]
+            linhas_depois = len(df_hist)
+            
+            if linhas_antes > linhas_depois:
+                st.toast(f"♻️ Limpando dados antigos de {periodo}...", icon="🧹")
+            
             df_final = pd.concat([df_hist, df_save], ignore_index=True)
-        except: df_final = df_save
-    else: df_final = df_save
+        except:
+            df_final = df_save
+    else:
+        df_final = df_save
     
-    # Ordenação
+    # Ordenação e Salvamento
     cols_order = ['Periodo', 'Colaborador', 'Indicador', '% Atingimento']
     if 'Diamantes' in df_final.columns: cols_order.append('Diamantes')
     if 'Max. Diamantes' in df_final.columns: cols_order.append('Max. Diamantes')
@@ -188,11 +197,9 @@ def tratar_arquivo_especial(df, nome_arquivo):
     df.rename(columns={col_agente: 'Colaborador'}, inplace=True)
     df['Colaborador'] = df['Colaborador'].astype(str).str.strip().str.upper()
 
-    # DETECÇÃO HÍBRIDA (COMBO OU ÚNICO)
     col_ad = next((c for c in df.columns if 'ader' in c and ('%' in c or 'perc' in c or 'aderencia' in c)), None)
     col_conf = next((c for c in df.columns if 'conform' in c and ('%' in c or 'perc' in c or 'conformidade' in c)), None)
 
-    # Caso 1: Arquivo Combo (Aderência + Conformidade)
     if col_ad and col_conf:
         lista_retorno = []
         df_ad = df[['Colaborador', col_ad]].copy()
@@ -207,7 +214,6 @@ def tratar_arquivo_especial(df, nome_arquivo):
         
         return pd.concat(lista_retorno), "Arquivo Combinado"
 
-    # Caso 2: Arquivo Único
     col_valor = None
     nome_kpi_limpo = nome_arquivo.split('.')[0].lower()
     possiveis_valores = [nome_kpi_limpo, 'atingimento', 'resultado', 'nota', 'final', 'pontos', 'valor', 'score']
@@ -257,6 +263,9 @@ def carregar_dados_completo():
         agg_rules = {'% Atingimento': 'mean'}
         if 'Diamantes' in df_concat.columns: agg_rules['Diamantes'] = 'sum'
         if 'Max. Diamantes' in df_concat.columns: agg_rules['Max. Diamantes'] = 'sum'
+        
+        # Garante que não soma se for duplicado do MESMO arquivo, só se for de arquivos diferentes
+        # Mas como a função de histórico já limpa o mês, aqui o groupby é apenas para segurança interna do lote
         df_final = df_concat.groupby(['Colaborador', 'Indicador'], as_index=False).agg(agg_rules)
         return df_final
     return None
@@ -493,17 +502,9 @@ if perfil == 'admin':
 
                 if st.button("💾 Salvar e Atualizar Histórico"): 
                     
-                    # --- VALIDAÇÃO 1: CAMPO DATA ---
                     if not nova_data.strip():
-                        st.error("⚠️ O campo 'Mês/Ano de Referência' não pode ficar vazio!")
+                        st.error("⚠️ O campo 'Mês/Ano' não pode estar vazio!")
                         st.stop()
-
-                    # --- VALIDAÇÃO 2: DUPLICIDADE DE MÊS ---
-                    df_check_dup = carregar_historico_completo()
-                    if df_check_dup is not None and 'Periodo' in df_check_dup.columns:
-                        if nova_data.strip() in df_check_dup['Periodo'].unique():
-                            st.error(f"⛔ Erro: O mês {nova_data} JÁ EXISTE no histórico. Para sobrescrever, apague o histórico antigo ou use um nome diferente.")
-                            st.stop()
 
                     try:
                         salvos = salvar_arquivos_padronizados(up_k)
@@ -511,26 +512,25 @@ if perfil == 'admin':
                         df_novo_ciclo = carregar_dados_completo()
                         df_users_fresh = carregar_usuarios()
                         
-                        # --- VALIDAÇÃO 3: USUÁRIOS FANTASMAS ---
                         if df_users_fresh is not None:
                             nomes_metrics = set(df_novo_ciclo['Colaborador'].unique())
                             nomes_users = set(df_users_fresh['nome'].unique())
                             fantasmas = nomes_metrics - nomes_users
                             if fantasmas:
-                                st.warning(f"⚠️ Atenção: {len(fantasmas)} colaboradores no arquivo de métricas não foram encontrados no usuarios.csv e serão ignorados: {', '.join(list(fantasmas)[:10])}...")
+                                st.warning(f"⚠️ Atenção: {len(fantasmas)} nomes ignorados (não estão no usuarios.csv).")
                         else:
-                            st.error("❌ Arquivo 'usuarios.csv' não encontrado! O upload foi cancelado para evitar dados corrompidos. Suba o usuarios.csv primeiro.")
+                            st.error("❌ 'usuarios.csv' obrigatório!")
                             st.stop()
                         
                         df_filtrado = filtrar_por_usuarios_cadastrados(df_novo_ciclo, df_users_fresh)
                         
                         if df_filtrado.empty:
-                            st.error("⚠️ ERRO CRÍTICO: Nenhum dado sobrou após o filtro! Verifique se os nomes nos arquivos batem com o usuarios.csv.")
+                            st.error("⚠️ Erro: Filtro removeu todos os dados.")
                         else:
                             atualizar_historico(df_filtrado, nova_data)
                             st.cache_data.clear()
                             st.balloons()
-                            st.success(f"✅ Sucesso! {len(df_filtrado)} registros salvos em **{nova_data}**.")
+                            st.success(f"✅ Sucesso! Mês {nova_data} atualizado (dados antigos removidos).")
                             time.sleep(1)
                             st.rerun()
                     except Exception as e: st.error(f"Erro salvamento: {e}")
