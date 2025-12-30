@@ -396,11 +396,16 @@ if perfil == 'admin':
     st.title(f"📊 Visão Gerencial")
     tabs = st.tabs(["🚦 Semáforo", "🏆 Ranking Geral", "⏳ Evolução", "🔍 Indicadores", "💰 Comissões", "📋 Tabela Geral", "⚙️ Admin"])
     
+    # Prepara dados (Verifica se existe TAM para usar como base)
+    tem_tam = False
+    if df_dados is not None:
+        tem_tam = 'TAM' in df_dados['Indicador'].unique()
+
     with tabs[0]: 
         if df_dados is not None and not df_dados.empty:
             st.markdown(f"### Resumo de Saúde: **{periodo_label}**")
             
-            # Semáforo Clássico
+            # Semáforo Clássico (Média dos Atingimentos)
             df_media_pessoas = df_dados.groupby('Colaborador')['% Atingimento'].mean().reset_index()
             
             qtd_verde = len(df_media_pessoas[df_media_pessoas['% Atingimento'] >= 0.90]) 
@@ -412,13 +417,40 @@ if perfil == 'admin':
             c3.metric("🔴 Crítico", f"{qtd_vermelho}", delta="<80%", delta_color="inverse")
             st.markdown("---")
             
-            # --- NOVO: Velocímetro da Equipe ---
-            # Soma total da equipe para ver a saúde global (ponderada)
-            total_dia_team = df_dados['Diamantes'].sum()
-            total_max_team = df_dados['Max. Diamantes'].sum()
+            # --- Velocímetro da Equipe (TAM) com Checkbox ---
+            st.markdown("### 🦁 Performance Global da Equipe")
+            
+            # Checkbox para remover pontualidade do cálculo do velocímetro
+            remove_pont = st.checkbox("Remover Pontualidade do Cálculo Global", value=False)
+            
+            total_dia_team = 0
+            total_max_team = 0
+            
+            # Lógica de cálculo do velocímetro
+            if tem_tam:
+                # Usa TAM como base
+                df_tam_team = df_dados[df_dados['Indicador'] == 'TAM']
+                total_dia_team = df_tam_team['Diamantes'].sum()
+                total_max_team = df_tam_team['Max. Diamantes'].sum()
+                
+                if remove_pont:
+                    df_pont_team = df_dados[df_dados['Indicador'] == 'PONTUALIDADE']
+                    if not df_pont_team.empty:
+                        total_dia_team -= df_pont_team['Diamantes'].sum()
+                        # Nota: Em alguns modelos, max diamantes de pontualidade também deve ser subtraído se fizer parte do max do TAM
+                        total_max_team -= df_pont_team['Max. Diamantes'].sum()
+            else:
+                # Soma tudo o que tem
+                if remove_pont:
+                    df_calc_team = df_dados[df_dados['Indicador'] != 'PONTUALIDADE']
+                else:
+                    df_calc_team = df_dados
+                
+                total_dia_team = df_calc_team['Diamantes'].sum()
+                total_max_team = df_calc_team['Max. Diamantes'].sum()
+
             perc_team = (total_dia_team / total_max_team) if total_max_team > 0 else 0
             
-            st.markdown("### 🦁 Performance Global da Equipe (TAM)")
             fig_team = go.Figure(go.Indicator(
                 mode = "gauge+number",
                 value = perc_team * 100,
@@ -461,11 +493,13 @@ if perfil == 'admin':
     with tabs[1]:
         st.markdown(f"### 🏆 Ranking Geral (Consolidado)")
         if df_dados is not None and not df_dados.empty:
-            # Ranking Geral calculado apenas com os dados disponíveis (Soma Simples)
-            df_rank = df_dados.groupby('Colaborador').agg({'Diamantes': 'sum', 'Max. Diamantes': 'sum'}).reset_index()
+            # Ranking Geral calculado apenas com os dados disponíveis (Soma Simples ou TAM)
+            if tem_tam:
+                 df_rank = df_dados[df_dados['Indicador'] == 'TAM'].copy()
+            else:
+                 df_rank = df_dados.groupby('Colaborador').agg({'Diamantes': 'sum', 'Max. Diamantes': 'sum'}).reset_index()
+                 df_rank['% Atingimento'] = df_rank.apply(lambda row: (row['Diamantes'] / row['Max. Diamantes']) if row['Max. Diamantes'] > 0 else 0, axis=1)
             
-            # Evita divisão por zero
-            df_rank['% Atingimento'] = df_rank.apply(lambda row: (row['Diamantes'] / row['Max. Diamantes']) if row['Max. Diamantes'] > 0 else 0, axis=1)
             df_rank = df_rank.sort_values(by='% Atingimento', ascending=False)
             
             cols_show = ['Colaborador', 'Diamantes', 'Max. Diamantes', '% Atingimento']
@@ -528,7 +562,6 @@ if perfil == 'admin':
                 df_user = df_calc[df_calc['Colaborador_Key'] == colab]
                 
                 # Se tem TAM, usa ele. Se não, soma tudo.
-                tem_tam = 'TAM' in df_user['Indicador'].unique()
                 if tem_tam:
                     row_tam = df_user[df_user['Indicador'] == 'TAM']
                     total_diamantes = row_tam.iloc[0]['Diamantes'] if not row_tam.empty else 0
