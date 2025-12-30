@@ -7,8 +7,16 @@ import json
 import time
 from datetime import datetime
 
-# --- 1. CONFIGURAÇÃO ---
-st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
+# --- CONFIGURAÇÃO DA LOGO ---
+# O arquivo deve estar na mesma pasta com este nome exato:
+LOGO_FILE = "logo.ico"
+
+# --- 1. CONFIGURAÇÃO DA PÁGINA ---
+# Tenta usar o logo como ícone da aba. Se der erro (arquivo não existe), usa o Leão como fallback.
+try:
+    st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon=LOGO_FILE)
+except:
+    st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
 # --- 2. CSS PREMIUM (LOGIN) + AJUSTES GERAIS ---
 st.markdown("""
@@ -25,7 +33,7 @@ st.markdown("""
     /* Formulário de Login */
     [data-testid="stForm"] {
         background-color: rgba(255, 255, 255, 0.95);
-        padding: 50px;
+        padding: 40px;
         border-radius: 20px;
         box-shadow: 0 15px 35px rgba(0,0,0,0.3);
         border-top: 5px solid #F37021;
@@ -33,19 +41,19 @@ st.markdown("""
         margin: 0 auto;
     }
     .login-title {
-        font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 2.5em;
+        font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 2.2em;
         color: #003366; text-align: center; margin-bottom: 0; letter-spacing: -1px;
     }
     .login-subtitle {
-        font-family: 'Montserrat', sans-serif; font-size: 1.1em; color: #F37021;
-        text-align: center; margin-bottom: 30px; font-weight: 600; letter-spacing: 2px;
+        font-family: 'Montserrat', sans-serif; font-size: 1.0em; color: #F37021;
+        text-align: center; margin-bottom: 20px; font-weight: 600; letter-spacing: 2px;
     }
     .dev-footer {
         text-align: center; margin-top: 20px; font-size: 0.8em; color: rgba(255,255,255,0.8);
         font-family: 'Roboto', sans-serif; font-style: italic;
     }
     
-    /* Métricas e Botões Gerais */
+    /* Métricas e Botões */
     div.stMetric {
         background-color: white; border: 1px solid #e0e0e0; padding: 15px 20px;
         border-radius: 12px; border-left: 5px solid #F37021;
@@ -59,20 +67,31 @@ st.markdown("""
     }
     div.stButton > button:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(243, 112, 33, 0.4); }
     
-    /* --- CORREÇÃO: CENTRALIZAR BOTÃO DE LOGIN --- */
-    /* Isso força o botão dentro do formulário a ocupar 100% da largura */
+    /* CENTRALIZAR BOTÃO DE LOGIN */
     [data-testid="stForm"] .stButton {
         display: flex;
         justify-content: center;
     }
     [data-testid="stForm"] div.stButton > button {
         width: 100%;
-        background: linear-gradient(90deg, #003366 0%, #00528b 100%); /* Azul Brisanet */
+        background: linear-gradient(90deg, #003366 0%, #00528b 100%);
     }
     [data-testid="stForm"] div.stButton > button:hover {
-        background: linear-gradient(90deg, #F37021 0%, #d35400 100%); /* Laranja no Hover */
+        background: linear-gradient(90deg, #F37021 0%, #d35400 100%);
     }
     
+    /* Centralizar imagem no formulário */
+    [data-testid="stForm"] > div:first-child {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 10px;
+    }
+    /* Ajuste para imagem não ficar gigante */
+    [data-testid="stForm"] img {
+        max-width: 120px; 
+        height: auto;
+    }
+
     h1, h2, h3 { color: #003366 !important; }
     .date-box {
         background-color: #e3f2fd; color: #003366; padding: 10px; 
@@ -293,7 +312,7 @@ def tratar_arquivo_especial(df, nome_arquivo):
 
 def carregar_dados_completo():
     lista_final = []
-    arquivos_ignorar = ['usuarios.csv', 'historico_consolidado.csv', 'config.json']
+    arquivos_ignorar = ['usuarios.csv', 'historico_consolidado.csv', 'config.json', LOGO_FILE]
     arquivos = [f for f in os.listdir('.') if f.endswith('.csv') and f.lower() not in arquivos_ignorar]
     for arquivo in arquivos:
         try:
@@ -347,10 +366,16 @@ if not st.session_state['logado']:
     with c2:
         st.markdown("<br><br>", unsafe_allow_html=True)
         with st.form("form_login"):
+            # Exibe logo se existir
+            if os.path.exists(LOGO_FILE):
+                st.image(LOGO_FILE, width=120)
+            
             st.markdown('<p class="login-title">Team Sofistas</p>', unsafe_allow_html=True)
             st.markdown('<p class="login-subtitle">Analytics & Performance</p>', unsafe_allow_html=True)
+            
             email = st.text_input("E-mail Corporativo", placeholder="seu.email@brisanet.com.br").strip().lower()
             senha = st.text_input("Senha", type="password", placeholder="Apenas para Gestores")
+            
             st.markdown("<br>", unsafe_allow_html=True)
             if st.form_submit_button("ACESSAR SISTEMA"):
                 if email in ['gestor', 'admin'] and senha == 'admin':
@@ -367,7 +392,6 @@ if not st.session_state['logado']:
                         else: st.error("Acesso negado.")
                     else: st.error("Erro: Base de usuários não carregada.")
     
-    # CRÉDITOS NO LOGIN (Centralizados)
     st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
     st.stop()
 
@@ -379,7 +403,11 @@ lista_periodos = listar_periodos_disponiveis()
 opcoes_periodo = lista_periodos if lista_periodos else ["Nenhum histórico disponível"]
 
 with st.sidebar:
-    st.title("🦁 Team Sofistas")
+    if os.path.exists(LOGO_FILE):
+        st.image(LOGO_FILE, use_column_width=True)
+    else:
+        st.title("🦁 Team Sofistas")
+        
     st.caption("Performance Analytics")
     st.markdown("---")
     periodo_selecionado = st.selectbox("📅 Mês de Referência:", opcoes_periodo)
