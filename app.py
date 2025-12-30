@@ -79,10 +79,25 @@ def ler_config():
             return json.load(f).get('periodo', 'Não informado')
     return "Aguardando atualização"
 
-def limpar_base_dados():
+def limpar_base_dados_completa():
+    # Apaga TUDO (Reset Geral)
     arquivos = [f for f in os.listdir('.') if f.endswith('.csv')]
     for f in arquivos:
         os.remove(f)
+
+def faxina_arquivos_temporarios():
+    # Apaga apenas os CSVs de métricas antigos, mantendo o histórico e usuários
+    arquivos = [f for f in os.listdir('.') if f.endswith('.csv')]
+    protegidos = ['historico_consolidado.csv', 'usuarios.csv']
+    
+    removidos = 0
+    for f in arquivos:
+        if f not in protegidos:
+            try:
+                os.remove(f)
+                removidos += 1
+            except: pass
+    return removidos
 
 # --- HISTÓRICO ---
 def atualizar_historico(df_atual, periodo):
@@ -96,7 +111,6 @@ def atualizar_historico(df_atual, periodo):
     if os.path.exists(ARQUIVO_HIST):
         try:
             df_hist = pd.read_csv(ARQUIVO_HIST)
-            # Garante que a coluna Periodo é string para comparação
             df_hist['Periodo'] = df_hist['Periodo'].astype(str).str.strip()
             
             # REMOVE O MÊS ANTES DE SALVAR (Substituição)
@@ -157,6 +171,7 @@ def salvar_arquivos_padronizados(files):
     arquivos_salvos = []
     for f in files:
         try:
+            # Salva o arquivo novo
             with open(f.name, "wb") as w: w.write(f.getbuffer())
             arquivos_salvos.append(f.name)
         except Exception as e: st.error(f"Erro salvar {f.name}: {e}")
@@ -273,7 +288,6 @@ def carregar_dados_completo():
         except: pass
     if lista_final: 
         df_concat = pd.concat(lista_final, ignore_index=True)
-        # Agregação segura
         agg_rules = {'% Atingimento': 'mean'}
         if 'Diamantes' in df_concat.columns: agg_rules['Diamantes'] = 'sum'
         if 'Max. Diamantes' in df_concat.columns: agg_rules['Max. Diamantes'] = 'sum'
@@ -481,10 +495,8 @@ if perfil == 'admin':
     with tabs[4]:
         st.markdown("### 📂 Gestão de Arquivos")
         
-        # --- SUB-ABAS PARA ORGANIZAR ---
         subtabs = st.tabs(["📤 Upload & Atualização", "🗑️ Limpeza de Histórico", "💾 Backup"])
         
-        # --- ABA DE UPLOAD ---
         with subtabs[0]:
             data_sugestao = obter_data_hoje()
             st.markdown("#### 1. Configurar Período")
@@ -524,6 +536,9 @@ if perfil == 'admin':
                             st.stop()
 
                         try:
+                            # AQUI ESTÁ A MÁGICA: FAXINA ANTES DE COMEÇAR
+                            faxina_arquivos_temporarios()
+                            
                             salvos = salvar_arquivos_padronizados(up_k)
                             salvar_config(nova_data)
                             df_novo_ciclo = carregar_dados_completo()
@@ -547,19 +562,16 @@ if perfil == 'admin':
                                 atualizar_historico(df_filtrado, nova_data)
                                 st.cache_data.clear()
                                 st.balloons()
-                                st.success(f"✅ Sucesso! Mês {nova_data} atualizado.")
+                                st.success(f"✅ Sucesso! Mês {nova_data} atualizado (arquivos temporários limpos).")
                                 time.sleep(1)
                                 st.rerun()
                         except Exception as e: st.error(f"Erro salvamento: {e}")
 
-        # --- ABA DE LIMPEZA ---
         with subtabs[1]:
             st.markdown("#### 🗑️ Gerenciar Meses no Sistema")
             df_atual_hist = carregar_historico_completo()
             if df_atual_hist is not None and not df_atual_hist.empty:
-                st.write("Abaixo estão os meses gravados no histórico. Se houver duplicidade ou erro, exclua o mês e faça o upload novamente.")
-                
-                # Agrupa para mostrar resumo
+                st.write("Se houver duplicidade ou erro, exclua o mês e faça o upload novamente.")
                 resumo = df_atual_hist.groupby('Periodo').size().reset_index(name='Registros')
                 
                 for i, row in resumo.iterrows():
@@ -574,18 +586,15 @@ if perfil == 'admin':
             else:
                 st.info("Histórico vazio.")
 
-        # --- ABA DE BACKUP ---
         with subtabs[2]:
             st.markdown("#### 💾 Backup e Reset")
-            st.markdown("Baixe o histórico atual para segurança.")
             if os.path.exists('historico_consolidado.csv'):
                 with open('historico_consolidado.csv', 'rb') as f:
                     st.download_button("⬇️ Baixar Histórico Consolidado", f, "historico_consolidado.csv", "text/csv")
             
             st.divider()
-            st.markdown("**Zona de Perigo**")
             if st.button("🗑️ Resetar Tudo (Apaga Todo o Histórico)"):
-                limpar_base_dados()
+                limpar_base_dados_completa()
                 if os.path.exists('historico_consolidado.csv'): os.remove('historico_consolidado.csv')
                 st.cache_data.clear()
                 st.warning("Tudo limpo!")
