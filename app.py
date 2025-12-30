@@ -40,6 +40,10 @@ st.markdown("""
         font-family: 'Montserrat', sans-serif; font-size: 1.1em; color: #F37021;
         text-align: center; margin-bottom: 30px; font-weight: 600; letter-spacing: 2px;
     }
+    .dev-footer {
+        text-align: center; margin-top: 20px; font-size: 0.8em; color: rgba(255,255,255,0.8);
+        font-family: 'Roboto', sans-serif; font-style: italic;
+    }
     
     /* Métricas e Botões */
     div.stMetric {
@@ -348,6 +352,9 @@ if not st.session_state['logado']:
                             st.rerun()
                         else: st.error("Acesso negado.")
                     else: st.error("Erro: Base de usuários não carregada.")
+    
+    # CRÉDITOS NO LOGIN
+    st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
     st.stop()
 
 # --- 5. SISTEMA LOGADO (BACKGROUND LIMPO) ---
@@ -384,6 +391,10 @@ with st.sidebar:
     if st.button("Sair"):
         st.session_state.update({'logado': False})
         st.rerun()
+        
+    st.markdown("---")
+    # CRÉDITOS NA SIDEBAR
+    st.caption("Desenvolvido por:\n**Klebson Davi**\nSupervisor de Suporte Técnico")
 
 perfil = st.session_state['perfil']
 
@@ -623,6 +634,7 @@ else:
     meus_dados = df_dados[df_dados['Colaborador'] == nome_logado].copy()
     
     if not meus_dados.empty:
+        # Gamificação
         if 'Diamantes' in meus_dados.columns:
             total_dia = meus_dados['Diamantes'].sum()
             total_max = meus_dados['Max. Diamantes'].sum()
