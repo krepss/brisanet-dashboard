@@ -7,7 +7,7 @@ import json
 import time
 from datetime import datetime
 
-# --- CONFIGURAÇÃO DA LOGO ---
+# --- CONFIGURAÇÃO DA LOGO (Apenas para Sidebar e Favicon) ---
 LOGO_FILE = "logo.ico"
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
@@ -208,6 +208,7 @@ def normalizar_nome_indicador(nome_arquivo):
     if 'CSAT' in nome: return 'CSAT'
     if 'IR' in nome or 'RESOLU' in nome: return 'IR'
     if 'TPC' in nome: return 'TPC'
+    if 'TAM' in nome: return 'TAM'
     return nome.split('.')[0].upper()
 
 def tratar_arquivo_especial(df, nome_arquivo):
@@ -396,9 +397,9 @@ if perfil == 'admin':
     tabs = st.tabs(["🚦 Semáforo", "🏆 Ranking Geral", "⏳ Evolução", "🔍 Indicadores", "💰 Comissões", "📋 Tabela Geral", "⚙️ Admin"])
     
     with tabs[0]: 
-        # SEMÁFORO: Lógica Clássica (Média dos indicadores)
         if df_dados is not None and not df_dados.empty:
             st.markdown(f"### Resumo de Saúde: **{periodo_label}**")
+            # Semáforo Clássico (Média dos Atingimentos)
             df_media_pessoas = df_dados.groupby('Colaborador')['% Atingimento'].mean().reset_index()
             
             qtd_verde = len(df_media_pessoas[df_media_pessoas['% Atingimento'] >= 0.90]) 
@@ -409,6 +410,15 @@ if perfil == 'admin':
             c2.metric("🟢 Meta Batida", f"{qtd_amarelo}", delta="80-90%", delta_color="off")
             c3.metric("🔴 Crítico", f"{qtd_vermelho}", delta="<80%", delta_color="inverse")
             st.markdown("---")
+            
+            # Adicionado Indicador Visual (Farol de Barras)
+            df_dados['Status'] = df_dados['% Atingimento'].apply(classificar_farol)
+            df_agrupado = df_dados.groupby(['Indicador', 'Status']).size().reset_index(name='Quantidade')
+            fig_farol = px.bar(df_agrupado, x='Indicador', y='Quantidade', color='Status', 
+                               text='Quantidade', title="Farol de Performance (Distribuição)",
+                               color_discrete_map={'💎 Excelência': '#003366', '🟢 Meta Batida': '#2ecc71', '🔴 Crítico': '#e74c3c'})
+            st.plotly_chart(fig_farol, use_container_width=True)
+            
             st.subheader("📋 Atenção Prioritária")
             df_atencao = df_media_pessoas[df_media_pessoas['% Atingimento'] < 0.80].sort_values(by='% Atingimento')
             if not df_atencao.empty:
@@ -421,26 +431,27 @@ if perfil == 'admin':
                     lista_detalhada.append({
                         'Colaborador': colab,
                         'Média Geral': media_pessoa,
-                        'Pior KPI': f"{nome_kpi_bonito} ({pior_kpi_row['% Atingimento']:.1%})"
+                        'Pior KPI': f"{nome_kpi_bonito} ({pior_kpi_row['% Atingimento']:.2%})"
                     })
                 df_final_atencao = pd.DataFrame(lista_detalhada)
                 st.dataframe(df_final_atencao.style.format({'Média Geral': '{:.2%}'}), use_container_width=True)
             else: st.success("🎉 Equipe performando bem! Ninguém abaixo de 80%.")
 
     with tabs[1]:
-        # RANKING GERAL: Lógica Silenciosa (Soma tudo o que tem)
         st.markdown(f"### 🏆 Ranking Geral (Consolidado)")
         if df_dados is not None and not df_dados.empty:
+            # Ranking Geral calculado apenas com os dados disponíveis (Soma Simples)
             df_rank = df_dados.groupby('Colaborador').agg({'Diamantes': 'sum', 'Max. Diamantes': 'sum'}).reset_index()
+            
             # Evita divisão por zero
             df_rank['% Atingimento'] = df_rank.apply(lambda row: (row['Diamantes'] / row['Max. Diamantes']) if row['Max. Diamantes'] > 0 else 0, axis=1)
             df_rank = df_rank.sort_values(by='% Atingimento', ascending=False)
             
-            # Formatação: 2 casas decimais
+            cols_show = ['Colaborador', 'Diamantes', 'Max. Diamantes', '% Atingimento']
+            
             st.dataframe(
-                df_rank.style.format({'% Atingimento': '{:.2%}'}).background_gradient(subset=['% Atingimento'], cmap='RdYlGn'), 
-                use_container_width=True, 
-                height=600
+                df_rank[cols_show].style.format({'% Atingimento': '{:.2%}'}).background_gradient(subset=['% Atingimento'], cmap='RdYlGn'),
+                use_container_width=True, height=600
             )
 
     with tabs[2]:
@@ -464,18 +475,10 @@ if perfil == 'admin':
     with tabs[3]:
         if df_dados is not None and not df_dados.empty:
             st.markdown("### 🔬 Detalhe por Indicador")
-            df_visual = df_dados.copy()
-            df_visual['Indicador'] = df_visual['Indicador'].apply(formatar_nome_visual)
-            df_visual['Status'] = df_visual['% Atingimento'].apply(classificar_farol)
-            df_agrupado = df_visual.groupby(['Indicador', 'Status']).size().reset_index(name='Quantidade')
-            fig_farol = px.bar(df_agrupado, x='Indicador', y='Quantidade', color='Status', 
-                               text='Quantidade', title="Farol de Performance",
-                               color_discrete_map={'💎 Excelência': '#003366', '🟢 Meta Batida': '#2ecc71', '🔴 Crítico': '#e74c3c'})
-            st.plotly_chart(fig_farol, use_container_width=True)
-            lista_kpis = sorted(df_visual['Indicador'].unique())
+            lista_kpis = sorted(df_dados['Indicador'].unique())
             for kpi in lista_kpis:
-                with st.expander(f"📊 Ranking: {kpi}", expanded=False):
-                    df_kpi = df_visual[df_visual['Indicador'] == kpi].sort_values(by='% Atingimento', ascending=True)
+                with st.expander(f"📊 Ranking: {formatar_nome_visual(kpi)}", expanded=False):
+                    df_kpi = df_dados[df_dados['Indicador'] == kpi].sort_values(by='% Atingimento', ascending=True)
                     fig_rank = px.bar(df_kpi, x='% Atingimento', y='Colaborador', orientation='h',
                                       text_auto='.1%', title=f"Ranking - {kpi}",
                                       color='% Atingimento', color_continuous_scale=['#e74c3c', '#f1c40f', '#2ecc71'])
@@ -492,7 +495,7 @@ if perfil == 'admin':
             
             for colab in df_calc['Colaborador_Key'].unique():
                 df_user = df_calc[df_calc['Colaborador_Key'] == colab]
-                total_diamantes = df_user['Diamantes'].sum() # Soma tudo (silencioso)
+                total_diamantes = df_user['Diamantes'].sum()
                 row_conf = df_user[df_user['Indicador'] == 'CONFORMIDADE']
                 conf_val = row_conf.iloc[0]['% Atingimento'] if not row_conf.empty else 0.0
                 desconto = 0
@@ -636,12 +639,12 @@ else:
     
     if not meus_dados.empty:
         if 'Diamantes' in meus_dados.columns:
-            # Cálculo Global (Soma de tudo o que tem)
+            # Cálculo Global (Soma tudo o que tiver)
             total_dia_bruto = meus_dados['Diamantes'].sum()
             total_max = meus_dados['Max. Diamantes'].sum()
             resultado_global = (total_dia_bruto / total_max) if total_max > 0 else 0
             
-            # --- VELOCÍMETRO GLOBAL (SEM META EXTERNA) ---
+            # --- VELOCÍMETRO GLOBAL ---
             fig_gauge = go.Figure(go.Indicator(
                 mode = "gauge+number",
                 value = resultado_global * 100,
