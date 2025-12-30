@@ -8,7 +8,6 @@ import time
 from datetime import datetime
 
 # --- CONFIGURAÇÃO DA LOGO ---
-# O arquivo deve estar na mesma pasta com este nome exato:
 LOGO_FILE = "logo.ico"
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
@@ -40,16 +39,43 @@ st.markdown("""
         margin: 0 auto;
     }
     
-    /* --- CORREÇÃO: CENTRALIZAR IMAGEM NO FORMULÁRIO --- */
-    /* Força a imagem a ser um bloco centralizado */
-    [data-testid="stForm"] img {
-        display: block;
-        margin-left: auto;
-        margin-right: auto;
-        margin-bottom: 15px; /* Espaço entre logo e título */
+    /* --- CORREÇÃO DEFINITIVA: CENTRALIZAR BOTÃO E IMAGEM --- */
+    
+    /* 1. Centralizar Imagem (Logo) */
+    [data-testid="stForm"] > div:first-child img {
+        display: block !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
         max-width: 120px;
     }
+    
+    /* 2. Centralizar Botão (Força Bruta) */
+    /* O container do botão */
+    div[data-testid="stForm"] .stButton {
+        width: 100% !important;
+        display: flex !important;
+        justify-content: center !important;
+    }
+    
+    /* O botão em si */
+    div[data-testid="stForm"] .stButton > button {
+        width: 100% !important; /* Ocupa todo o espaço */
+        display: block !important;
+        margin: 0 auto !important;
+        background: linear-gradient(90deg, #003366 0%, #00528b 100%);
+        color: white;
+        border: none;
+        padding: 0.6rem;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+    
+    div[data-testid="stForm"] .stButton > button:hover {
+        background: linear-gradient(90deg, #F37021 0%, #d35400 100%);
+        transform: scale(1.02);
+    }
 
+    /* Títulos */
     .login-title {
         font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 2.2em;
         color: #003366; text-align: center; margin-bottom: 0; letter-spacing: -1px;
@@ -63,7 +89,7 @@ st.markdown("""
         font-family: 'Roboto', sans-serif; font-style: italic;
     }
     
-    /* Métricas e Botões */
+    /* Estilos Gerais do Sistema Logado */
     div.stMetric {
         background-color: white; border: 1px solid #e0e0e0; padding: 15px 20px;
         border-radius: 12px; border-left: 5px solid #F37021;
@@ -71,23 +97,9 @@ st.markdown("""
     }
     div.stMetric:hover { transform: translateY(-5px); }
     
+    /* Botões fora do login */
     div.stButton > button {
-        background: linear-gradient(90deg, #F37021 0%, #d35400 100%); color: white; border: none;
-        padding: 0.5rem 1rem; border-radius: 8px; font-weight: bold; transition: 0.3s;
-    }
-    div.stButton > button:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(243, 112, 33, 0.4); }
-    
-    /* CENTRALIZAR BOTÃO DE LOGIN */
-    [data-testid="stForm"] .stButton {
-        display: flex;
-        justify-content: center;
-    }
-    [data-testid="stForm"] div.stButton > button {
-        width: 100%;
-        background: linear-gradient(90deg, #003366 0%, #00528b 100%);
-    }
-    [data-testid="stForm"] div.stButton > button:hover {
-        background: linear-gradient(90deg, #F37021 0%, #d35400 100%);
+        border-radius: 8px; font-weight: bold; transition: 0.3s;
     }
 
     h1, h2, h3 { color: #003366 !important; }
