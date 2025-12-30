@@ -399,7 +399,9 @@ if df_dados is None and perfil == 'user':
 # --- GESTOR ---
 if perfil == 'admin':
     st.title(f"📊 Visão Gerencial")
-    tabs = st.tabs(["🚦 Painel de Semáforo", "⏳ Evolução (Heatmap)", "🔍 Detalhe por Indicador", "📋 Tabela Geral", "⚙️ Admin / Upload"])
+    
+    # ATUALIZADO: Adicionada aba de Comissões
+    tabs = st.tabs(["🚦 Painel de Semáforo", "⏳ Evolução", "🔍 Indicadores", "💰 Comissões", "📋 Tabela Geral", "⚙️ Admin / Upload"])
     
     with tabs[0]: 
         if df_dados is not None and not df_dados.empty:
@@ -480,7 +482,75 @@ if perfil == 'admin':
                     fig_rank.add_vline(x=0.8, line_dash="dash", line_color="black", annotation_text="Meta 80%")
                     st.plotly_chart(fig_rank, use_container_width=True)
 
-    with tabs[3]: 
+    # --- ABA DE COMISSÕES (NOVA) ---
+    with tabs[3]:
+        if df_dados is not None and not df_dados.empty:
+            st.markdown(f"### 💰 Relatório de Comissões: {periodo_label}")
+            st.info("ℹ️ Regra: R$ 0,50 por Diamante. **Trava:** Conformidade >= 92%. Se não atingir, perde os diamantes de Pontualidade.")
+            
+            lista_comissoes = []
+            
+            # Trabalha com dados brutos (Uppercase) para garantir match
+            df_calc = df_dados.copy()
+            df_calc['Colaborador'] = df_calc['Colaborador'].str.upper()
+            
+            for colab in df_calc['Colaborador'].unique():
+                df_user = df_calc[df_calc['Colaborador'] == colab]
+                
+                # Cálculos
+                total_diamantes = df_user['Diamantes'].sum() if 'Diamantes' in df_user.columns else 0
+                
+                # Conformidade
+                row_conf = df_user[df_user['Indicador'] == 'CONFORMIDADE']
+                conf_val = row_conf.iloc[0]['% Atingimento'] if not row_conf.empty else 0.0
+                
+                desconto = 0
+                obs = "✅ Elegível"
+                
+                # Lógica da Trava
+                if conf_val < 0.92:
+                    row_pont = df_user[df_user['Indicador'] == 'PONTUALIDADE']
+                    if not row_pont.empty:
+                        desconto = row_pont.iloc[0]['Diamantes'] if 'Diamantes' in row_pont.columns else 0
+                        obs = "⚠️ Penalidade (Perdeu Pontualidade)"
+                    else:
+                        obs = "⚠️ Conformidade Baixa"
+                
+                diamantes_validos = total_diamantes - desconto
+                valor_final = diamantes_validos * 0.50
+                
+                lista_comissoes.append({
+                    "Colaborador": colab.title(), # Volta para bonito
+                    "Conformidade": conf_val,
+                    "Total Diamantes": int(total_diamantes),
+                    "Desconto": int(desconto),
+                    "Diamantes Líquidos": int(diamantes_validos),
+                    "A Pagar (R$)": valor_final,
+                    "Status": obs
+                })
+            
+            df_comissao = pd.DataFrame(lista_comissoes)
+            
+            # Formatação para exibição
+            st.dataframe(
+                df_comissao.style.format({
+                    "Conformidade": "{:.1%}",
+                    "A Pagar (R$)": "R$ {:.2f}"
+                }).background_gradient(subset=['A Pagar (R$)'], cmap='Greens'),
+                use_container_width=True,
+                height=600
+            )
+            
+            # Botão de Download
+            csv = df_comissao.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                "⬇️ Baixar Relatório de Comissões (CSV)",
+                csv,
+                f"comissoes_{periodo_label.replace('/','-')}.csv",
+                "text/csv"
+            )
+
+    with tabs[4]: 
         if df_dados is not None and not df_dados.empty:
             c1, c2 = st.columns([3, 1])
             with c1: st.markdown(f"### Mapa de Resultados: {periodo_label}")
@@ -492,7 +562,7 @@ if perfil == 'admin':
             try: st.dataframe(pivot.style.background_gradient(cmap='RdYlGn', vmin=0.7, vmax=1.0).format("{:.1%}"), use_container_width=True, height=600)
             except: st.dataframe(pivot.style.format("{:.1%}"), use_container_width=True, height=600)
 
-    with tabs[4]:
+    with tabs[5]:
         st.markdown("### 📂 Gestão de Arquivos")
         
         subtabs = st.tabs(["📤 Upload & Atualização", "🗑️ Limpeza de Histórico", "💾 Backup"])
