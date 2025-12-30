@@ -412,6 +412,33 @@ if perfil == 'admin':
             c3.metric("🔴 Crítico", f"{qtd_vermelho}", delta="<80%", delta_color="inverse")
             st.markdown("---")
             
+            # --- NOVO: Velocímetro da Equipe ---
+            # Soma total da equipe para ver a saúde global (ponderada)
+            total_dia_team = df_dados['Diamantes'].sum()
+            total_max_team = df_dados['Max. Diamantes'].sum()
+            perc_team = (total_dia_team / total_max_team) if total_max_team > 0 else 0
+            
+            st.markdown("### 🦁 Performance Global da Equipe (TAM)")
+            fig_team = go.Figure(go.Indicator(
+                mode = "gauge+number",
+                value = perc_team * 100,
+                domain = {'x': [0, 1], 'y': [0, 1]},
+                gauge = {
+                    'axis': {'range': [None, 100], 'tickwidth': 1},
+                    'bar': {'color': "#003366"},
+                    'steps': [
+                        {'range': [0, 80], 'color': '#ffcccb'},
+                        {'range': [80, 90], 'color': '#fff4cc'},
+                        {'range': [90, 100], 'color': '#d9f7be'}
+                    ],
+                    'threshold': {'line': {'color': "red", 'width': 4}, 'thickness': 0.75, 'value': 100}
+                }
+            ))
+            fig_team.update_layout(height=250, margin=dict(l=20, r=20, t=30, b=20))
+            st.plotly_chart(fig_team, use_container_width=True)
+            
+            st.markdown("---")
+            
             st.subheader("📋 Atenção Prioritária")
             df_atencao = df_media_pessoas[df_media_pessoas['% Atingimento'] < 0.80].sort_values(by='% Atingimento')
             if not df_atencao.empty:
@@ -434,16 +461,17 @@ if perfil == 'admin':
     with tabs[1]:
         st.markdown(f"### 🏆 Ranking Geral (Consolidado)")
         if df_dados is not None and not df_dados.empty:
+            # Ranking Geral calculado apenas com os dados disponíveis (Soma Simples)
             df_rank = df_dados.groupby('Colaborador').agg({'Diamantes': 'sum', 'Max. Diamantes': 'sum'}).reset_index()
+            
+            # Evita divisão por zero
             df_rank['% Atingimento'] = df_rank.apply(lambda row: (row['Diamantes'] / row['Max. Diamantes']) if row['Max. Diamantes'] > 0 else 0, axis=1)
             df_rank = df_rank.sort_values(by='% Atingimento', ascending=False)
             
-            # Exibir diamantes como inteiros
+            cols_show = ['Colaborador', 'Diamantes', 'Max. Diamantes', '% Atingimento']
+            
             st.dataframe(
-                df_rank[['Colaborador', 'Diamantes', 'Max. Diamantes', '% Atingimento']]
-                .style
-                .format({'Diamantes': '{:.0f}', 'Max. Diamantes': '{:.0f}', '% Atingimento': '{:.2%}'})
-                .background_gradient(subset=['% Atingimento'], cmap='RdYlGn'),
+                df_rank[cols_show].style.format({'Diamantes': '{:.0f}', 'Max. Diamantes': '{:.0f}', '% Atingimento': '{:.2%}'}).background_gradient(subset=['% Atingimento'], cmap='RdYlGn'),
                 use_container_width=True, height=600
             )
 
@@ -480,8 +508,8 @@ if perfil == 'admin':
             
             lista_kpis = sorted(df_visual['Indicador'].unique())
             for kpi in lista_kpis:
-                with st.expander(f"📊 Ranking: {kpi}", expanded=False):
-                    df_kpi = df_visual[df_visual['Indicador'] == kpi].sort_values(by='% Atingimento', ascending=True)
+                with st.expander(f"📊 Ranking: {formatar_nome_visual(kpi)}", expanded=False):
+                    df_kpi = df_dados[df_dados['Indicador'] == kpi].sort_values(by='% Atingimento', ascending=True)
                     fig_rank = px.bar(df_kpi, x='% Atingimento', y='Colaborador', orientation='h',
                                       text_auto='.1%', title=f"Ranking - {kpi}",
                                       color='% Atingimento', color_continuous_scale=['#e74c3c', '#f1c40f', '#2ecc71'])
@@ -662,30 +690,33 @@ else:
                 total_max = meus_dados['Max. Diamantes'].sum()
                 resultado_global = (total_dia_bruto / total_max) if total_max > 0 else 0
             
-            # --- VELOCÍMETRO GLOBAL ---
-            fig_gauge = go.Figure(go.Indicator(
-                mode = "gauge+number",
-                value = resultado_global * 100,
-                domain = {'x': [0, 1], 'y': [0, 1]},
-                title = {'text': "Resultado Geral (%)", 'font': {'size': 20}},
-                gauge = {
-                    'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': "darkblue"},
-                    'bar': {'color': "#F37021"},
-                    'bgcolor': "white",
-                    'borderwidth': 2,
-                    'bordercolor': "gray",
-                    'steps': [{'range': [0, 100], 'color': '#f4f7f6'}],
-                    'threshold': {'line': {'color': "green", 'width': 4}, 'thickness': 0.75, 'value': 100}
-                }))
-            st.plotly_chart(fig_gauge, use_container_width=True)
+            # Layout em colunas: Gamificação (Esq) vs Gauge (Dir)
+            col_gamif, col_gauge = st.columns([1.5, 1])
+            
+            with col_gamif:
+                st.markdown("### 💎 Gamificação")
+                st.progress(resultado_global if resultado_global <= 1.0 else 1.0)
+                st.write(f"**{int(total_dia_bruto)} / {int(total_max)}** Diamantes")
+            
+            with col_gauge:
+                # --- VELOCÍMETRO GLOBAL MENOR ---
+                fig_gauge = go.Figure(go.Indicator(
+                    mode = "gauge+number",
+                    value = resultado_global * 100,
+                    number = {'font': {'size': 24}}, # Fonte menor
+                    gauge = {
+                        'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': "darkblue"},
+                        'bar': {'color': "#F37021"},
+                        'bgcolor': "white",
+                        'borderwidth': 1,
+                        'bordercolor': "gray",
+                        'steps': [{'range': [0, 100], 'color': '#f4f7f6'}],
+                        'threshold': {'line': {'color': "green", 'width': 4}, 'thickness': 0.75, 'value': 100}
+                    }))
+                fig_gauge.update_layout(height=160, margin=dict(l=10, r=10, t=30, b=10)) # Margens e altura compactas
+                st.plotly_chart(fig_gauge, use_container_width=True)
             
             st.markdown("---")
-            
-            # --- GAMIFICAÇÃO ---
-            st.markdown("### 💎 Gamificação")
-            c1, c2 = st.columns([3, 1])
-            c1.progress(resultado_global if resultado_global <= 1.0 else 1.0)
-            c2.write(f"**{int(total_dia_bruto)} / {int(total_max)}** Diamantes")
             
             # --- LÓGICA DETALHADA DO GATILHO FINANCEIRO ---
             df_conf = meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE']
