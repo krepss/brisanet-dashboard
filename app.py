@@ -8,7 +8,7 @@ import time
 from datetime import datetime
 
 # --- CONFIGURAÇÃO DA LOGO (Apenas para Sidebar e Favicon) ---
-LOGO_FILE = "logo.ico"
+LOGO_FILE = "logo.png"
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
 try:
