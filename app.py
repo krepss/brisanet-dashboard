@@ -10,9 +10,6 @@ from datetime import datetime
 # --- CONFIGURAÇÃO DA LOGO (Apenas para Sidebar e Favicon) ---
 LOGO_FILE = "logo.ico"
 
-# --- SENHA DO GESTOR (ALTERE AQUI PARA UMA SENHA FORTE) ---
-SENHA_ADMIN = "admin123"
-
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
 try:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon=LOGO_FILE)
@@ -197,7 +194,7 @@ def ler_csv_inteligente(arquivo_ou_caminho):
         for enc in encodings:
             try:
                 if hasattr(arquivo_ou_caminho, 'seek'): arquivo_ou_caminho.seek(0)
-                df = pd.read_csv(arquivo_ou_caminho, sep=sep, encoding=enc, dtype=str)
+                df = pd.read_csv(arquivo_ou_caminho, sep=sep, encoding=enc)
                 if len(df.columns) > 1: return df
             except: continue
     return None
@@ -263,10 +260,6 @@ def tratar_arquivo_especial(df, nome_arquivo):
         if 'max' in c and 'diamantes' in c: df.rename(columns={c: 'Max. Diamantes'}, inplace=True)
 
     df['% Atingimento'] = df['% Atingimento'].apply(processar_porcentagem_br)
-    
-    if 'Diamantes' in df.columns: df['Diamantes'] = pd.to_numeric(df['Diamantes'], errors='coerce').fillna(0)
-    if 'Max. Diamantes' in df.columns: df['Max. Diamantes'] = pd.to_numeric(df['Max. Diamantes'], errors='coerce').fillna(0)
-
     df['Indicador'] = normalizar_nome_indicador(nome_arquivo)
     
     cols_to_keep = ['Colaborador', 'Indicador', '% Atingimento']
@@ -303,55 +296,12 @@ def carregar_usuarios():
             df.columns = df.columns.str.lower()
             col_email = next((c for c in df.columns if 'mail' in c), None)
             col_nome = next((c for c in df.columns if 'colaborador' in c or 'nome' in c), None)
-            col_senha = next((c for c in df.columns if 'senha' in c or 'pass' in c), None)
-            
             if col_email and col_nome:
-                rename_map = {col_email: 'email', col_nome: 'nome'}
-                if col_senha: rename_map[col_senha] = 'senha'
-                df.rename(columns=rename_map, inplace=True)
+                df.rename(columns={col_email: 'email', col_nome: 'nome'}, inplace=True)
                 df['email'] = df['email'].astype(str).str.strip().str.lower()
                 df['nome'] = df['nome'].astype(str).str.strip().str.upper()
-                if 'senha' in df.columns: df['senha'] = df['senha'].astype(str).str.strip()
-                else: df['senha'] = ""
                 return df
     return None
-
-def salvar_nova_senha(email_alvo, nova_senha):
-    arquivos = [f for f in os.listdir('.') if f.endswith('.csv') and 'usuario' in f.lower()]
-    if arquivos:
-        nome_arquivo = arquivos[0]
-        try:
-            df = ler_csv_inteligente(nome_arquivo)
-            if df is not None:
-                # Normaliza colunas para encontrar as certas
-                cols_originais = df.columns.tolist()
-                df_work = df.copy()
-                df_work.columns = df_work.columns.str.lower()
-                
-                col_email = next((c for c in df_work.columns if 'mail' in c), None)
-                col_senha = next((c for c in df_work.columns if 'senha' in c), None)
-                
-                # Se não tiver coluna de senha, cria uma
-                if not col_senha:
-                    df['Senha'] = ""
-                    col_senha_real = 'Senha'
-                else:
-                    # Encontra o nome original da coluna de senha
-                    idx_senha = df_work.columns.get_loc(col_senha)
-                    col_senha_real = cols_originais[idx_senha]
-
-                col_email_real = cols_originais[df_work.columns.get_loc(col_email)]
-                
-                # Atualiza
-                idx = df[df[col_email_real].astype(str).str.strip().str.lower() == email_alvo].index
-                if not idx.empty:
-                    df.loc[idx, col_senha_real] = nova_senha
-                    df.to_csv(nome_arquivo, index=False)
-                    return True, "Senha atualizada com sucesso!"
-                return False, "Usuário não encontrado no arquivo."
-        except Exception as e:
-            return False, f"Erro ao salvar: {e}"
-    return False, "Arquivo de usuários não encontrado."
 
 def filtrar_por_usuarios_cadastrados(df_dados, df_users):
     if df_dados is None or df_dados.empty: return df_dados
@@ -364,9 +314,9 @@ def classificar_farol(val):
     elif val >= 0.80: return '🟢 Meta Batida'
     else: return '🔴 Crítico'
 
-# --- 4. LOGIN RENOVADO (COM SENHA) ---
+# --- 4. LOGIN RENOVADO (SEM IMAGEM) ---
 if 'logado' not in st.session_state:
-    st.session_state.update({'logado': False, 'usuario_nome': '', 'perfil': '', 'usuario_email': ''})
+    st.session_state.update({'logado': False, 'usuario_nome': '', 'perfil': ''})
 
 if not st.session_state['logado']:
     c1, c2, c3 = st.columns([1, 2, 1])
@@ -375,35 +325,23 @@ if not st.session_state['logado']:
         with st.form("form_login"):
             st.markdown('<p class="login-title">Team Sofistas</p>', unsafe_allow_html=True)
             st.markdown('<p class="login-subtitle">Analytics & Performance</p>', unsafe_allow_html=True)
-            
-            email_input = st.text_input("E-mail Corporativo", placeholder="seu.email@brisanet.com.br").strip().lower()
-            senha_input = st.text_input("Senha", type="password", placeholder="Digite sua senha")
-            
+            email = st.text_input("E-mail Corporativo", placeholder="seu.email@brisanet.com.br").strip().lower()
+            senha = st.text_input("Senha", type="password", placeholder="Apenas para Gestores")
             st.markdown("<br>", unsafe_allow_html=True)
-            
             if st.form_submit_button("ACESSAR SISTEMA"):
-                if email_input in ['gestor', 'admin'] and senha_input == SENHA_ADMIN:
-                    st.session_state.update({'logado': True, 'usuario_nome': 'Gestor', 'perfil': 'admin', 'usuario_email': 'admin'})
+                if email in ['gestor', 'admin'] and senha == 'admin':
+                    st.session_state.update({'logado': True, 'usuario_nome': 'Gestor', 'perfil': 'admin'})
                     st.rerun()
                 else:
                     df_users = carregar_usuarios()
                     if df_users is not None:
-                        user_row = df_users[df_users['email'] == email_input]
-                        if not user_row.empty:
-                            senha_real = user_row.iloc[0]['senha']
-                            nome_upper = user_row.iloc[0]['nome']
-                            
-                            if senha_real and str(senha_real) == senha_input:
-                                st.session_state.update({'logado': True, 'usuario_nome': nome_upper, 'perfil': 'user', 'usuario_email': email_input})
-                                st.rerun()
-                            elif not senha_real:
-                                st.warning("⚠️ Usuário sem senha cadastrada. Contate o gestor.")
-                            else:
-                                st.error("🚫 Senha incorreta.")
-                        else:
-                            st.error("🚫 E-mail não encontrado.")
-                    else:
-                        st.error("⚠️ Base de usuários não carregada.")
+                        user = df_users[df_users['email'] == email]
+                        if not user.empty:
+                            nome_upper = user.iloc[0]['nome']
+                            st.session_state.update({'logado': True, 'usuario_nome': nome_upper, 'perfil': 'user'})
+                            st.rerun()
+                        else: st.error("Acesso negado.")
+                    else: st.error("Erro: Base de usuários não carregada.")
     
     st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
     st.stop()
@@ -441,21 +379,6 @@ with st.sidebar:
     st.markdown("---")
     nome_logado = st.session_state['usuario_nome'].title() if st.session_state['usuario_nome'] != 'Gestor' else 'Gestor'
     st.markdown(f"### 👤 {nome_logado.split()[0]}")
-    
-    # --- ÁREA DE TROCA DE SENHA ---
-    if st.session_state['perfil'] == 'user':
-        with st.expander("🔑 Alterar Minha Senha"):
-            with st.form("form_troca_senha"):
-                nova_senha_1 = st.text_input("Nova Senha", type="password")
-                nova_senha_2 = st.text_input("Confirmar Senha", type="password")
-                if st.form_submit_button("Salvar Nova Senha"):
-                    if nova_senha_1 == nova_senha_2 and nova_senha_1:
-                        ok, msg = salvar_nova_senha(st.session_state['usuario_email'], nova_senha_1)
-                        if ok: st.success(msg)
-                        else: st.error(msg)
-                    else:
-                        st.error("As senhas não coincidem ou estão vazias.")
-
     if st.button("Sair"):
         st.session_state.update({'logado': False})
         st.rerun()
@@ -473,6 +396,7 @@ if perfil == 'admin':
     st.title(f"📊 Visão Gerencial")
     tabs = st.tabs(["🚦 Semáforo", "🏆 Ranking Geral", "⏳ Evolução", "🔍 Indicadores", "💰 Comissões", "📋 Tabela Geral", "⚙️ Admin", "📘 Como Alimentar"])
     
+    # Prepara dados (Verifica se existe TAM para usar como base)
     tem_tam = False
     if df_dados is not None:
         tem_tam = 'TAM' in df_dados['Indicador'].unique()
@@ -481,6 +405,7 @@ if perfil == 'admin':
         if df_dados is not None and not df_dados.empty:
             st.markdown(f"### Resumo de Saúde: **{periodo_label}**")
             
+            # Semáforo Clássico (Média dos Atingimentos)
             df_media_pessoas = df_dados.groupby('Colaborador')['% Atingimento'].mean().reset_index()
             
             qtd_verde = len(df_media_pessoas[df_media_pessoas['% Atingimento'] >= 0.90]) 
@@ -492,10 +417,12 @@ if perfil == 'admin':
             c3.metric("🔴 Crítico", f"{qtd_vermelho}", delta="<80%", delta_color="inverse")
             st.markdown("---")
             
-            # --- Farol de Performance ---
+            # --- Farol de Performance (Restaurado para Aba Semáforo) ---
             df_dados['Status_Farol'] = df_dados['% Atingimento'].apply(classificar_farol)
+            # Para o Farol, usa nomes formatados para ficar bonito
             df_farol = df_dados.copy()
             df_farol['Indicador'] = df_farol['Indicador'].apply(formatar_nome_visual)
+            
             df_agrupado = df_farol.groupby(['Indicador', 'Status_Farol']).size().reset_index(name='Quantidade')
             fig_farol = px.bar(df_agrupado, x='Indicador', y='Quantidade', color='Status_Farol', 
                                text='Quantidade', title="Farol de Performance (Distribuição por Indicador)",
@@ -504,14 +431,18 @@ if perfil == 'admin':
             
             st.markdown("---")
 
-            # --- Velocímetro da Equipe ---
+            # --- Velocímetro da Equipe (TAM) com Checkbox ---
             st.markdown("### 🦁 Performance Global da Equipe")
+            
+            # Checkbox para remover pontualidade do cálculo do velocímetro
             remove_pont = st.checkbox("Remover Pontualidade do Cálculo Global", value=False)
             
             total_dia_team = 0
             total_max_team = 0
             
+            # Lógica de cálculo do velocímetro
             if tem_tam:
+                # Usa TAM como base
                 df_tam_team = df_dados[df_dados['Indicador'] == 'TAM']
                 total_dia_team = df_tam_team['Diamantes'].sum()
                 total_max_team = df_tam_team['Max. Diamantes'].sum()
@@ -522,8 +453,12 @@ if perfil == 'admin':
                         total_dia_team -= df_pont_team['Diamantes'].sum()
                         total_max_team -= df_pont_team['Max. Diamantes'].sum()
             else:
-                if remove_pont: df_calc_team = df_dados[df_dados['Indicador'] != 'PONTUALIDADE']
-                else: df_calc_team = df_dados
+                # Soma tudo o que tem
+                if remove_pont:
+                    df_calc_team = df_dados[df_dados['Indicador'] != 'PONTUALIDADE']
+                else:
+                    df_calc_team = df_dados
+                
                 total_dia_team = df_calc_team['Diamantes'].sum()
                 total_max_team = df_calc_team['Max. Diamantes'].sum()
 
@@ -571,6 +506,7 @@ if perfil == 'admin':
     with tabs[1]:
         st.markdown(f"### 🏆 Ranking Geral (Consolidado)")
         if df_dados is not None and not df_dados.empty:
+            # Ranking Geral calculado apenas com os dados disponíveis (Soma Simples ou TAM)
             if tem_tam:
                  df_rank = df_dados[df_dados['Indicador'] == 'TAM'].copy()
             else:
@@ -578,7 +514,9 @@ if perfil == 'admin':
                  df_rank['% Atingimento'] = df_rank.apply(lambda row: (row['Diamantes'] / row['Max. Diamantes']) if row['Max. Diamantes'] > 0 else 0, axis=1)
             
             df_rank = df_rank.sort_values(by='% Atingimento', ascending=False)
+            
             cols_show = ['Colaborador', 'Diamantes', 'Max. Diamantes', '% Atingimento']
+            
             st.dataframe(
                 df_rank[cols_show].style.format({'Diamantes': '{:.0f}', 'Max. Diamantes': '{:.0f}', '% Atingimento': '{:.2%}'}).background_gradient(subset=['% Atingimento'], cmap='RdYlGn'),
                 use_container_width=True, height=600
@@ -605,15 +543,27 @@ if perfil == 'admin':
     with tabs[3]:
         if df_dados is not None and not df_dados.empty:
             st.markdown("### 🔬 Detalhe por Indicador")
-            lista_kpis = sorted(df_visual['Indicador'].unique())
-            for kpi in lista_kpis:
-                with st.expander(f"📊 Ranking: {formatar_nome_visual(kpi)}", expanded=False):
-                    df_kpi = df_visual[df_visual['Indicador'] == kpi].sort_values(by='% Atingimento', ascending=True)
-                    fig_rank = px.bar(df_kpi, x='% Atingimento', y='Colaborador', orientation='h',
-                                      text_auto='.1%', title=f"Ranking - {kpi}",
-                                      color='% Atingimento', color_continuous_scale=['#e74c3c', '#f1c40f', '#2ecc71'])
-                    fig_rank.add_vline(x=0.8, line_dash="dash", line_color="black", annotation_text="Meta 80%")
-                    st.plotly_chart(fig_rank, use_container_width=True)
+            
+            # Cria DataFrame para visualização com nomes bonitos
+            df_visual_rank = df_dados.copy()
+            df_visual_rank['Indicador_Fmt'] = df_visual_rank['Indicador'].apply(formatar_nome_visual)
+            
+            # Itera sobre os indicadores UNICOS do dataframe
+            lista_kpis = sorted(df_visual_rank['Indicador_Fmt'].unique())
+            
+            for kpi_fmt in lista_kpis:
+                with st.expander(f"📊 Ranking: {kpi_fmt}", expanded=False):
+                    # Filtra usando a coluna formatada para garantir que pegamos os dados certos
+                    df_kpi = df_visual_rank[df_visual_rank['Indicador_Fmt'] == kpi_fmt].sort_values(by='% Atingimento', ascending=True)
+                    
+                    if not df_kpi.empty:
+                        fig_rank = px.bar(df_kpi, x='% Atingimento', y='Colaborador', orientation='h',
+                                          text_auto='.1%', title=f"Ranking - {kpi_fmt}",
+                                          color='% Atingimento', color_continuous_scale=['#e74c3c', '#f1c40f', '#2ecc71'])
+                        fig_rank.add_vline(x=0.8, line_dash="dash", line_color="black", annotation_text="Meta 80%")
+                        st.plotly_chart(fig_rank, use_container_width=True)
+                    else:
+                        st.warning("Sem dados para este indicador.")
 
     with tabs[4]:
         st.markdown(f"### 💰 Relatório de Comissões")
@@ -622,25 +572,32 @@ if perfil == 'admin':
             lista_comissoes = []
             df_calc = df_dados.copy()
             df_calc['Colaborador_Key'] = df_calc['Colaborador'].str.upper()
+            
             for colab in df_calc['Colaborador_Key'].unique():
                 df_user = df_calc[df_calc['Colaborador_Key'] == colab]
+                
+                # Se tem TAM, usa ele. Se não, soma tudo.
                 if tem_tam:
                     row_tam = df_user[df_user['Indicador'] == 'TAM']
                     total_diamantes = row_tam.iloc[0]['Diamantes'] if not row_tam.empty else 0
                 else:
                     total_diamantes = df_user['Diamantes'].sum()
+
                 row_conf = df_user[df_user['Indicador'] == 'CONFORMIDADE']
                 conf_val = row_conf.iloc[0]['% Atingimento'] if not row_conf.empty else 0.0
                 desconto = 0
                 obs = "✅ Elegível"
+                
                 if conf_val < 0.92:
                     row_pont = df_user[df_user['Indicador'] == 'PONTUALIDADE']
                     if not row_pont.empty:
                         desconto = row_pont.iloc[0]['Diamantes'] if 'Diamantes' in row_pont.columns else 0
                         obs = "⚠️ Penalidade (Pontualidade)"
                     else: obs = "⚠️ Conformidade Baixa"
+                
                 diamantes_validos = total_diamantes - desconto
                 valor_final = diamantes_validos * 0.50
+                
                 lista_comissoes.append({
                     "Colaborador": colab.title(),
                     "Conformidade": conf_val,
@@ -650,6 +607,7 @@ if perfil == 'admin':
                     "A Pagar (R$)": valor_final,
                     "Status": obs
                 })
+            
             df_comissao = pd.DataFrame(lista_comissoes)
             st.dataframe(df_comissao.style.format({"Conformidade": "{:.2%}", "A Pagar (R$)": "R$ {:.2f}"}).background_gradient(subset=['A Pagar (R$)'], cmap='Greens'), use_container_width=True, height=600)
             csv = df_comissao.to_csv(index=False).encode('utf-8')
@@ -670,6 +628,7 @@ if perfil == 'admin':
     with tabs[6]:
         st.markdown("### 📂 Gestão de Arquivos")
         subtabs = st.tabs(["📤 Upload & Atualização", "🗑️ Limpeza de Histórico", "💾 Backup"])
+        
         with subtabs[0]:
             data_sugestao = obter_data_hoje()
             st.markdown("#### 1. Configurar Período")
@@ -699,6 +658,7 @@ if perfil == 'admin':
                                 else: lista_diag.append({"Arquivo": f.name, "Status": "❌ Erro", "Detalhe": msg})
                         except Exception as e: lista_diag.append({"Arquivo": f.name, "Status": "❌ Erro", "Detalhe": str(e)})
                     st.dataframe(pd.DataFrame(lista_diag))
+
                     if st.button("💾 Salvar e Atualizar Histórico"): 
                         if not nova_data.strip():
                             st.error("⚠️ O campo 'Mês/Ano' não pode estar vazio!")
@@ -727,6 +687,7 @@ if perfil == 'admin':
                                 time.sleep(1)
                                 st.rerun()
                         except Exception as e: st.error(f"Erro salvamento: {e}")
+
         with subtabs[1]:
             st.markdown("#### 🗑️ Gerenciar Meses no Sistema")
             df_atual_hist = carregar_historico_completo()
@@ -742,6 +703,7 @@ if perfil == 'admin':
                             time.sleep(1)
                             st.rerun()
             else: st.info("Histórico vazio.")
+
         with subtabs[2]:
             st.markdown("#### 💾 Backup e Reset")
             if os.path.exists('historico_consolidado.csv'):
@@ -759,16 +721,48 @@ if perfil == 'admin':
     with tabs[7]:
         st.markdown("### 📘 Como Alimentar o Sistema")
         st.info("Para garantir que os dados sejam lidos corretamente, siga os padrões abaixo.")
+        
         with st.expander("1. Arquivo de Usuários (Login)"):
-            st.markdown("**Nome do Arquivo:** `usuarios.csv` (obrigatório).\n**Colunas:** `Nome`, `Email`, `Senha`.")
-            st.code("Nome,Email,Senha\nJoão Silva,joao@brisanet.com.br,123456\nMaria,maria@brisanet.com.br,senha123")
+            st.markdown("""
+            **Nome do Arquivo:** `usuarios.csv` (obrigatório ser exatamente este nome).
+            
+            **Colunas Obrigatórias:**
+            * `Nome` (Nome do colaborador, deve ser igual ao usado nos indicadores)
+            * `Email` (Para login)
+            * `Cargo` (Opcional)
+            """)
+            st.markdown("**Exemplo:**")
+            st.code("Nome,Email,Cargo\nJoão Silva,joao@brisanet.com.br,Operador\nMaria Souza,maria@brisanet.com.br,Operador")
+
         with st.expander("2. Arquivos de Indicadores (KPIs)"):
-            st.markdown("**Nome do Arquivo:** Pode ser qualquer um (ex: `ir.csv`, `csat.csv`).\n**Colunas:** `Colaborador`, `% Atingimento`, `Diamantes`, `Max. Diamantes`.")
-            st.code("Colaborador,% Atingimento,Diamantes,Max. Diamantes\nJoão Silva,0.95,95,100")
-        with st.expander("3. Arquivo TAM (Opcional)"):
-            st.markdown("Se um arquivo tiver **TAM** no nome, ele será usado como o indicador principal de ranking.")
-        with st.expander("4. Regras de Gatilho"):
-            st.markdown("O cálculo financeiro desconta a pontualidade se a **Conformidade** for < 92%.")
+            st.markdown("""
+            **Nome do Arquivo:** Pode ser qualquer nome (ex: `ir.csv`, `csat.csv`). O sistema identifica o indicador pelo nome do arquivo.
+            
+            **Colunas Necessárias:**
+            * `Colaborador` (Nome do agente)
+            * `% Atingimento` (Valor percentual ou decimal)
+            * `Diamantes` (Quantidade ganha - opcional mas recomendado)
+            * `Max. Diamantes` (Quantidade possível - opcional)
+            """)
+            st.markdown("**Exemplo:**")
+            st.code("Colaborador,% Atingimento,Diamantes,Max. Diamantes\nJoão Silva,0.95,95,100\nMaria Souza,0.80,80,100")
+
+        with st.expander("3. Arquivo TAM (Consolidado)"):
+            st.markdown("""
+            Se você enviar um arquivo que contenha **TAM** no nome, o sistema entenderá que este é o **ranking oficial**.
+            
+            * **Com TAM:** O sistema usa os diamantes deste arquivo para o Ranking Geral.
+            * **Sem TAM:** O sistema soma os diamantes de todos os outros arquivos (IR + CSAT + TPC...).
+            """)
+
+        with st.expander("4. Regras de Gatilho (Pontualidade)"):
+            st.markdown("""
+            Para que o cálculo financeiro funcione, você deve ter dois indicadores com nomes específicos nos seus arquivos (ou no nome do arquivo):
+            1.  **Conformidade** (ou `conformidade.csv`)
+            2.  **Pontualidade** (ou `pontualidade.csv`)
+            
+            **A Regra:** Se `Conformidade < 92%`, o sistema desconta os diamantes de `Pontualidade`.
+            """)
 
 # --- VISÃO OPERADOR ---
 else:
@@ -790,16 +784,20 @@ else:
                 total_max = meus_dados['Max. Diamantes'].sum()
                 resultado_global = (total_dia_bruto / total_max) if total_max > 0 else 0
             
+            # Layout em colunas: Gamificação (Esq) vs Gauge (Dir)
             col_gamif, col_gauge = st.columns([1.5, 1])
+            
             with col_gamif:
                 st.markdown("### 💎 Gamificação")
                 st.progress(resultado_global if resultado_global <= 1.0 else 1.0)
                 st.write(f"**{int(total_dia_bruto)} / {int(total_max)}** Diamantes")
+            
             with col_gauge:
+                # --- VELOCÍMETRO GLOBAL MENOR ---
                 fig_gauge = go.Figure(go.Indicator(
                     mode = "gauge+number",
                     value = resultado_global * 100,
-                    number = {'font': {'size': 24}}, 
+                    number = {'font': {'size': 24}}, # Fonte menor
                     gauge = {
                         'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': "darkblue"},
                         'bar': {'color': "#F37021"},
@@ -809,13 +807,16 @@ else:
                         'steps': [{'range': [0, 100], 'color': '#f4f7f6'}],
                         'threshold': {'line': {'color': "green", 'width': 4}, 'thickness': 0.75, 'value': 100}
                     }))
-                fig_gauge.update_layout(height=160, margin=dict(l=10, r=10, t=30, b=10))
+                fig_gauge.update_layout(height=160, margin=dict(l=10, r=10, t=30, b=10)) # Margens e altura compactas
                 st.plotly_chart(fig_gauge, use_container_width=True)
+            
             st.markdown("---")
             
+            # --- LÓGICA DETALHADA DO GATILHO FINANCEIRO ---
             df_conf = meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE']
             atingimento_conf = df_conf.iloc[0]['% Atingimento'] if not df_conf.empty else 0.0
             tem_dado_conf = not df_conf.empty
+            
             desconto_diamantes = 0
             motivo_desconto = ""
             GATILHO_FINANCEIRO = 0.92
@@ -833,6 +834,7 @@ else:
             c1, c2, c3 = st.columns(3)
             c1.metric("Diamantes Válidos", f"{int(total_dia_liquido)}", f"{motivo_desconto}", delta_color="inverse" if desconto_diamantes > 0 else "normal")
             c2.metric("Valor por Diamante", "R$ 0,50")
+            
             if not tem_dado_conf:
                 c3.metric("Valor a Receber", "Aguardando", "Conformidade Indisponível", delta_color="off")
             elif desconto_diamantes > 0:
@@ -857,6 +859,7 @@ else:
                 color = "inverse"
             with cols[i]:
                 st.metric(label, f"{val:.2%}", delta_msg, delta_color=color)
+        
         st.markdown("---")
         media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
         media_equipe.rename(columns={'% Atingimento': 'Média Equipe'}, inplace=True)
