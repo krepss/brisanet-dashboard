@@ -12,7 +12,6 @@ from datetime import datetime
 LOGO_FILE = "logo.ico"
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
-# Tenta usar o logo como ícone da aba. Se der erro (arquivo não existe), usa o Leão como fallback.
 try:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon=LOGO_FILE)
 except:
@@ -40,6 +39,17 @@ st.markdown("""
         max-width: 450px;
         margin: 0 auto;
     }
+    
+    /* --- CORREÇÃO: CENTRALIZAR IMAGEM NO FORMULÁRIO --- */
+    /* Força a imagem a ser um bloco centralizado */
+    [data-testid="stForm"] img {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        margin-bottom: 15px; /* Espaço entre logo e título */
+        max-width: 120px;
+    }
+
     .login-title {
         font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 2.2em;
         color: #003366; text-align: center; margin-bottom: 0; letter-spacing: -1px;
@@ -78,18 +88,6 @@ st.markdown("""
     }
     [data-testid="stForm"] div.stButton > button:hover {
         background: linear-gradient(90deg, #F37021 0%, #d35400 100%);
-    }
-    
-    /* Centralizar imagem no formulário */
-    [data-testid="stForm"] > div:first-child {
-        display: flex;
-        justify-content: center;
-        margin-bottom: 10px;
-    }
-    /* Ajuste para imagem não ficar gigante */
-    [data-testid="stForm"] img {
-        max-width: 120px; 
-        height: auto;
     }
 
     h1, h2, h3 { color: #003366 !important; }
@@ -395,7 +393,7 @@ if not st.session_state['logado']:
     st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
     st.stop()
 
-# --- 5. SISTEMA LOGADO (BACKGROUND LIMPO) ---
+# --- 5. SISTEMA LOGADO ---
 st.markdown("""<style>.stApp { background: #f4f7f6; }</style>""", unsafe_allow_html=True)
 
 # --- 6. SIDEBAR ---
@@ -443,10 +441,9 @@ if df_dados is None and perfil == 'user':
     st.info(f"👋 Olá, **{nome_logado}**! Dados de **{periodo_label}** indisponíveis.")
     st.stop()
 
-# --- GESTOR (VISUAL CLÁSSICO RESTAURADO + ABA COMISSÕES) ---
+# --- GESTOR ---
 if perfil == 'admin':
     st.title(f"📊 Visão Gerencial")
-    
     tabs = st.tabs(["🚦 Painel de Semáforo", "⏳ Evolução (Heatmap)", "🔍 Detalhe por Indicador", "💰 Comissões", "📋 Tabela Geral", "⚙️ Admin / Upload"])
     
     with tabs[0]: 
