@@ -45,7 +45,7 @@ st.markdown("""
         font-family: 'Roboto', sans-serif; font-style: italic;
     }
     
-    /* Métricas e Botões */
+    /* Métricas e Botões Gerais */
     div.stMetric {
         background-color: white; border: 1px solid #e0e0e0; padding: 15px 20px;
         border-radius: 12px; border-left: 5px solid #F37021;
@@ -58,6 +58,20 @@ st.markdown("""
         padding: 0.5rem 1rem; border-radius: 8px; font-weight: bold; transition: 0.3s;
     }
     div.stButton > button:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(243, 112, 33, 0.4); }
+    
+    /* --- CORREÇÃO: CENTRALIZAR BOTÃO DE LOGIN --- */
+    /* Isso força o botão dentro do formulário a ocupar 100% da largura */
+    [data-testid="stForm"] .stButton {
+        display: flex;
+        justify-content: center;
+    }
+    [data-testid="stForm"] div.stButton > button {
+        width: 100%;
+        background: linear-gradient(90deg, #003366 0%, #00528b 100%); /* Azul Brisanet */
+    }
+    [data-testid="stForm"] div.stButton > button:hover {
+        background: linear-gradient(90deg, #F37021 0%, #d35400 100%); /* Laranja no Hover */
+    }
     
     h1, h2, h3 { color: #003366 !important; }
     .date-box {
@@ -353,7 +367,7 @@ if not st.session_state['logado']:
                         else: st.error("Acesso negado.")
                     else: st.error("Erro: Base de usuários não carregada.")
     
-    # CRÉDITOS NO LOGIN
+    # CRÉDITOS NO LOGIN (Centralizados)
     st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
     st.stop()
 
@@ -393,7 +407,6 @@ with st.sidebar:
         st.rerun()
         
     st.markdown("---")
-    # CRÉDITOS NA SIDEBAR
     st.caption("Desenvolvido por:\n**Klebson Davi**\nSupervisor de Suporte Técnico")
 
 perfil = st.session_state['perfil']
