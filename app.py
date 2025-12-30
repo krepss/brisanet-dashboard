@@ -394,7 +394,7 @@ if df_dados is None and perfil == 'user':
 # --- GESTOR ---
 if perfil == 'admin':
     st.title(f"📊 Visão Gerencial")
-    tabs = st.tabs(["🚦 Semáforo", "🏆 Ranking Geral", "⏳ Evolução", "🔍 Indicadores", "💰 Comissões", "📋 Tabela Geral", "⚙️ Admin"])
+    tabs = st.tabs(["🚦 Semáforo", "🏆 Ranking Geral", "⏳ Evolução", "🔍 Indicadores", "💰 Comissões", "📋 Tabela Geral", "⚙️ Admin", "📘 Como Alimentar"])
     
     # Prepara dados (Verifica se existe TAM para usar como base)
     tem_tam = False
@@ -437,7 +437,6 @@ if perfil == 'admin':
                     df_pont_team = df_dados[df_dados['Indicador'] == 'PONTUALIDADE']
                     if not df_pont_team.empty:
                         total_dia_team -= df_pont_team['Diamantes'].sum()
-                        # Nota: Em alguns modelos, max diamantes de pontualidade também deve ser subtraído se fizer parte do max do TAM
                         total_max_team -= df_pont_team['Max. Diamantes'].sum()
             else:
                 # Soma tudo o que tem
@@ -702,6 +701,52 @@ if perfil == 'admin':
                 st.warning("Tudo limpo!")
                 time.sleep(2)
                 st.rerun()
+
+    with tabs[7]:
+        st.markdown("### 📘 Como Alimentar o Sistema")
+        st.info("Para garantir que os dados sejam lidos corretamente, siga os padrões abaixo.")
+        
+        with st.expander("1. Arquivo de Usuários (Login)"):
+            st.markdown("""
+            **Nome do Arquivo:** `usuarios.csv` (obrigatório ser exatamente este nome).
+            
+            **Colunas Obrigatórias:**
+            * `Nome` (Nome do colaborador, deve ser igual ao usado nos indicadores)
+            * `Email` (Para login)
+            * `Cargo` (Opcional)
+            """)
+            st.markdown("**Exemplo:**")
+            st.code("Nome,Email,Cargo\nJoão Silva,joao@brisanet.com.br,Operador\nMaria Souza,maria@brisanet.com.br,Operador")
+
+        with st.expander("2. Arquivos de Indicadores (KPIs)"):
+            st.markdown("""
+            **Nome do Arquivo:** Pode ser qualquer nome (ex: `ir.csv`, `csat.csv`). O sistema identifica o indicador pelo nome do arquivo.
+            
+            **Colunas Necessárias:**
+            * `Colaborador` (Nome do agente)
+            * `% Atingimento` (Valor percentual ou decimal)
+            * `Diamantes` (Quantidade ganha - opcional mas recomendado)
+            * `Max. Diamantes` (Quantidade possível - opcional)
+            """)
+            st.markdown("**Exemplo:**")
+            st.code("Colaborador,% Atingimento,Diamantes,Max. Diamantes\nJoão Silva,0.95,95,100\nMaria Souza,0.80,80,100")
+
+        with st.expander("3. Arquivo TAM (Consolidado)"):
+            st.markdown("""
+            Se você enviar um arquivo que contenha **TAM** no nome, o sistema entenderá que este é o **ranking oficial**.
+            
+            * **Com TAM:** O sistema usa os diamantes deste arquivo para o Ranking Geral.
+            * **Sem TAM:** O sistema soma os diamantes de todos os outros arquivos (IR + CSAT + TPC...).
+            """)
+
+        with st.expander("4. Regras de Gatilho (Pontualidade)"):
+            st.markdown("""
+            Para que o cálculo financeiro funcione, você deve ter dois indicadores com nomes específicos nos seus arquivos (ou no nome do arquivo):
+            1.  **Conformidade** (ou `conformidade.csv`)
+            2.  **Pontualidade** (ou `pontualidade.csv`)
+            
+            **A Regra:** Se `Conformidade < 92%`, o sistema desconta os diamantes de `Pontualidade`.
+            """)
 
 # --- VISÃO OPERADOR ---
 else:
