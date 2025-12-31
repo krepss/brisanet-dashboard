@@ -7,11 +7,8 @@ import json
 import time
 from datetime import datetime
 
-# --- CONFIGURAÇÃO DA LOGO (Apenas para Sidebar e Favicon) ---
-LOGO_FILE = "logo.ico"
-
-# --- SENHA DO GESTOR (ALTERE AQUI PARA UMA SENHA FORTE) ---
-SENHA_ADMIN = "admin123"
+# --- CONFIGURAÇÃO DA LOGO ---
+LOGO_FILE = "logo.png"
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
 try:
@@ -24,37 +21,19 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
     html, body, [class*="css"] { font-family: 'Roboto', sans-serif; }
+    .stApp { background: linear-gradient(135deg, #002b55 0%, #004e92 50%, #F37021 100%); background-attachment: fixed; }
     
-    .stApp { 
-        background: linear-gradient(135deg, #002b55 0%, #004e92 50%, #F37021 100%);
-        background-attachment: fixed;
-    }
-    
-    /* LOGIN CARD */
-    [data-testid="stForm"] {
-        background-color: rgba(255, 255, 255, 0.95);
-        padding: 40px;
-        border-radius: 20px;
-        box-shadow: 0 15px 35px rgba(0,0,0,0.3);
-        border-top: 5px solid #F37021;
-        max-width: 450px;
-        margin: 0 auto;
-    }
-    
-    /* CENTRALIZAR BOTÃO DO LOGIN */
+    [data-testid="stForm"] { background-color: rgba(255, 255, 255, 0.95); padding: 40px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.3); border-top: 5px solid #F37021; max-width: 450px; margin: 0 auto; }
     [data-testid="stForm"] .stButton { display: flex; justify-content: center; }
     [data-testid="stForm"] div.stButton > button { width: 100%; display: block; margin: 0 auto; background: linear-gradient(90deg, #003366 0%, #00528b 100%); color: white; border: none; padding: 0.6rem; font-weight: bold; text-transform: uppercase; }
     [data-testid="stForm"] div.stButton > button:hover { background: linear-gradient(90deg, #F37021 0%, #d35400 100%); transform: scale(1.02); }
-
-    /* FONTS */
+    
     .login-title { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 2.2em; color: #003366; text-align: center; margin-bottom: 0; letter-spacing: -1px; }
     .login-subtitle { font-family: 'Montserrat', sans-serif; font-size: 1.0em; color: #F37021; text-align: center; margin-bottom: 20px; font-weight: 600; letter-spacing: 2px; }
     .dev-footer { text-align: center; margin-top: 20px; font-size: 0.8em; color: rgba(255,255,255,0.8); font-family: 'Roboto', sans-serif; font-style: italic; }
     
-    /* DASHBOARD */
     div.stMetric { background-color: white; border: 1px solid #e0e0e0; padding: 15px 20px; border-radius: 12px; border-left: 5px solid #F37021; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s; }
     div.stMetric:hover { transform: translateY(-5px); }
-    div.stButton > button { border-radius: 8px; font-weight: bold; transition: 0.3s; }
     h1, h2, h3 { color: #003366 !important; }
     .date-box { background-color: #e3f2fd; color: #003366; padding: 10px; border-radius: 8px; text-align: center; font-size: 0.9em; font-weight: bold; margin-bottom: 20px; border: 1px solid #bbdefb; }
 </style>
@@ -88,10 +67,10 @@ def obter_data_hoje():
     return datetime.now().strftime("%m/%Y")
 
 def obter_data_ultima_atualizacao():
+    # Tenta pegar a data de modificação do arquivo principal de dados
     arquivo_alvo = 'historico_consolidado.csv'
     if os.path.exists(arquivo_alvo):
         timestamp = os.path.getmtime(arquivo_alvo)
-        # Formata para DD/MM/AAAA às HH:MM
         return datetime.fromtimestamp(timestamp).strftime("%d/%m/%Y às %H:%M")
     return "N/A"
 
@@ -205,7 +184,7 @@ def ler_csv_inteligente(arquivo_ou_caminho):
         for enc in encodings:
             try:
                 if hasattr(arquivo_ou_caminho, 'seek'): arquivo_ou_caminho.seek(0)
-                df = pd.read_csv(arquivo_ou_caminho, sep=sep, encoding=enc, dtype=str)
+                df = pd.read_csv(arquivo_ou_caminho, sep=sep, encoding=enc)
                 if len(df.columns) > 1: return df
             except: continue
     return None
@@ -272,6 +251,7 @@ def tratar_arquivo_especial(df, nome_arquivo):
 
     df['% Atingimento'] = df['% Atingimento'].apply(processar_porcentagem_br)
     
+    # Conversão de diamantes
     if 'Diamantes' in df.columns: df['Diamantes'] = pd.to_numeric(df['Diamantes'], errors='coerce').fillna(0)
     if 'Max. Diamantes' in df.columns: df['Max. Diamantes'] = pd.to_numeric(df['Max. Diamantes'], errors='coerce').fillna(0)
 
@@ -311,50 +291,12 @@ def carregar_usuarios():
             df.columns = df.columns.str.lower()
             col_email = next((c for c in df.columns if 'mail' in c), None)
             col_nome = next((c for c in df.columns if 'colaborador' in c or 'nome' in c), None)
-            col_senha = next((c for c in df.columns if 'senha' in c or 'pass' in c), None)
-            
             if col_email and col_nome:
-                rename_map = {col_email: 'email', col_nome: 'nome'}
-                if col_senha: rename_map[col_senha] = 'senha'
-                df.rename(columns=rename_map, inplace=True)
+                df.rename(columns={col_email: 'email', col_nome: 'nome'}, inplace=True)
                 df['email'] = df['email'].astype(str).str.strip().str.lower()
                 df['nome'] = df['nome'].astype(str).str.strip().str.upper()
-                if 'senha' in df.columns: df['senha'] = df['senha'].astype(str).str.strip()
-                else: df['senha'] = ""
                 return df
     return None
-
-def salvar_nova_senha(email_alvo, nova_senha):
-    arquivos = [f for f in os.listdir('.') if f.endswith('.csv') and 'usuario' in f.lower()]
-    if arquivos:
-        nome_arquivo = arquivos[0]
-        try:
-            df = ler_csv_inteligente(nome_arquivo)
-            if df is not None:
-                cols_originais = df.columns.tolist()
-                df_work = df.copy()
-                df_work.columns = df_work.columns.str.lower()
-                col_email = next((c for c in df_work.columns if 'mail' in c), None)
-                col_senha = next((c for c in df_work.columns if 'senha' in c), None)
-                
-                if not col_senha:
-                    df['Senha'] = ""
-                    col_senha_real = 'Senha'
-                else:
-                    idx_senha = df_work.columns.get_loc(col_senha)
-                    col_senha_real = cols_originais[idx_senha]
-
-                col_email_real = cols_originais[df_work.columns.get_loc(col_email)]
-                
-                idx = df[df[col_email_real].astype(str).str.strip().str.lower() == email_alvo].index
-                if not idx.empty:
-                    df.loc[idx, col_senha_real] = nova_senha
-                    df.to_csv(nome_arquivo, index=False)
-                    return True, "Senha atualizada com sucesso!"
-                return False, "Usuário não encontrado."
-        except Exception as e:
-            return False, f"Erro ao salvar: {e}"
-    return False, "Arquivo de usuários não encontrado."
 
 def filtrar_por_usuarios_cadastrados(df_dados, df_users):
     if df_dados is None or df_dados.empty: return df_dados
@@ -367,9 +309,9 @@ def classificar_farol(val):
     elif val >= 0.80: return '🟢 Meta Batida'
     else: return '🔴 Crítico'
 
-# --- 4. LOGIN RENOVADO (COM SENHA) ---
+# --- 4. LOGIN RESTAURADO (GESTOR COM SENHA, OPERADOR SÓ EMAIL) ---
 if 'logado' not in st.session_state:
-    st.session_state.update({'logado': False, 'usuario_nome': '', 'perfil': '', 'usuario_email': ''})
+    st.session_state.update({'logado': False, 'usuario_nome': '', 'perfil': ''})
 
 if not st.session_state['logado']:
     c1, c2, c3 = st.columns([1, 2, 1])
@@ -379,34 +321,34 @@ if not st.session_state['logado']:
             st.markdown('<p class="login-title">Team Sofistas</p>', unsafe_allow_html=True)
             st.markdown('<p class="login-subtitle">Analytics & Performance</p>', unsafe_allow_html=True)
             
-            email_input = st.text_input("E-mail Corporativo", placeholder="seu.email@brisanet.com.br").strip().lower()
-            senha_input = st.text_input("Senha", type="password", placeholder="Digite sua senha")
+            # Campos de Login
+            usuario_input = st.text_input("Usuário ou E-mail", placeholder="E-mail do operador ou 'gestor'").strip().lower()
+            senha_input = st.text_input("Senha", type="password", placeholder="Obrigatório apenas para Gestor")
             
             st.markdown("<br>", unsafe_allow_html=True)
             
             if st.form_submit_button("ACESSAR SISTEMA"):
-                if email_input in ['gestor', 'admin'] and senha_input == SENHA_ADMIN:
-                    st.session_state.update({'logado': True, 'usuario_nome': 'Gestor', 'perfil': 'admin', 'usuario_email': 'admin'})
+                # 1. Login do Gestor (Com senha)
+                if usuario_input == 'gestor' and senha_input == 'admin':
+                    st.session_state.update({'logado': True, 'usuario_nome': 'Gestor', 'perfil': 'admin'})
                     st.rerun()
+                
+                # 2. Login do Operador (Só E-mail, valida no CSV)
                 else:
                     df_users = carregar_usuarios()
                     if df_users is not None:
-                        user_row = df_users[df_users['email'] == email_input]
-                        if not user_row.empty:
-                            senha_real = user_row.iloc[0]['senha']
-                            nome_upper = user_row.iloc[0]['nome']
-                            
-                            if senha_real and str(senha_real) == senha_input:
-                                st.session_state.update({'logado': True, 'usuario_nome': nome_upper, 'perfil': 'user', 'usuario_email': email_input})
-                                st.rerun()
-                            elif not senha_real:
-                                st.warning("⚠️ Usuário sem senha cadastrada. Contate o gestor.")
-                            else:
-                                st.error("🚫 Senha incorreta.")
+                        # Verifica se o email existe na base
+                        user_encontrado = df_users[df_users['email'] == usuario_input]
+                        
+                        if not user_encontrado.empty:
+                            # Loga direto sem pedir senha
+                            nome_real = user_encontrado.iloc[0]['nome']
+                            st.session_state.update({'logado': True, 'usuario_nome': nome_real, 'perfil': 'user'})
+                            st.rerun()
                         else:
-                            st.error("🚫 E-mail não encontrado.")
+                            st.error("🚫 E-mail não encontrado na base de usuários.")
                     else:
-                        st.error("⚠️ Base de usuários não carregada.")
+                        st.error("⚠️ Erro: Arquivo 'usuarios.csv' não encontrado. Peça ao gestor para fazer o upload.")
     
     st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
     st.stop()
@@ -444,19 +386,6 @@ with st.sidebar:
     st.markdown("---")
     nome_logado = st.session_state['usuario_nome'].title() if st.session_state['usuario_nome'] != 'Gestor' else 'Gestor'
     st.markdown(f"### 👤 {nome_logado.split()[0]}")
-    
-    if st.session_state['perfil'] == 'user':
-        with st.expander("🔑 Alterar Minha Senha"):
-            with st.form("form_troca_senha"):
-                nova_senha_1 = st.text_input("Nova Senha", type="password")
-                nova_senha_2 = st.text_input("Confirmar Senha", type="password")
-                if st.form_submit_button("Salvar Nova Senha"):
-                    if nova_senha_1 == nova_senha_2 and nova_senha_1:
-                        ok, msg = salvar_nova_senha(st.session_state['usuario_email'], nova_senha_1)
-                        if ok: st.success(msg)
-                        else: st.error(msg)
-                    else: st.error("Senhas não conferem ou vazias.")
-
     if st.button("Sair"):
         st.session_state.update({'logado': False})
         st.rerun()
@@ -493,7 +422,7 @@ if perfil == 'admin':
             c3.metric("🔴 Crítico", f"{qtd_vermelho}", delta="<80%", delta_color="inverse")
             st.markdown("---")
             
-            # --- Farol de Performance ---
+            # --- Farol de Performance (Restaurado) ---
             df_dados['Status_Farol'] = df_dados['% Atingimento'].apply(classificar_farol)
             df_farol = df_dados.copy()
             df_farol['Indicador'] = df_farol['Indicador'].apply(formatar_nome_visual)
@@ -505,7 +434,7 @@ if perfil == 'admin':
             
             st.markdown("---")
 
-            # --- Velocímetro da Equipe ---
+            # --- Velocímetro da Equipe (TAM) com Checkbox ---
             st.markdown("### 🦁 Performance Global da Equipe")
             remove_pont = st.checkbox("Remover Pontualidade do Cálculo Global", value=False)
             
@@ -536,11 +465,7 @@ if perfil == 'admin':
                 gauge = {
                     'axis': {'range': [None, 100], 'tickwidth': 1},
                     'bar': {'color': "#003366"},
-                    'steps': [
-                        {'range': [0, 80], 'color': '#ffcccb'},
-                        {'range': [80, 90], 'color': '#fff4cc'},
-                        {'range': [90, 100], 'color': '#d9f7be'}
-                    ],
+                    'steps': [{'range': [0, 80], 'color': '#ffcccb'},{'range': [80, 90], 'color': '#fff4cc'},{'range': [90, 100], 'color': '#d9f7be'}],
                     'threshold': {'line': {'color': "red", 'width': 4}, 'thickness': 0.75, 'value': 100}
                 }
             ))
@@ -760,8 +685,8 @@ if perfil == 'admin':
         st.markdown("### 📘 Como Alimentar o Sistema")
         st.info("Para garantir que os dados sejam lidos corretamente, siga os padrões abaixo.")
         with st.expander("1. Arquivo de Usuários (Login)"):
-            st.markdown("**Nome do Arquivo:** `usuarios.csv` (obrigatório).\n**Colunas:** `Nome`, `Email`, `Senha`.")
-            st.code("Nome,Email,Senha\nJoão Silva,joao@brisanet.com.br,123456\nMaria,maria@brisanet.com.br,senha123")
+            st.markdown("**Nome do Arquivo:** `usuarios.csv` (obrigatório).\n**Colunas:** `Nome`, `Email`, `Senha` (opcional/vazio para operadores).")
+            st.code("Nome,Email\nJoão Silva,joao@brisanet.com.br")
         with st.expander("2. Arquivos de Indicadores (KPIs)"):
             st.markdown("**Nome do Arquivo:** Pode ser qualquer um (ex: `ir.csv`, `csat.csv`).\n**Colunas:** `Colaborador`, `% Atingimento`, `Diamantes`, `Max. Diamantes`.")
             st.code("Colaborador,% Atingimento,Diamantes,Max. Diamantes\nJoão Silva,0.95,95,100")
@@ -774,7 +699,7 @@ if perfil == 'admin':
 else:
     st.markdown(f"## 🚀 Olá, **{nome_logado.split()[0]}**!")
     
-    # --- NOVO: DATA DA ÚLTIMA ATUALIZAÇÃO ---
+    # Data da última atualização
     data_atualizacao = obter_data_ultima_atualizacao()
     st.caption(f"📅 Referência: **{periodo_label}** • 🔄 Atualizado em: **{data_atualizacao}**")
     
