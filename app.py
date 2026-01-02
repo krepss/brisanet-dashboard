@@ -17,6 +17,26 @@ except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
 # --- 2. CSS PREMIUM ---
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+import os
+import json
+import time
+from datetime import datetime
+from streamlit_google_auth import Authenticate
+
+# --- CONFIGURAÇÃO DA LOGO ---
+LOGO_FILE = "logo.ico"
+
+# --- 1. CONFIGURAÇÃO DA PÁGINA ---
+try:
+    st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon=LOGO_FILE)
+except:
+    st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
+
+# --- 2. CSS PREMIUM (ALTO CONTRASTE - NIGHT MODE FIX TOTAL) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
@@ -28,26 +48,22 @@ st.markdown("""
         background-attachment: fixed;
     }
     
-    /* 2. TEXTOS GERAIS (Títulos e Parágrafos fora de caixas) -> BRANCO */
+    /* 2. TEXTOS GERAIS -> BRANCO */
+    /* Garante que todo texto padrão fora de containers especiais seja branco */
     .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6, 
-    .stApp p, .stApp li, .stApp div.stMarkdown {
+    .stApp p, .stApp li, .stApp span, .stApp div.stMarkdown, .stApp label {
         color: #FFFFFF !important;
     }
     
-    /* 3. SIDEBAR (MENU LATERAL) -> TEXTO BRANCO */
+    /* 3. SIDEBAR -> TEXTO BRANCO */
     section[data-testid="stSidebar"] {
-        background-color: rgba(0, 43, 85, 0.95); /* Fundo escuro */
+        background-color: rgba(0, 43, 85, 0.95);
     }
-    /* Força cor branca em todos os elementos de texto da sidebar */
     section[data-testid="stSidebar"] * {
         color: #FFFFFF !important;
     }
-    /* Exceção: Texto digitado dentro dos inputs deve ser escuro */
-    section[data-testid="stSidebar"] input {
-        color: #333333 !important;
-    }
     
-    /* 4. CARDS DE MÉTRICAS (FUNDO BRANCO -> TEXTO ESCURO) */
+    /* 4. CARDS DE MÉTRICAS -> FUNDO BRANCO, TEXTO ESCURO */
     div.stMetric {
         background-color: #FFFFFF !important;
         border: 1px solid #e0e0e0;
@@ -56,19 +72,12 @@ st.markdown("""
         border-left: 5px solid #F37021;
         box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
-    
-    /* Rótulo (Label) do Card - ex: "Diamantes Válidos" */
     div.stMetric label, div.stMetric div[data-testid="stMetricLabel"] p {
-        color: #555555 !important; 
-        font-weight: 600;
+        color: #555555 !important; font-weight: 600;
     }
-    
-    /* Valor do Card - ex: "1500" */
     div.stMetric div[data-testid="stMetricValue"] {
         color: #003366 !important;
     }
-    
-    /* Delta do Card - ex: "Meta Batida" */
     div.stMetric div[data-testid="stMetricDelta"] {
         color: #333333 !important;
     }
@@ -81,29 +90,54 @@ st.markdown("""
         box-shadow: 0 15px 35px rgba(0,0,0,0.5);
         border-top: 5px solid #F37021;
     }
-    /* Texto dentro do Login -> ESCURO */
     [data-testid="stForm"] h1, [data-testid="stForm"] p {
         color: #003366 !important;
     }
     
-    /* 6. ABAS (TABS) */
-    /* Texto da aba inativa -> BRANCO */
-    button[data-baseweb="tab"] {
-        color: rgba(255, 255, 255, 0.7) !important;
+    /* 6. INPUTS E DROPDOWNS (CORREÇÃO CRÍTICA) */
+    /* Caixa de input fechada */
+    .stTextInput input, .stSelectbox div[data-baseweb="select"] > div {
+        background-color: #FFFFFF !important;
+        color: #333333 !important;
+        border-radius: 5px;
     }
-    /* Texto da aba ativa -> LARANJA ou BRANCO FORTE */
-    button[data-baseweb="tab"][aria-selected="true"] {
+    
+    /* LISTA SUSPENSA (O POPUP DO SELECTBOX) */
+    /* Isso garante que as opções do menu não fiquem invisíveis */
+    ul[data-testid="stSelectboxVirtualDropdown"] {
+        background-color: #FFFFFF !important;
+    }
+    ul[data-testid="stSelectboxVirtualDropdown"] li {
+        color: #333333 !important;
+        background-color: #FFFFFF !important;
+    }
+    /* Item selecionado/hover na lista */
+    ul[data-testid="stSelectboxVirtualDropdown"] li:hover, 
+    ul[data-testid="stSelectboxVirtualDropdown"] li[aria-selected="true"] {
+        background-color: #F37021 !important;
         color: #FFFFFF !important;
-        background-color: rgba(255, 255, 255, 0.1) !important;
-        border-top: 2px solid #F37021 !important;
     }
     
-    /* 7. INPUTS E WIDGETS GERAIS */
-    .stTextInput label, .stSelectbox label, .stCheckbox label {
-        color: #FFFFFF !important; /* Labels dos inputs brancos */
+    /* 7. ALERTAS (WARNING, SUCCESS, ERROR) */
+    div.stAlert > div {
+        color: #333333 !important; /* Texto escuro dentro dos alertas coloridos */
+    }
+    div.stAlert p {
+        color: #333333 !important;
     }
     
-    /* 8. DATAFRAME (TABELAS) -> FUNDO BRANCO, TEXTO ESCURO */
+    /* 8. EXPANDER (Cabeçalho) */
+    .streamlit-expanderHeader p, .streamlit-expanderHeader span {
+        color: #FFFFFF !important; /* Título do expander branco no fundo azul */
+        font-weight: bold;
+    }
+    /* Conteúdo dentro do expander (geralmente segue o global, mas forçamos contraste se precisar) */
+    div[data-testid="stExpanderDetails"] p {
+        color: #FFFFFF !important;
+    }
+    /* Se o expander tiver fundo branco (opcional, mas o padrão é transparente), ajuste aqui */
+
+    /* 9. DATAFRAME (TABELAS) */
     [data-testid="stDataFrame"] {
         background-color: #FFFFFF !important;
         padding: 5px;
@@ -113,7 +147,7 @@ st.markdown("""
         color: #333333 !important;
     }
 
-    /* 9. BOTÕES */
+    /* 10. BOTÕES */
     div.stButton > button {
         border-radius: 8px; font-weight: bold; transition: 0.3s;
         background-color: #004e92; color: #FFFFFF !important; border: 1px solid white;
@@ -122,6 +156,13 @@ st.markdown("""
         background-color: #F37021; border-color: #F37021;
     }
     
+    /* 11. ABAS */
+    button[data-baseweb="tab"] { color: rgba(255, 255, 255, 0.7) !important; }
+    button[data-baseweb="tab"][aria-selected="true"] {
+        color: #FFFFFF !important;
+        border-top: 2px solid #F37021 !important;
+    }
+
     .dev-footer {
         text-align: center; margin-top: 20px; font-size: 0.8em; 
         color: rgba(255,255,255,0.7) !important; font-style: italic;
