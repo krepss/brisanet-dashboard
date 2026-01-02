@@ -35,7 +35,7 @@ st.markdown("""
     
     /* --- 2. CARTÃO DE LOGIN (Sempre Branco com Texto Escuro) --- */
     [data-testid="stForm"] {
-        background-color: #FFFFFF !important;
+        background: linear-gradient(180deg, #002b55 0%, #004e92 100%);    
         padding: 40px;
         border-radius: 20px;
         box-shadow: 0 10px 25px rgba(0,0,0,0.1);
