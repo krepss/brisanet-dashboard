@@ -22,21 +22,21 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
     html, body, [class*="css"] { font-family: 'Roboto', sans-serif; }
     
-    /* 1. FUNDO GLOBAL (GRADIENTE) E TEXTO GERAL BRANCO */
+    /* 1. FUNDO GLOBAL E TEXTO PADRÃO */
     .stApp { 
         background: linear-gradient(135deg, #002b55 0%, #004e92 50%, #F37021 100%);
         background-attachment: fixed;
-        color: white !important; /* Garante que texto solto seja branco */
+        color: white !important; /* Força texto branco geral */
     }
     
-    /* Força títulos e textos fora de caixas a serem brancos para contraste com o fundo azul */
-    h1, h2, h3, h4, h5, h6, p, li, span {
-        color: #ffffff !important;
+    /* Força títulos e textos soltos a serem brancos para ler no fundo azul */
+    h1, h2, h3, h4, h5, h6, p, li, span, div.stMarkdown {
+        color: white !important;
     }
     
     /* 2. CARTÃO DE LOGIN (FUNDO BRANCO -> TEXTO ESCURO) */
     [data-testid="stForm"] {
-        background-color: rgba(255, 255, 255, 0.95);
+        background-color: rgba(255, 255, 255, 0.95) !important;
         padding: 40px;
         border-radius: 20px;
         box-shadow: 0 15px 35px rgba(0,0,0,0.5);
@@ -44,9 +44,8 @@ st.markdown("""
         max-width: 450px;
         margin: 0 auto;
     }
-    /* Texto DENTRO do Login deve ser escuro */
-    [data-testid="stForm"] h1, [data-testid="stForm"] p, 
-    [data-testid="stForm"] label, [data-testid="stForm"] span, [data-testid="stForm"] div {
+    /* Tudo dentro do form de login deve ser escuro */
+    [data-testid="stForm"] * {
         color: #003366 !important;
     }
     
@@ -68,54 +67,50 @@ st.markdown("""
         border-radius: 12px;
         border-left: 5px solid #F37021;
         box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-        transition: transform 0.2s;
     }
-    div.stMetric:hover { transform: translateY(-5px); }
-    
-    /* Força cor escura nos números e labels da métrica */
-    div.stMetric label { color: #555 !important; }
+    /* Força labels e valores da métrica a serem escuros, senão somem no fundo branco */
+    div.stMetric label { color: #666 !important; }
     div.stMetric div[data-testid="stMetricValue"] { color: #003366 !important; }
+    div.stMetric div[data-testid="stMetricDelta"] { color: #333 !important; }
     
-    /* 4. BOTÕES */
+    /* 4. INPUTS (CAIXAS DE TEXTO/SELEÇÃO) */
+    /* Garante fundo branco e letra escura nos inputs para não confundir */
+    .stTextInput input, .stSelectbox div[data-baseweb="select"] > div {
+        background-color: white !important;
+        color: #333 !important;
+    }
+    /* Texto do label do input (ex: "Senha") */
+    .stTextInput label, .stSelectbox label, .stCheckbox label {
+        color: white !important;
+    }
+
+    /* 5. TABELAS */
+    [data-testid="stDataFrame"] {
+        background-color: white !important;
+        color: #333 !important;
+        border-radius: 10px;
+        padding: 5px;
+    }
+    /* Garante que o texto dentro da tabela seja escuro */
+    [data-testid="stDataFrame"] * {
+        color: #333 !important;
+    }
+
+    /* 6. BOTÕES */
     div.stButton > button {
         border-radius: 8px; font-weight: bold; transition: 0.3s;
-        background-color: #004e92; color: white; border: 1px solid white;
+        background-color: #004e92; color: white !important; border: 1px solid white;
     }
     div.stButton > button:hover {
-        background-color: #F37021; border-color: #F37021; color: white;
+        background-color: #F37021; border-color: #F37021;
     }
     
-    /* 5. SIDEBAR E INPUTS */
-    section[data-testid="stSidebar"] {
-        background-color: rgba(0, 43, 85, 0.9); /* Azul escuro translúcido */
-    }
-    
-    /* Inputs (Caixas de texto) */
-    .stTextInput > div > div > input {
-        color: #333 !important; /* Texto digitado escuro */
-        background-color: white !important;
-    }
-    
-    /* Tabelas (Dataframes) */
-    [data-testid="stDataFrame"] {
-        background-color: white;
-        padding: 5px;
-        border-radius: 10px;
-    }
-    [data-testid="stDataFrame"] div, [data-testid="stDataFrame"] span {
-        color: #333 !important; /* Texto da tabela escuro */
-    }
+    /* 7. CHECKBOX */
+    .stCheckbox { color: white !important; }
 
     .dev-footer {
         text-align: center; margin-top: 20px; font-size: 0.8em; 
-        color: rgba(255,255,255,0.7) !important; 
-        font-family: 'Roboto', sans-serif; font-style: italic;
-    }
-    
-    .date-box {
-        background-color: #e3f2fd; color: #003366 !important; padding: 10px; 
-        border-radius: 8px; text-align: center; font-size: 0.9em; font-weight: bold;
-        margin-bottom: 20px; border: 1px solid #bbdefb;
+        color: rgba(255,255,255,0.7) !important; font-style: italic;
     }
 </style>
 """, unsafe_allow_html=True)
