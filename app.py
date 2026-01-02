@@ -17,155 +17,93 @@ except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
 # --- 2. CSS PREMIUM ---
-import streamlit as st
-import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-import os
-import json
-import time
-from datetime import datetime
-from streamlit_google_auth import Authenticate
-
-# --- CONFIGURAÇÃO DA LOGO ---
-LOGO_FILE = "logo.ico"
-
-# --- 1. CONFIGURAÇÃO DA PÁGINA ---
-try:
-    st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon=LOGO_FILE)
-except:
-    st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
-
-# --- 2. CSS PREMIUM (ALTO CONTRASTE - NIGHT MODE FIX TOTAL) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
     html, body, [class*="css"] { font-family: 'Roboto', sans-serif; }
     
-    /* 1. FUNDO GLOBAL */
-    .stApp { 
-        background: linear-gradient(135deg, #002b55 0%, #004e92 50%, #F37021 100%);
-        background-attachment: fixed;
-    }
-    
-    /* 2. TEXTOS GERAIS -> BRANCO */
-    /* Garante que todo texto padrão fora de containers especiais seja branco */
-    .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6, 
-    .stApp p, .stApp li, .stApp span, .stApp div.stMarkdown, .stApp label {
-        color: #FFFFFF !important;
-    }
-    
-    /* 3. SIDEBAR -> TEXTO BRANCO */
+    /* --- 1. SIDEBAR (Identidade Visual Fixa) --- */
     section[data-testid="stSidebar"] {
-        background-color: rgba(0, 43, 85, 0.95);
+        background: linear-gradient(180deg, #002b55 0%, #004e92 100%);
     }
-    section[data-testid="stSidebar"] * {
+    /* Texto da Sidebar sempre Branco para ler no fundo azul */
+    section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] span, 
+    section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, 
+    section[data-testid="stSidebar"] h3, section[data-testid="stSidebar"] label {
         color: #FFFFFF !important;
     }
     
-    /* 4. CARDS DE MÉTRICAS -> FUNDO BRANCO, TEXTO ESCURO */
-    div.stMetric {
+    /* --- 2. CARTÃO DE LOGIN (Sempre Branco com Texto Escuro) --- */
+    [data-testid="stForm"] {
         background-color: #FFFFFF !important;
+        padding: 40px;
+        border-radius: 20px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        border-top: 5px solid #F37021;
+    }
+    /* Força texto escuro dentro do login */
+    [data-testid="stForm"] * {
+        color: #333333 !important;
+    }
+    
+    /* --- 3. MÉTRICAS (Cards) --- */
+    div.stMetric {
+        background-color: #FFFFFF !important; /* Fundo sempre branco */
         border: 1px solid #e0e0e0;
         padding: 15px 20px;
         border-radius: 12px;
         border-left: 5px solid #F37021;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
-    div.stMetric label, div.stMetric div[data-testid="stMetricLabel"] p {
-        color: #555555 !important; font-weight: 600;
-    }
-    div.stMetric div[data-testid="stMetricValue"] {
-        color: #003366 !important;
-    }
-    div.stMetric div[data-testid="stMetricDelta"] {
-        color: #333333 !important;
-    }
+    /* Título da Métrica */
+    div.stMetric label { color: #666666 !important; font-weight: 600; }
+    /* Valor da Métrica */
+    div.stMetric div[data-testid="stMetricValue"] { color: #003366 !important; }
+    /* Delta (Variação) */
+    div.stMetric div[data-testid="stMetricDelta"] { color: #333333 !important; }
     
-    /* 5. CARTÃO DE LOGIN */
-    [data-testid="stForm"] {
-        background-color: rgba(255, 255, 255, 0.95) !important;
-        padding: 40px;
-        border-radius: 20px;
-        box-shadow: 0 15px 35px rgba(0,0,0,0.5);
-        border-top: 5px solid #F37021;
-    }
-    [data-testid="stForm"] h1, [data-testid="stForm"] p {
-        color: #003366 !important;
-    }
-    
-    /* 6. INPUTS E DROPDOWNS (CORREÇÃO CRÍTICA) */
-    /* Caixa de input fechada */
-    .stTextInput input, .stSelectbox div[data-baseweb="select"] > div {
-        background-color: #FFFFFF !important;
-        color: #333333 !important;
-        border-radius: 5px;
-    }
-    
-    /* LISTA SUSPENSA (O POPUP DO SELECTBOX) */
-    /* Isso garante que as opções do menu não fiquem invisíveis */
-    ul[data-testid="stSelectboxVirtualDropdown"] {
-        background-color: #FFFFFF !important;
-    }
-    ul[data-testid="stSelectboxVirtualDropdown"] li {
-        color: #333333 !important;
-        background-color: #FFFFFF !important;
-    }
-    /* Item selecionado/hover na lista */
-    ul[data-testid="stSelectboxVirtualDropdown"] li:hover, 
-    ul[data-testid="stSelectboxVirtualDropdown"] li[aria-selected="true"] {
-        background-color: #F37021 !important;
-        color: #FFFFFF !important;
-    }
-    
-    /* 7. ALERTAS (WARNING, SUCCESS, ERROR) */
-    div.stAlert > div {
-        color: #333333 !important; /* Texto escuro dentro dos alertas coloridos */
-    }
-    div.stAlert p {
-        color: #333333 !important;
-    }
-    
-    /* 8. EXPANDER (Cabeçalho) */
-    .streamlit-expanderHeader p, .streamlit-expanderHeader span {
-        color: #FFFFFF !important; /* Título do expander branco no fundo azul */
-        font-weight: bold;
-    }
-    /* Conteúdo dentro do expander (geralmente segue o global, mas forçamos contraste se precisar) */
-    div[data-testid="stExpanderDetails"] p {
-        color: #FFFFFF !important;
-    }
-    /* Se o expander tiver fundo branco (opcional, mas o padrão é transparente), ajuste aqui */
-
-    /* 9. DATAFRAME (TABELAS) */
-    [data-testid="stDataFrame"] {
-        background-color: #FFFFFF !important;
-        padding: 5px;
-        border-radius: 8px;
-    }
-    [data-testid="stDataFrame"] * {
-        color: #333333 !important;
-    }
-
-    /* 10. BOTÕES */
+    /* --- 4. BOTÕES --- */
     div.stButton > button {
-        border-radius: 8px; font-weight: bold; transition: 0.3s;
-        background-color: #004e92; color: #FFFFFF !important; border: 1px solid white;
+        background-color: #003366; 
+        color: #FFFFFF !important;
+        border: none;
+        border-radius: 8px;
+        font-weight: bold;
+        transition: 0.3s;
     }
     div.stButton > button:hover {
-        background-color: #F37021; border-color: #F37021;
+        background-color: #F37021;
+        color: #FFFFFF !important;
     }
     
-    /* 11. ABAS */
-    button[data-baseweb="tab"] { color: rgba(255, 255, 255, 0.7) !important; }
-    button[data-baseweb="tab"][aria-selected="true"] {
-        color: #FFFFFF !important;
-        border-top: 2px solid #F37021 !important;
+    /* --- 5. TABELAS (Dataframes) --- */
+    /* Garante contraste na tabela independente do tema */
+    [data-testid="stDataFrame"] {
+        border: 1px solid #ddd;
+        border-radius: 5px;
     }
 
+    /* --- 6. TEXTOS GERAIS --- */
+    /* Títulos principais em Azul Sofistas (se o fundo for claro) ou Branco (se for escuro - automático do Streamlit) */
+    h1, h2, h3 {
+        font-family: 'Montserrat', sans-serif !important;
+        font-weight: 700;
+    }
+    
+    /* Rodapé */
     .dev-footer {
         text-align: center; margin-top: 20px; font-size: 0.8em; 
-        color: rgba(255,255,255,0.7) !important; font-style: italic;
+        opacity: 0.7; font-style: italic;
+    }
+    
+    /* Títulos do Login (Classes Específicas) */
+    .login-title {
+        font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 2.2em;
+        color: #003366 !important; text-align: center; margin-bottom: 0;
+    }
+    .login-subtitle {
+        font-family: 'Montserrat', sans-serif; font-size: 1.0em; 
+        color: #F37021 !important; text-align: center; margin-bottom: 20px; font-weight: 600;
     }
 </style>
 """, unsafe_allow_html=True)
