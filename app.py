@@ -21,21 +21,102 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
     html, body, [class*="css"] { font-family: 'Roboto', sans-serif; }
-    .stApp { background: linear-gradient(135deg, #002b55 0%, #004e92 50%, #F37021 100%); background-attachment: fixed; }
     
-    [data-testid="stForm"] { background-color: rgba(255, 255, 255, 0.95); padding: 40px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.3); border-top: 5px solid #F37021; max-width: 450px; margin: 0 auto; }
-    [data-testid="stForm"] .stButton { display: flex; justify-content: center; }
-    [data-testid="stForm"] div.stButton > button { width: 100%; display: block; margin: 0 auto; background: linear-gradient(90deg, #003366 0%, #00528b 100%); color: white; border: none; padding: 0.6rem; font-weight: bold; text-transform: uppercase; }
-    [data-testid="stForm"] div.stButton > button:hover { background: linear-gradient(90deg, #F37021 0%, #d35400 100%); transform: scale(1.02); }
+    /* 1. FUNDO GLOBAL (GRADIENTE) E TEXTO GERAL BRANCO */
+    .stApp { 
+        background: linear-gradient(135deg, #002b55 0%, #004e92 50%, #F37021 100%);
+        background-attachment: fixed;
+        color: white !important; /* Garante que texto solto seja branco */
+    }
     
-    .login-title { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 2.2em; color: #003366; text-align: center; margin-bottom: 0; letter-spacing: -1px; }
-    .login-subtitle { font-family: 'Montserrat', sans-serif; font-size: 1.0em; color: #F37021; text-align: center; margin-bottom: 20px; font-weight: 600; letter-spacing: 2px; }
-    .dev-footer { text-align: center; margin-top: 20px; font-size: 0.8em; color: rgba(255,255,255,0.8); font-family: 'Roboto', sans-serif; font-style: italic; }
+    /* Força títulos e textos fora de caixas a serem brancos para contraste com o fundo azul */
+    h1, h2, h3, h4, h5, h6, p, li, span {
+        color: #ffffff !important;
+    }
     
-    div.stMetric { background-color: white; border: 1px solid #e0e0e0; padding: 15px 20px; border-radius: 12px; border-left: 5px solid #F37021; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s; }
+    /* 2. CARTÃO DE LOGIN (FUNDO BRANCO -> TEXTO ESCURO) */
+    [data-testid="stForm"] {
+        background-color: rgba(255, 255, 255, 0.95);
+        padding: 40px;
+        border-radius: 20px;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+        border-top: 5px solid #F37021;
+        max-width: 450px;
+        margin: 0 auto;
+    }
+    /* Texto DENTRO do Login deve ser escuro */
+    [data-testid="stForm"] h1, [data-testid="stForm"] p, 
+    [data-testid="stForm"] label, [data-testid="stForm"] span, [data-testid="stForm"] div {
+        color: #003366 !important;
+    }
+    
+    /* Títulos específicos do Login */
+    .login-title {
+        font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 2.2em;
+        color: #003366 !important; text-align: center; margin-bottom: 0; letter-spacing: -1px;
+    }
+    .login-subtitle {
+        font-family: 'Montserrat', sans-serif; font-size: 1.0em; 
+        color: #F37021 !important; text-align: center; margin-bottom: 20px; font-weight: 600; letter-spacing: 2px;
+    }
+    
+    /* 3. MÉTRICAS (FUNDO BRANCO -> TEXTO ESCURO) */
+    div.stMetric {
+        background-color: white !important;
+        border: 1px solid #e0e0e0;
+        padding: 15px 20px;
+        border-radius: 12px;
+        border-left: 5px solid #F37021;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        transition: transform 0.2s;
+    }
     div.stMetric:hover { transform: translateY(-5px); }
-    h1, h2, h3 { color: #003366 !important; }
-    .date-box { background-color: #e3f2fd; color: #003366; padding: 10px; border-radius: 8px; text-align: center; font-size: 0.9em; font-weight: bold; margin-bottom: 20px; border: 1px solid #bbdefb; }
+    
+    /* Força cor escura nos números e labels da métrica */
+    div.stMetric label { color: #555 !important; }
+    div.stMetric div[data-testid="stMetricValue"] { color: #003366 !important; }
+    
+    /* 4. BOTÕES */
+    div.stButton > button {
+        border-radius: 8px; font-weight: bold; transition: 0.3s;
+        background-color: #004e92; color: white; border: 1px solid white;
+    }
+    div.stButton > button:hover {
+        background-color: #F37021; border-color: #F37021; color: white;
+    }
+    
+    /* 5. SIDEBAR E INPUTS */
+    section[data-testid="stSidebar"] {
+        background-color: rgba(0, 43, 85, 0.9); /* Azul escuro translúcido */
+    }
+    
+    /* Inputs (Caixas de texto) */
+    .stTextInput > div > div > input {
+        color: #333 !important; /* Texto digitado escuro */
+        background-color: white !important;
+    }
+    
+    /* Tabelas (Dataframes) */
+    [data-testid="stDataFrame"] {
+        background-color: white;
+        padding: 5px;
+        border-radius: 10px;
+    }
+    [data-testid="stDataFrame"] div, [data-testid="stDataFrame"] span {
+        color: #333 !important; /* Texto da tabela escuro */
+    }
+
+    .dev-footer {
+        text-align: center; margin-top: 20px; font-size: 0.8em; 
+        color: rgba(255,255,255,0.7) !important; 
+        font-family: 'Roboto', sans-serif; font-style: italic;
+    }
+    
+    .date-box {
+        background-color: #e3f2fd; color: #003366 !important; padding: 10px; 
+        border-radius: 8px; text-align: center; font-size: 0.9em; font-weight: bold;
+        margin-bottom: 20px; border: 1px solid #bbdefb;
+    }
 </style>
 """, unsafe_allow_html=True)
 
