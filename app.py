@@ -22,91 +22,41 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
     html, body, [class*="css"] { font-family: 'Roboto', sans-serif; }
     
-    /* --- 1. SIDEBAR (Identidade Visual Fixa) --- */
-    section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #002b55 0%, #004e92 100%);
-    }
-    /* Texto da Sidebar sempre Branco para ler no fundo azul */
-    section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] span, 
-    section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, 
-    section[data-testid="stSidebar"] h3, section[data-testid="stSidebar"] label {
-        color: #FFFFFF !important;
+    .stApp { 
+        background: linear-gradient(135deg, #002b55 0%, #004e92 50%, #F37021 100%);
+        background-attachment: fixed;
     }
     
-    /* --- 2. CARTÃO DE LOGIN (Sempre Branco com Texto Escuro) --- */
+    /* LOGIN CARD */
     [data-testid="stForm"] {
-        background: #FFFF;    
+        background-color: rgba(255, 255, 255, 0.95);
         padding: 40px;
         border-radius: 20px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        box-shadow: 0 15px 35px rgba(0,0,0,0.3);
         border-top: 5px solid #F37021;
-    }
-    /* Força texto escuro dentro do login */
-    [data-testid="stForm"] * {
-        color: #333333 !important;
+        max-width: 450px;
+        margin: 0 auto;
     }
     
-    /* --- 3. MÉTRICAS (Cards) --- */
-    div.stMetric {
-        background-color: #FFFFFF !important; /* Fundo sempre branco */
-        border: 1px solid #e0e0e0;
-        padding: 15px 20px;
-        border-radius: 12px;
-        border-left: 5px solid #F37021;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    }
-    /* Título da Métrica */
-    div.stMetric label { color: #666666 !important; font-weight: 600; }
-    /* Valor da Métrica */
-    div.stMetric div[data-testid="stMetricValue"] { color: #003366 !important; }
-    /* Delta (Variação) */
-    div.stMetric div[data-testid="stMetricDelta"] { color: #333333 !important; }
-    
-    /* --- 4. BOTÕES --- */
-    div.stButton > button {
-        background-color: #003366; 
-        color: #FFFFFF !important;
-        border: none;
-        border-radius: 8px;
-        font-weight: bold;
-        transition: 0.3s;
-    }
-    div.stButton > button:hover {
-        background-color: #F37021;
-        color: #FFFFFF !important;
-    }
-    
-    /* --- 5. TABELAS (Dataframes) --- */
-    /* Garante contraste na tabela independente do tema */
-    [data-testid="stDataFrame"] {
-        border: 1px solid #ddd;
-        border-radius: 5px;
-    }
+    /* CENTRALIZAR BOTÃO DO LOGIN */
+    [data-testid="stForm"] .stButton { display: flex; justify-content: center; }
+    [data-testid="stForm"] div.stButton > button { width: 100%; display: block; margin: 0 auto; background: linear-gradient(90deg, #003366 0%, #00528b 100%); color: white; border: none; padding: 0.6rem; font-weight: bold; text-transform: uppercase; }
+    [data-testid="stForm"] div.stButton > button:hover { background: linear-gradient(90deg, #F37021 0%, #d35400 100%); transform: scale(1.02); }
 
-    /* --- 6. TEXTOS GERAIS --- */
-    /* Títulos principais em Azul Sofistas (se o fundo for claro) ou Branco (se for escuro - automático do Streamlit) */
-    h1, h2, h3 {
-        font-family: 'Montserrat', sans-serif !important;
-        font-weight: 700;
-    }
+    /* FONTS */
+    .login-title { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 2.2em; color: #003366; text-align: center; margin-bottom: 0; letter-spacing: -1px; }
+    .login-subtitle { font-family: 'Montserrat', sans-serif; font-size: 1.0em; color: #F37021; text-align: center; margin-bottom: 20px; font-weight: 600; letter-spacing: 2px; }
+    .dev-footer { text-align: center; margin-top: 20px; font-size: 0.8em; color: rgba(255,255,255,0.8); font-family: 'Roboto', sans-serif; font-style: italic; }
     
-    /* Rodapé */
-    .dev-footer {
-        text-align: center; margin-top: 20px; font-size: 0.8em; 
-        opacity: 0.7; font-style: italic;
-    }
-    
-    /* Títulos do Login (Classes Específicas) */
-    .login-title {
-        font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 2.2em;
-        color: #003366 !important; text-align: center; margin-bottom: 0;
-    }
-    .login-subtitle {
-        font-family: 'Montserrat', sans-serif; font-size: 1.0em; 
-        color: #F37021 !important; text-align: center; margin-bottom: 20px; font-weight: 600;
-    }
+    /* DASHBOARD */
+    div.stMetric { background-color: white; border: 1px solid #e0e0e0; padding: 15px 20px; border-radius: 12px; border-left: 5px solid #F37021; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s; }
+    div.stMetric:hover { transform: translateY(-5px); }
+    div.stButton > button { border-radius: 8px; font-weight: bold; transition: 0.3s; }
+    h1, h2, h3 { color: #003366 !important; }
+    .date-box { background-color: #e3f2fd; color: #003366; padding: 10px; border-radius: 8px; text-align: center; font-size: 0.9em; font-weight: bold; margin-bottom: 20px; border: 1px solid #bbdefb; }
 </style>
 """, unsafe_allow_html=True)
+
 
 # --- 3. FUNÇÕES DE BACKEND ---
 
