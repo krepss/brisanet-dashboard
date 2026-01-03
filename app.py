@@ -168,6 +168,40 @@ def carregar_historico_completo():
         except: return None
     return None
 
+def calcular_variacao_mom(colaborador, periodo_atual, df_atual):
+    """Calcula a diferença percentual de cada KPI em relação ao mês anterior."""
+    df_hist = carregar_historico_completo()
+    deltas = {}
+    
+    if df_hist is None or df_hist.empty: return deltas
+
+    # Ordenar períodos cronologicamente
+    periodos = df_hist['Periodo'].unique().tolist()
+    try: periodos.sort(key=lambda x: datetime.strptime(x, "%m/%Y"), reverse=True)
+    except: periodos.sort(reverse=True)
+    
+    # Achar índice do mês atual e pegar o próximo (que é o anterior cronologicamente)
+    try:
+        idx_atual = periodos.index(periodo_atual)
+        if idx_atual + 1 < len(periodos):
+            periodo_anterior = periodos[idx_atual + 1]
+            df_past = df_hist[(df_hist['Periodo'] == periodo_anterior) & 
+                              (df_hist['Colaborador'] == colaborador)]
+            
+            if not df_past.empty:
+                for _, row in df_atual.iterrows():
+                    ind = row['Indicador']
+                    val_atual = row['% Atingimento']
+                    
+                    # Busca valor antigo
+                    row_past = df_past[df_past['Indicador'] == ind]
+                    if not row_past.empty:
+                        val_past = row_past.iloc[0]['% Atingimento']
+                        diff = val_atual - val_past
+                        deltas[ind] = diff
+    except: pass
+    return deltas
+
 def listar_periodos_disponiveis():
     df = carregar_historico_completo()
     if df is not None and 'Periodo' in df.columns:
@@ -716,16 +750,50 @@ if perfil == 'admin':
 
 # --- VISÃO OPERADOR ---
 else:
+    # --- CSS ESTRATÉGICO PARA OPERADOR ---
+    st.markdown("""
+    <style>
+        .rival-card { background-color: #e3f2fd; padding: 15px; border-radius: 10px; border-left: 5px solid #003366; color: #003366; font-size: 0.9rem; }
+        .money-card { background-color: #e8f5e9; padding: 15px; border-radius: 10px; border-left: 5px solid #2ecc71; color: #1b5e20; }
+        .stMetric { background-color: #ffffff; border: 1px solid #f0f0f0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    </style>
+    """, unsafe_allow_html=True)
+
     st.markdown(f"## 🚀 Olá, **{nome_logado.split()[0]}**!")
     
-    # Data da última atualização
+    # 1. SETUP DE DADOS
     data_atualizacao = obter_data_ultima_atualizacao()
     st.caption(f"📅 Referência: **{periodo_label}** • 🔄 Atualizado em: **{data_atualizacao}**")
     
     meus_dados = df_dados[df_dados['Colaborador'] == nome_logado].copy()
     
     if not meus_dados.empty:
-        # Lógica TAM First
+        # Calcular Ranking Geral (Cego) para saber posição
+        if tem_tam:
+             df_rank = df_dados[df_dados['Indicador'] == 'TAM'].copy()
+        else:
+             df_rank = df_dados.groupby('Colaborador').agg({'Diamantes': 'sum', 'Max. Diamantes': 'sum'}).reset_index()
+             df_rank['% Atingimento'] = df_rank.apply(lambda row: (row['Diamantes'] / row['Max. Diamantes']) if row['Max. Diamantes'] > 0 else 0, axis=1)
+        
+        df_rank = df_rank.sort_values(by='% Atingimento', ascending=False).reset_index(drop=True)
+        try:
+            minha_posicao = df_rank[df_rank['Colaborador'] == nome_logado].index[0] + 1
+            total_participantes = len(df_rank)
+            
+            # Dados do rival acima (se não for o primeiro)
+            msg_rival = "🥇 Você é o Lider! Mantenha o ritmo!"
+            if minha_posicao > 1:
+                rival_row = df_rank.iloc[minha_posicao - 2] # -2 pois indice começa em 0 e queremos o anterior
+                meu_row = df_rank.iloc[minha_posicao - 1]
+                diff_pts = (rival_row['% Atingimento'] - meu_row['% Atingimento']) * 100
+                msg_rival = f"🔥 Você está em **{minha_posicao}º** de {total_participantes}. Faltam apenas **{diff_pts:.2f} p.p.** para ultrapassar o {minha_posicao-1}º colocado!"
+            else:
+                st.balloons() # Confete se for o primeiro
+        except:
+            minha_posicao = "-"
+            msg_rival = "Ranking indisponível no momento."
+
+        # Dados Financeiros Básicos
         tem_tam = 'TAM' in meus_dados['Indicador'].unique()
         if 'Diamantes' in meus_dados.columns:
             if tem_tam:
@@ -738,80 +806,123 @@ else:
                 total_max = meus_dados['Max. Diamantes'].sum()
                 resultado_global = (total_dia_bruto / total_max) if total_max > 0 else 0
             
-            col_gamif, col_gauge = st.columns([1.5, 1])
+            # --- SEÇÃO 1: GAMIFICAÇÃO E STATUS ---
+            col_gamif, col_rank = st.columns([1.5, 1])
             with col_gamif:
-                st.markdown("### 💎 Gamificação")
+                st.markdown("### 💎 Performance Global")
                 st.progress(resultado_global if resultado_global <= 1.0 else 1.0)
-                st.write(f"**{int(total_dia_bruto)} / {int(total_max)}** Diamantes")
-            with col_gauge:
-                fig_gauge = go.Figure(go.Indicator(
-                    mode = "gauge+number",
-                    value = resultado_global * 100,
-                    number = {'font': {'size': 24}}, 
-                    gauge = {
-                        'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': "darkblue"},
-                        'bar': {'color': "#F37021"},
-                        'bgcolor': "white",
-                        'borderwidth': 1,
-                        'bordercolor': "gray",
-                        'steps': [{'range': [0, 100], 'color': '#f4f7f6'}],
-                        'threshold': {'line': {'color': "green", 'width': 4}, 'thickness': 0.75, 'value': 100}
-                    }))
-                fig_gauge.update_layout(height=160, margin=dict(l=10, r=10, t=30, b=10))
-                st.plotly_chart(fig_gauge, use_container_width=True)
+                st.write(f"**{int(total_dia_bruto)} / {int(total_max)}** Diamantes conquistados")
+            
+            with col_rank:
+                st.markdown("### 🏆 Sua Posição")
+                st.markdown(f"""<div class='rival-card'>{msg_rival}</div>""", unsafe_allow_html=True)
+
             st.markdown("---")
             
+            # --- CÁLCULO FINANCEIRO REAL ---
             df_conf = meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE']
             atingimento_conf = df_conf.iloc[0]['% Atingimento'] if not df_conf.empty else 0.0
             tem_dado_conf = not df_conf.empty
             desconto_diamantes = 0
-            motivo_desconto = ""
             GATILHO_FINANCEIRO = 0.92
             
             if tem_dado_conf and atingimento_conf < GATILHO_FINANCEIRO:
                 df_pont = meus_dados[meus_dados['Indicador'] == 'PONTUALIDADE']
                 if not df_pont.empty:
                     desconto_diamantes = df_pont.iloc[0]['Diamantes']
-                    motivo_desconto = f"(Perdeu {desconto_diamantes} de Pontualidade)"
             
             total_dia_liquido = total_dia_bruto - desconto_diamantes
             valor_final = total_dia_liquido * 0.50
             
-            st.markdown("#### 💰 Extrato Financeiro")
-            c1, c2, c3 = st.columns(3)
-            c1.metric("Diamantes Válidos", f"{int(total_dia_liquido)}", f"{motivo_desconto}", delta_color="inverse" if desconto_diamantes > 0 else "normal")
-            c2.metric("Valor por Diamante", "R$ 0,50")
-            if not tem_dado_conf:
-                c3.metric("Valor a Receber", "Aguardando", "Conformidade Indisponível", delta_color="off")
-            elif desconto_diamantes > 0:
-                c3.metric("Valor a Receber", f"R$ {valor_final:.2f}", f"Gatilho não atingido (<{GATILHO_FINANCEIRO:.0%})", delta_color="inverse")
-                st.error(f"⚠️ **Gatilho Financeiro não atingido**: Sua conformidade foi **{atingimento_conf:.2%}**. Para receber os diamantes de Pontualidade, é necessário ter >= 92% de Conformidade.")
-            else:
-                c3.metric("Valor a Receber", f"R$ {valor_final:.2f}", "Gatilho Atingido! 🤑")
-                if atingimento_conf >= GATILHO_FINANCEIRO:
-                    st.success(f"✅ **Gatilho Financeiro Atingido**: Conformidade **{atingimento_conf:.2%}** (>= 92%). Todos os diamantes computados.")
-            st.divider()
+            # --- SEÇÃO 2: FINANCEIRO E SIMULADOR ---
+            c1, c2 = st.columns([1, 1])
+            with c1:
+                st.markdown("#### 💰 Extrato Real")
+                st.metric("A Receber (Hoje)", f"R$ {valor_final:.2f}")
+                if desconto_diamantes > 0:
+                    st.error(f"⚠️ **Gatilho de 92% não atingido!** Você perdeu R$ {(desconto_diamantes*0.5):.2f} (Pontualidade).")
+                elif atingimento_conf >= GATILHO_FINANCEIRO:
+                    st.success("✅ Gatilho Ativado! Comissão cheia.")
+            
+            with c2:
+                with st.expander("💸 Simulador: Quanto posso ganhar?", expanded=False):
+                    st.caption("Veja o impacto se você melhorar sua Conformidade:")
+                    
+                    # Slider inteligente
+                    val_inicial = float(atingimento_conf)
+                    if val_inicial > 1.0: val_inicial = 1.0
+                    novo_conf = st.slider("Simular Conformidade:", 0.80, 1.0, val_inicial, 0.01, format="%.2f")
+                    
+                    # Recalcula cenário
+                    sim_desconto = 0
+                    if novo_conf < GATILHO_FINANCEIRO:
+                        try: sim_desconto = meus_dados.loc[meus_dados['Indicador'] == 'PONTUALIDADE', 'Diamantes'].sum()
+                        except: pass
+                    
+                    sim_liquido = total_dia_bruto - sim_desconto
+                    sim_valor = sim_liquido * 0.50
+                    ganho_extra = sim_valor - valor_final
+                    
+                    if ganho_extra > 0:
+                        st.markdown(f"🚀 **Potencial de Ganho:** :green[+ R$ {ganho_extra:.2f}]")
+                    elif ganho_extra == 0 and sim_desconto == 0:
+                         st.markdown("✅ Você já está no máximo do gatilho!")
+                    else:
+                        st.markdown(f"🔻 :red[Perda prevista: R$ {ganho_extra:.2f}]")
+                    st.metric("Comissão Simulada", f"R$ {sim_valor:.2f}")
 
+            st.markdown("---")
+
+        # --- SEÇÃO 3: CARDS DE KPIS COM TENDÊNCIA (MOM) ---
+        st.subheader("📊 Seus Indicadores")
+        
+        # Calcular variações (Month over Month)
+        deltas_mom = calcular_variacao_mom(nome_logado, periodo_selecionado, meus_dados)
+        
         cols = st.columns(len(meus_dados))
         for i, (_, row) in enumerate(meus_dados.iterrows()):
             val = row['% Atingimento']
-            label = formatar_nome_visual(row['Indicador'])
-            delta_msg = "Meta 80%"
+            ind_nome = row['Indicador']
+            label = formatar_nome_visual(ind_nome)
+            
+            # Definição de Cores e Deltas
             color = "normal"
-            if val >= 0.90: delta_msg = "💎 Excelência"
-            elif val >= 0.80: delta_msg = "✅ Na Meta"
+            if val >= 0.90: status_t = "💎 Excelência"
+            elif val >= 0.80: status_t = "✅ Na Meta"
             else: 
-                delta_msg = "🔻 Abaixo"
+                status_t = "🔻 Abaixo"
                 color = "inverse"
+            
+            # Verifica se tem histórico para comparar
+            delta_val = None
+            if ind_nome in deltas_mom:
+                diff = deltas_mom[ind_nome]
+                delta_val = f"{diff:+.1%} (vs mês ant.)"
+            else:
+                delta_val = status_t # Se não tiver histórico, mostra o status textual
+
             with cols[i]:
-                st.metric(label, f"{val:.2%}", delta_msg, delta_color=color)
+                st.metric(label, f"{val:.2%}", delta_val, delta_color=color if ind_nome not in deltas_mom else "normal")
+
+        # --- SEÇÃO 4: FEEDBACK PRESCRITIVO ---
+        st.markdown("<br>", unsafe_allow_html=True)
+        if atingimento_conf < 0.92 and tem_dado_conf:
+            falta = (0.92 - atingimento_conf) * 100
+            st.warning(f"💡 **Dica do Gestor:** Sua Conformidade está em {atingimento_conf:.2%}. Faltam apenas **{falta:.2f} p.p.** para 92%. Foque na qualidade esta semana para recuperar o dinheiro da Pontualidade!")
+        elif resultado_global >= 0.95:
+             st.success("🌟 **Performance Estelar:** Você é uma referência técnica para a equipe. Continue assim!")
+
         st.markdown("---")
+        
+        # Gráfico Comparativo (Mantido)
         media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
         media_equipe.rename(columns={'% Atingimento': 'Média Equipe'}, inplace=True)
         df_comp = pd.merge(meus_dados, media_equipe, on='Indicador')
         df_comp['Indicador'] = df_comp['Indicador'].apply(formatar_nome_visual)
         df_melt = df_comp.melt(id_vars=['Indicador'], value_vars=['% Atingimento', 'Média Equipe'], var_name='Tipo', value_name='Resultado')
+        
         fig = px.bar(df_melt, x='Indicador', y='Resultado', color='Tipo', barmode='group',
-                     color_discrete_map={'% Atingimento': '#F37021', 'Média Equipe': '#003366'})
+                     color_discrete_map={'% Atingimento': '#F37021', 'Média Equipe': '#003366'},
+                     title="Você vs Média da Equipe")
         fig.add_hline(y=0.8, line_dash="dash", line_color="green", annotation_text="Meta 80%")
         st.plotly_chart(fig, use_container_width=True)
