@@ -705,7 +705,7 @@ if perfil == 'admin':
         st.info("Para garantir que os dados sejam lidos corretamente, siga os padrões abaixo.")
         with st.expander("1. Arquivo de Usuários (Login)"):
             st.markdown("**Nome do Arquivo:** `usuarios.csv` (obrigatório).\n**Colunas:** `Nome`, `Email`, `Senha` (opcional/vazio para operadores).")
-            st.code("Nome,Email\nJoão Silva,joao@brisanet.com.br")
+            st.code("Email\n,joao@brisanet.com.br")
         with st.expander("2. Arquivos de Indicadores (KPIs)"):
             st.markdown("**Nome do Arquivo:** Pode ser qualquer um (ex: `ir.csv`, `csat.csv`).\n**Colunas:** `Colaborador`, `% Atingimento`, `Diamantes`, `Max. Diamantes`.")
             st.code("Colaborador,% Atingimento,Diamantes,Max. Diamantes\nJoão Silva,0.95,95,100")
