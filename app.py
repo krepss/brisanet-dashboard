@@ -749,6 +749,7 @@ if perfil == 'admin':
             st.markdown("O cálculo financeiro desconta a pontualidade se a **Conformidade** for < 92%.")
 
 # --- VISÃO OPERADOR ---
+# --- VISÃO OPERADOR ---
 else:
     # --- CSS ESTRATÉGICO PARA OPERADOR ---
     st.markdown("""
@@ -768,6 +769,9 @@ else:
     meus_dados = df_dados[df_dados['Colaborador'] == nome_logado].copy()
     
     if not meus_dados.empty:
+        # CORREÇÃO AQUI: Definimos a variável tem_tam antes de usar
+        tem_tam = 'TAM' in df_dados['Indicador'].unique()
+
         # Calcular Ranking Geral (Cego) para saber posição
         if tem_tam:
              df_rank = df_dados[df_dados['Indicador'] == 'TAM'].copy()
@@ -781,7 +785,7 @@ else:
             total_participantes = len(df_rank)
             
             # Dados do rival acima (se não for o primeiro)
-            msg_rival = "🥇 Você é o Lider! Mantenha o ritmo!"
+            msg_rival = "🥇 Você é o Líder! Mantenha o ritmo!"
             if minha_posicao > 1:
                 rival_row = df_rank.iloc[minha_posicao - 2] # -2 pois indice começa em 0 e queremos o anterior
                 meu_row = df_rank.iloc[minha_posicao - 1]
@@ -794,7 +798,6 @@ else:
             msg_rival = "Ranking indisponível no momento."
 
         # Dados Financeiros Básicos
-        tem_tam = 'TAM' in meus_dados['Indicador'].unique()
         if 'Diamantes' in meus_dados.columns:
             if tem_tam:
                 row_tam = meus_dados[meus_dados['Indicador'] == 'TAM']
@@ -914,7 +917,7 @@ else:
 
         st.markdown("---")
         
-        # Gráfico Comparativo (Mantido)
+        # Gráfico Comparativo
         media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
         media_equipe.rename(columns={'% Atingimento': 'Média Equipe'}, inplace=True)
         df_comp = pd.merge(meus_dados, media_equipe, on='Indicador')
