@@ -20,7 +20,7 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
-# --- 2. CSS CORRIGIDO (BOTÕES VISÍVEIS) ---
+# --- 2. CSS CORRIGIDO (BOTÕES VISÍVEIS + ALTO CONTRASTE) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
@@ -128,6 +128,19 @@ st.markdown("""
     .vacation-date { font-size: 2.8em !important; font-weight: 800 !important; color: #00838f !important; margin: 15px 0 !important; text-transform: uppercase; }
     .vacation-note { font-size: 0.9em !important; color: #999999 !important; font-style: italic; }
     
+    /* 10. BADGE DE ATUALIZAÇÃO (NOVO) */
+    .update-badge {
+        background-color: #e3f2fd;
+        color: #0d47a1;
+        padding: 5px 10px;
+        border-radius: 15px;
+        font-size: 0.85em;
+        font-weight: bold;
+        display: inline-block;
+        margin-left: 10px;
+        border: 1px solid #bbdefb;
+    }
+
     /* Rodapé */
     .dev-footer { text-align: center; margin-top: 30px; font-size: 0.8em; color: #999 !important; }
 </style>
@@ -158,6 +171,15 @@ def tentar_extrair_data_csv(df):
     return None
 
 def obter_data_hoje(): return datetime.now().strftime("%m/%Y")
+
+def obter_data_atualizacao():
+    # Tenta pegar a data de modificação do arquivo de histórico
+    arquivo = 'historico_consolidado.csv'
+    if os.path.exists(arquivo):
+        timestamp = os.path.getmtime(arquivo)
+        return datetime.fromtimestamp(timestamp).strftime("%d/%m/%Y às %H:%M")
+    return datetime.now().strftime("%d/%m/%Y")
+
 def salvar_config(data_texto):
     try:
         with open('config.json', 'w') as f: json.dump({'periodo': data_texto}, f)
@@ -338,7 +360,6 @@ def carregar_usuarios():
         if df is not None:
             df.columns = df.columns.str.lower()
             
-            # Mapeamento Flexível
             col_email = next((c for c in df.columns if 'mail' in c), None)
             col_nome = next((c for c in df.columns if 'colaborador' in c or 'nome' in c), None)
             col_ferias = next((c for c in df.columns if 'ferias' in c or 'férias' in c), None)
@@ -763,7 +784,18 @@ if perfil == 'admin':
 # --- VISÃO OPERADOR ---
 else:
     st.markdown(f"## 🚀 Olá, **{nome_logado.split()[0]}**!")
-    st.caption(f"📅 Referência: **{periodo_label}**")
+    
+    # 🕒 DATA DE ATUALIZAÇÃO (NOVO)
+    data_atualizacao = obter_data_atualizacao()
+    st.markdown(
+        f"""
+        <div style='display: flex; align-items: center; margin-bottom: 20px; color: #666;'>
+            <span style='margin-right: 15px;'>📅 Referência: <b>{periodo_label}</b></span>
+            <span class='update-badge'>🕒 Atualizado em: {data_atualizacao}</span>
+        </div>
+        """, 
+        unsafe_allow_html=True
+    )
     
     # Busca dados do usuário (férias, etc)
     minhas_ferias = "Não informado"
