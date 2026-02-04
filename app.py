@@ -12,7 +12,8 @@ LOGO_FILE = "logo.ico"
 
 # --- SENHA DO GESTOR (Acesso Administrativo) ---
 SENHA_ADMIN = "admin123"
-EMAILS_ADMIN = ['gestor', 'admin']
+# Usuários que exigem senha
+USUARIOS_ADMIN = ['gestor', 'admin']
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
 try:
@@ -336,23 +337,20 @@ def carregar_usuarios():
             # Mapeamento Flexível
             col_email = next((c for c in df.columns if 'mail' in c), None)
             col_nome = next((c for c in df.columns if 'colaborador' in c or 'nome' in c), None)
-            col_ferias = next((c for c in df.columns if 'férias' in c or 'ferias' in c), None)
-            col_senha = next((c for c in df.columns if 'senha' in c or 'pass' in c), None)
+            col_ferias = next((c for c in df.columns if 'ferias' in c or 'férias' in c), None)
             
             if col_email and col_nome:
                 rename_map = {col_email: 'email', col_nome: 'nome'}
                 if col_ferias: rename_map[col_ferias] = 'ferias'
-                if col_senha: rename_map[col_senha] = 'senha'
                 
                 df.rename(columns=rename_map, inplace=True)
                 df['email'] = df['email'].astype(str).str.strip().str.lower()
                 df['nome'] = df['nome'].astype(str).str.strip().str.upper()
                 
-                if 'ferias' not in df.columns: df['ferias'] = "Não informado"
-                else: df['ferias'] = df['ferias'].astype(str).replace('nan', 'Não informado')
-                
-                if 'senha' not in df.columns: df['senha'] = ""
-                else: df['senha'] = df['senha'].astype(str).strip()
+                if 'ferias' not in df.columns:
+                    df['ferias'] = "Não informado"
+                else:
+                    df['ferias'] = df['ferias'].astype(str).replace('nan', 'Não informado')
                     
                 return df
     return None
@@ -363,7 +361,7 @@ def filtrar_por_usuarios_cadastrados(df_dados, df_users):
     lista_vip = df_users['nome'].unique()
     return df_dados[df_dados['Colaborador'].isin(lista_vip)].copy()
 
-# --- 4. LOGIN RENOVADO (COM SENHA OU SEM SENHA DO CSV) ---
+# --- 4. LOGIN (HÍBRIDO: GESTOR COM SENHA / OPERADOR SÓ EMAIL) ---
 if 'logado' not in st.session_state:
     st.session_state.update({'logado': False, 'usuario_nome': '', 'perfil': '', 'usuario_email': ''})
 
@@ -375,37 +373,31 @@ if not st.session_state['logado']:
             st.markdown('<p class="login-title">Team Sofistas</p>', unsafe_allow_html=True)
             st.markdown('<p class="login-subtitle">Analytics & Performance</p>', unsafe_allow_html=True)
             
-            email_input = st.text_input("E-mail Corporativo", placeholder="seu.email@brisanet.com.br").strip().lower()
-            senha_input = st.text_input("Senha", type="password", placeholder="Digite sua senha")
+            email_input = st.text_input("E-mail Corporativo ou Usuário Gestor").strip().lower()
+            senha_input = st.text_input("Senha (Obrigatório apenas para Gestor)", type="password")
             
             st.markdown("<br>", unsafe_allow_html=True)
             
-            if st.form_submit_button("ACESSAR SISTEMA"):
-                # LOGIN GESTOR
-                if email_input in EMAILS_ADMIN and senha_input == SENHA_ADMIN:
+            if st.form_submit_button("ACESSAR"):
+                # 1. LOGIN GESTOR (Usuário/Email + Senha)
+                if email_input in USUARIOS_ADMIN and senha_input == SENHA_ADMIN:
                     st.session_state.update({'logado': True, 'usuario_nome': 'Gestor', 'perfil': 'admin', 'usuario_email': 'admin'})
                     st.rerun()
                 
-                # LOGIN OPERADOR
+                # 2. LOGIN OPERADOR (Apenas E-mail do CSV)
                 else:
                     df_users = carregar_usuarios()
                     if df_users is not None:
+                        # Verifica se o email existe na base
                         user_row = df_users[df_users['email'] == email_input]
+                        
                         if not user_row.empty:
-                            # Se tiver coluna senha no CSV, valida. Se não tiver, avisa (ou deixa passar se preferir, mas aqui mantive a segurança)
-                            senha_real = user_row.iloc[0]['senha']
+                            # Se achou o email, entra direto (sem senha)
                             nome_upper = user_row.iloc[0]['nome']
-                            
-                            # Lógica: Se a senha no CSV estiver vazia ou coluna não existir, avisa.
-                            if not senha_real:
-                                st.warning("⚠️ Seu usuário não possui senha cadastrada no arquivo 'usuarios.csv'. Contate o gestor.")
-                            elif str(senha_real) == senha_input:
-                                st.session_state.update({'logado': True, 'usuario_nome': nome_upper, 'perfil': 'user', 'usuario_email': email_input})
-                                st.rerun()
-                            else:
-                                st.error("🚫 Senha incorreta.")
+                            st.session_state.update({'logado': True, 'usuario_nome': nome_upper, 'perfil': 'user', 'usuario_email': email_input})
+                            st.rerun()
                         else:
-                            st.error("🚫 E-mail não encontrado na base de usuários.")
+                            st.error("🚫 E-mail não encontrado na base de dados.")
                     else:
                         st.error("⚠️ Base de usuários (usuarios.csv) não carregada.")
     
@@ -735,9 +727,9 @@ if perfil == 'admin':
         with st.expander("1. Arquivo de Usuários (Login)"):
             st.markdown("""
             **Nome do Arquivo:** `usuarios.csv` (obrigatório).
-            **Colunas:** `Nome`, `Email`, `Senha` (para login), `Ferias` (opcional).
+            **Colunas:** `Nome`, `Email`, `Férias` (opcional).
             """)
-            st.code("Nome,Email,Senha,Ferias\nJoão Silva,joao@brisanet.com.br,123456,Novembro")
+            st.code("Nome,Email,Férias\nJoão Silva,joao@brisanet.com.br,Novembro")
         with st.expander("2. Arquivos de Indicadores (KPIs)"):
             st.markdown("**Nome do Arquivo:** Pode ser qualquer um (ex: `ir.csv`, `csat.csv`).\n**Colunas:** `Colaborador`, `% Atingimento`, `Diamantes`, `Max. Diamantes`.")
             st.code("Colaborador,% Atingimento,Diamantes,Max. Diamantes\nJoão Silva,0.95,95,100")
