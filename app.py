@@ -21,7 +21,7 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
-# --- 2. CSS PREMIUM (ALTO CONTRASTE - NIGHT MODE FIX) ---
+# --- 2. CSS PREMIUM (RESTAURADO DO ARQUIVO ORIGINAL + FÉRIAS) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
@@ -34,6 +34,7 @@ st.markdown("""
     }
     
     /* 2. TEXTOS GERAIS -> BRANCO */
+    /* Garante que todo texto padrão fora de containers especiais seja branco */
     .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6, 
     .stApp p, .stApp li, .stApp span, .stApp div.stMarkdown, .stApp label {
         color: #FFFFFF !important;
@@ -78,12 +79,16 @@ st.markdown("""
         color: #003366 !important;
     }
     
-    /* 6. INPUTS E DROPDOWNS */
+    /* 6. INPUTS E DROPDOWNS (CORREÇÃO CRÍTICA) */
+    /* Caixa de input fechada */
     .stTextInput input, .stSelectbox div[data-baseweb="select"] > div {
         background-color: #FFFFFF !important;
         color: #333333 !important;
         border-radius: 5px;
     }
+    
+    /* LISTA SUSPENSA (O POPUP DO SELECTBOX) */
+    /* Isso garante que as opções do menu não fiquem invisíveis */
     ul[data-testid="stSelectboxVirtualDropdown"] {
         background-color: #FFFFFF !important;
     }
@@ -91,15 +96,58 @@ st.markdown("""
         color: #333333 !important;
         background-color: #FFFFFF !important;
     }
+    /* Item selecionado/hover na lista */
+    ul[data-testid="stSelectboxVirtualDropdown"] li:hover, 
+    ul[data-testid="stSelectboxVirtualDropdown"] li[aria-selected="true"] {
+        background-color: #F37021 !important;
+        color: #FFFFFF !important;
+    }
     
-    /* 7. ABAS */
+    /* 7. ALERTAS (WARNING, SUCCESS, ERROR) */
+    div.stAlert > div {
+        color: #333333 !important; /* Texto escuro dentro dos alertas coloridos */
+    }
+    div.stAlert p {
+        color: #333333 !important;
+    }
+    
+    /* 8. EXPANDER (Cabeçalho) */
+    .streamlit-expanderHeader p, .streamlit-expanderHeader span {
+        color: #FFFFFF !important; /* Título do expander branco no fundo azul */
+        font-weight: bold;
+    }
+    /* Conteúdo dentro do expander (geralmente segue o global, mas forçamos contraste se precisar) */
+    div[data-testid="stExpanderDetails"] p {
+        color: #FFFFFF !important;
+    }
+
+    /* 9. DATAFRAME (TABELAS) */
+    [data-testid="stDataFrame"] {
+        background-color: #FFFFFF !important;
+        padding: 5px;
+        border-radius: 8px;
+    }
+    [data-testid="stDataFrame"] * {
+        color: #333333 !important;
+    }
+
+    /* 10. BOTÕES */
+    div.stButton > button {
+        border-radius: 8px; font-weight: bold; transition: 0.3s;
+        background-color: #004e92; color: #FFFFFF !important; border: 1px solid white;
+    }
+    div.stButton > button:hover {
+        background-color: #F37021; border-color: #F37021;
+    }
+    
+    /* 11. ABAS */
     button[data-baseweb="tab"] { color: rgba(255, 255, 255, 0.7) !important; }
     button[data-baseweb="tab"][aria-selected="true"] {
         color: #FFFFFF !important;
         border-top: 2px solid #F37021 !important;
     }
 
-    /* 8. NOVO CARTÃO DE FÉRIAS */
+    /* 12. CARTÃO DE FÉRIAS (NOVO) */
     .vacation-card {
         background-color: #ffffff;
         border-left: 5px solid #00bcd4;
@@ -117,14 +165,6 @@ st.markdown("""
     .dev-footer {
         text-align: center; margin-top: 20px; font-size: 0.8em; 
         color: rgba(255,255,255,0.7) !important; font-style: italic;
-    }
-    
-    /* Títulos do Login */
-    .login-title { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 2.2em; color: #003366 !important; text-align: center; margin-bottom: 0; }
-    .login-subtitle { font-family: 'Montserrat', sans-serif; font-size: 1.0em; color: #F37021 !important; text-align: center; margin-bottom: 20px; font-weight: 600; }
-    
-    div.stButton > button {
-        background-color: #003366; color: #FFFFFF !important; border: 1px solid white;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -337,7 +377,8 @@ def carregar_usuarios():
             # Mapeamento Flexível
             col_email = next((c for c in df.columns if 'mail' in c), None)
             col_nome = next((c for c in df.columns if 'colaborador' in c or 'nome' in c), None)
-            col_ferias = next((c for c in df.columns if 'ferias' in c or 'férias' in c), None)
+            # Procura coluna de ferias (flexivel)
+            col_ferias = next((c for c in df.columns if 'férias' in c or 'ferias' in c), None)
             
             if col_email and col_nome:
                 rename_map = {col_email: 'email', col_nome: 'nome'}
@@ -361,7 +402,7 @@ def filtrar_por_usuarios_cadastrados(df_dados, df_users):
     lista_vip = df_users['nome'].unique()
     return df_dados[df_dados['Colaborador'].isin(lista_vip)].copy()
 
-# --- 4. LOGIN (HÍBRIDO: GESTOR COM SENHA / OPERADOR SÓ EMAIL) ---
+# --- 4. LOGIN RENOVADO (HÍBRIDO: GESTOR COM SENHA / OPERADOR SÓ EMAIL) ---
 if 'logado' not in st.session_state:
     st.session_state.update({'logado': False, 'usuario_nome': '', 'perfil': '', 'usuario_email': ''})
 
@@ -747,10 +788,11 @@ else:
     minhas_ferias = "Não informado"
     if df_users_cadastrados is not None:
         try:
-            # Match exato do nome logado com a tabela de usuários
-            user_info = df_users_cadastrados[df_users_cadastrados['nome'] == nome_logado.upper()]
-            if not user_info.empty:
-                minhas_ferias = user_info.iloc[0]['ferias']
+            # Match aproximado para achar as férias
+            for _, u_row in df_users_cadastrados.iterrows():
+                if nome_logado.upper() in str(u_row['nome']).upper() or str(u_row['nome']).upper() in nome_logado.upper():
+                    minhas_ferias = u_row['ferias']
+                    break
         except: pass
 
     # Criação das Abas
