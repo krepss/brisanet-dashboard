@@ -20,7 +20,7 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
-# --- 2. CSS CORRIGIDO (BOTÕES VISÍVEIS + ALTO CONTRASTE) ---
+# --- 2. CSS CORRIGIDO (FONTS MENORES NOS CARDS) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
@@ -71,22 +71,38 @@ st.markdown("""
     .login-title { font-weight: 800; font-size: 2.5em; color: #003366 !important; text-align: center; }
     .login-subtitle { font-size: 1.2em; color: #F37021 !important; text-align: center; margin-bottom: 20px; font-weight: 600; }
 
-    /* 5. MÉTRICAS (Cards) */
+    /* 5. MÉTRICAS (Cards) - TAMANHO DA FONTE REDUZIDO */
     div.stMetric {
         background-color: #FFFFFF !important;
         border: 1px solid #e0e0e0;
-        padding: 15px;
+        padding: 10px 15px !important; /* Padding um pouco menor */
         border-radius: 10px;
         border-left: 5px solid #F37021;
         box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
-    div.stMetric label { color: #666 !important; }
-    div.stMetric div[data-testid="stMetricValue"] { color: #003366 !important; }
+    
+    /* Título do Card (ex: "Aderência") */
+    div.stMetric label { 
+        color: #666 !important; 
+        font-size: 14px !important; /* Reduzido */
+    }
+    
+    /* Valor do Card (ex: "99.8%") */
+    div.stMetric div[data-testid="stMetricValue"] { 
+        color: #003366 !important; 
+        font-size: 26px !important; /* Reduzido (o padrão é uns 32px) */
+        font-weight: 700;
+    }
+    
+    /* Delta (ex: "Excelência") */
+    div.stMetric div[data-testid="stMetricDelta"] {
+        font-size: 13px !important; /* Reduzido */
+    }
     
     /* 6. TABELAS */
     [data-testid="stDataFrame"] { background-color: #FFFFFF; }
     
-    /* 7. BOTÕES (CORREÇÃO DE LEGIBILIDADE) */
+    /* 7. BOTÕES */
     div.stButton > button {
         background-color: #003366 !important; 
         color: #FFFFFF !important; 
@@ -128,7 +144,7 @@ st.markdown("""
     .vacation-date { font-size: 2.8em !important; font-weight: 800 !important; color: #00838f !important; margin: 15px 0 !important; text-transform: uppercase; }
     .vacation-note { font-size: 0.9em !important; color: #999999 !important; font-style: italic; }
     
-    /* 10. BADGE DE ATUALIZAÇÃO (NOVO) */
+    /* 10. BADGE DE ATUALIZAÇÃO */
     .update-badge {
         background-color: #e3f2fd;
         color: #0d47a1;
@@ -173,7 +189,6 @@ def tentar_extrair_data_csv(df):
 def obter_data_hoje(): return datetime.now().strftime("%m/%Y")
 
 def obter_data_atualizacao():
-    # Tenta pegar a data de modificação do arquivo de histórico
     arquivo = 'historico_consolidado.csv'
     if os.path.exists(arquivo):
         timestamp = os.path.getmtime(arquivo)
@@ -360,6 +375,7 @@ def carregar_usuarios():
         if df is not None:
             df.columns = df.columns.str.lower()
             
+            # Mapeamento Flexível
             col_email = next((c for c in df.columns if 'mail' in c), None)
             col_nome = next((c for c in df.columns if 'colaborador' in c or 'nome' in c), None)
             col_ferias = next((c for c in df.columns if 'ferias' in c or 'férias' in c), None)
