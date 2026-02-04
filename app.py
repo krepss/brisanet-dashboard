@@ -20,7 +20,7 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
-# --- 2. CSS CORRIGIDO (FONTS MENORES NOS CARDS) ---
+# --- 2. CSS CORRIGIDO (BOTÕES VISÍVEIS + ALTO CONTRASTE) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
@@ -71,38 +71,22 @@ st.markdown("""
     .login-title { font-weight: 800; font-size: 2.5em; color: #003366 !important; text-align: center; }
     .login-subtitle { font-size: 1.2em; color: #F37021 !important; text-align: center; margin-bottom: 20px; font-weight: 600; }
 
-    /* 5. MÉTRICAS (Cards) - TAMANHO DA FONTE REDUZIDO */
+    /* 5. MÉTRICAS (Cards) */
     div.stMetric {
         background-color: #FFFFFF !important;
         border: 1px solid #e0e0e0;
-        padding: 10px 15px !important; /* Padding um pouco menor */
+        padding: 15px;
         border-radius: 10px;
         border-left: 5px solid #F37021;
         box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
-    
-    /* Título do Card (ex: "Aderência") */
-    div.stMetric label { 
-        color: #666 !important; 
-        font-size: 14px !important; /* Reduzido */
-    }
-    
-    /* Valor do Card (ex: "99.8%") */
-    div.stMetric div[data-testid="stMetricValue"] { 
-        color: #003366 !important; 
-        font-size: 26px !important; /* Reduzido (o padrão é uns 32px) */
-        font-weight: 700;
-    }
-    
-    /* Delta (ex: "Excelência") */
-    div.stMetric div[data-testid="stMetricDelta"] {
-        font-size: 13px !important; /* Reduzido */
-    }
+    div.stMetric label { color: #666 !important; }
+    div.stMetric div[data-testid="stMetricValue"] { color: #003366 !important; }
     
     /* 6. TABELAS */
     [data-testid="stDataFrame"] { background-color: #FFFFFF; }
     
-    /* 7. BOTÕES */
+    /* 7. BOTÕES (CORREÇÃO DE LEGIBILIDADE) */
     div.stButton > button {
         background-color: #003366 !important; 
         color: #FFFFFF !important; 
@@ -144,7 +128,7 @@ st.markdown("""
     .vacation-date { font-size: 2.8em !important; font-weight: 800 !important; color: #00838f !important; margin: 15px 0 !important; text-transform: uppercase; }
     .vacation-note { font-size: 0.9em !important; color: #999999 !important; font-style: italic; }
     
-    /* 10. BADGE DE ATUALIZAÇÃO */
+    /* 10. BADGE DE ATUALIZAÇÃO (NOVO) */
     .update-badge {
         background-color: #e3f2fd;
         color: #0d47a1;
@@ -470,8 +454,16 @@ with st.sidebar:
     
     df_users_cadastrados = carregar_usuarios()
     
+    # ----------------------------------------------------
+    # FILTRAGEM GLOBAL: LIMPA O "LIXO" DO CSV
+    # ----------------------------------------------------
     if df_raw is not None and not df_raw.empty:
         df_raw['Colaborador'] = df_raw['Colaborador'].str.title()
+        # Aplica o filtro de usuários cadastrados para AMBOS (Gestor e Operador)
+        # Isso garante que apenas pessoas do usuarios.csv apareçam no sistema
+        df_dados = filtrar_por_usuarios_cadastrados(df_raw, df_users_cadastrados)
+    else:
+        df_dados = None
     
     st.markdown("---")
     nome_logado = st.session_state['usuario_nome'].title() if st.session_state['usuario_nome'] != 'Gestor' else 'Gestor'
@@ -484,7 +476,6 @@ with st.sidebar:
     st.caption("Desenvolvido por:\n**Klebson Davi**\nSupervisor de Suporte Técnico")
 
 perfil = st.session_state['perfil']
-df_dados = df_raw
 
 if df_dados is None and perfil == 'user':
     st.info(f"👋 Olá, **{nome_logado}**! Dados de **{periodo_label}** indisponíveis.")
