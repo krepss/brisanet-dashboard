@@ -20,7 +20,7 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
-# --- 2. CSS CORRIGIDO (ALTO CONTRASTE REAL) ---
+# --- 2. CSS CORRIGIDO (BOTÕES VISÍVEIS) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
@@ -37,14 +37,14 @@ st.markdown("""
         background-image: linear-gradient(180deg, #002b55 0%, #004e92 100%) !important;
     }
     
-    /* Títulos e Textos SOLTOS na Sidebar -> BRANCO */
+    /* Texto Sidebar */
     [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, 
     [data-testid="stSidebar"] p, [data-testid="stSidebar"] label, [data-testid="stSidebar"] span,
     [data-testid="stSidebar"] .stMarkdown {
         color: #FFFFFF !important;
     }
     
-    /* INPUTS E SELECTBOX NA SIDEBAR */
+    /* Inputs Sidebar */
     [data-testid="stSidebar"] div[data-baseweb="select"] > div {
         background-color: #FFFFFF !important;
         color: #000000 !important;
@@ -86,11 +86,25 @@ st.markdown("""
     /* 6. TABELAS */
     [data-testid="stDataFrame"] { background-color: #FFFFFF; }
     
-    /* 7. BOTÕES */
+    /* 7. BOTÕES (CORREÇÃO DE LEGIBILIDADE) */
     div.stButton > button {
-        background-color: #003366; color: #FFFFFF !important; border-radius: 8px; font-weight: bold; border: none;
+        background-color: #003366 !important; 
+        color: #FFFFFF !important; 
+        border-radius: 8px; 
+        font-weight: bold; 
+        border: none;
     }
-    div.stButton > button:hover { background-color: #F37021; color: #FFFFFF !important; }
+    /* Força QUALQUER texto dentro do botão a ser branco */
+    div.stButton > button p, div.stButton > button span, div.stButton > button div {
+        color: #FFFFFF !important;
+    }
+    div.stButton > button:hover { 
+        background-color: #F37021 !important; 
+        color: #FFFFFF !important; 
+    }
+    div.stButton > button:hover p, div.stButton > button:hover span {
+        color: #FFFFFF !important;
+    }
 
     /* 8. ABAS (TABS) */
     button[data-baseweb="tab"] { background-color: transparent !important; color: #666 !important; }
@@ -324,6 +338,7 @@ def carregar_usuarios():
         if df is not None:
             df.columns = df.columns.str.lower()
             
+            # Mapeamento Flexível
             col_email = next((c for c in df.columns if 'mail' in c), None)
             col_nome = next((c for c in df.columns if 'colaborador' in c or 'nome' in c), None)
             col_ferias = next((c for c in df.columns if 'ferias' in c or 'férias' in c), None)
@@ -647,6 +662,7 @@ if perfil == 'admin':
         else:
             st.warning("⚠️ Arquivo 'usuarios.csv' não carregado ou sem dados.")
 
+    # --- ABA DE ADMINISTRAÇÃO (UPLOAD E MANUTENÇÃO) ---
     with tabs[7]:
         st.markdown("### 📂 Gestão de Arquivos")
         subtabs = st.tabs(["📤 Upload & Atualização", "🗑️ Limpeza de Histórico", "💾 Backup"])
@@ -706,6 +722,7 @@ if perfil == 'admin':
                     c1, c2, c3 = st.columns([2, 1, 1])
                     c1.write(f"📅 **{row['Periodo']}**")
                     c2.write(f"{row['Registros']} linhas")
+                    # Botão Excluir
                     if c3.button(f"Excluir {row['Periodo']}", key=f"del_{i}"):
                         if excluir_periodo_historico(row['Periodo']):
                             st.success(f"Mês {row['Periodo']} excluído!")
