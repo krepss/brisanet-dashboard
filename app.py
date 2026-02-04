@@ -44,8 +44,7 @@ st.markdown("""
         color: #FFFFFF !important;
     }
     
-    /* CORREÇÃO CRÍTICA: INPUTS E SELECTBOX NA SIDEBAR */
-    /* Garante que o texto DENTRO da caixa branca seja PRETO */
+    /* INPUTS E SELECTBOX NA SIDEBAR */
     [data-testid="stSidebar"] div[data-baseweb="select"] > div {
         background-color: #FFFFFF !important;
         color: #000000 !important;
@@ -325,16 +324,13 @@ def carregar_usuarios():
         if df is not None:
             df.columns = df.columns.str.lower()
             
-            # Mapeamento Flexível
             col_email = next((c for c in df.columns if 'mail' in c), None)
             col_nome = next((c for c in df.columns if 'colaborador' in c or 'nome' in c), None)
             col_ferias = next((c for c in df.columns if 'ferias' in c or 'férias' in c), None)
-            col_senha = next((c for c in df.columns if 'senha' in c or 'pass' in c), None)
             
             if col_email and col_nome:
                 rename_map = {col_email: 'email', col_nome: 'nome'}
                 if col_ferias: rename_map[col_ferias] = 'ferias'
-                if col_senha: rename_map[col_senha] = 'senha'
                 
                 df.rename(columns=rename_map, inplace=True)
                 df['email'] = df['email'].astype(str).str.strip().str.lower()
@@ -348,7 +344,13 @@ def carregar_usuarios():
                 return df
     return None
 
-# --- 4. LOGIN RENOVADO (HÍBRIDO: GESTOR COM SENHA / OPERADOR SÓ EMAIL) ---
+def filtrar_por_usuarios_cadastrados(df_dados, df_users):
+    if df_dados is None or df_dados.empty: return df_dados
+    if df_users is None or df_users.empty: return df_dados
+    lista_vip = df_users['nome'].unique()
+    return df_dados[df_dados['Colaborador'].isin(lista_vip)].copy()
+
+# --- 4. LOGIN RENOVADO ---
 if 'logado' not in st.session_state:
     st.session_state.update({'logado': False, 'usuario_nome': '', 'perfil': '', 'usuario_email': ''})
 
@@ -366,20 +368,18 @@ if not st.session_state['logado']:
             st.markdown("<br>", unsafe_allow_html=True)
             
             if st.form_submit_button("ACESSAR"):
-                # 1. LOGIN GESTOR (Usuário/Email + Senha)
+                # LOGIN GESTOR
                 if email_input in USUARIOS_ADMIN and senha_input == SENHA_ADMIN:
                     st.session_state.update({'logado': True, 'usuario_nome': 'Gestor', 'perfil': 'admin', 'usuario_email': 'admin'})
                     st.rerun()
                 
-                # 2. LOGIN OPERADOR (Apenas E-mail do CSV)
+                # LOGIN OPERADOR
                 else:
                     df_users = carregar_usuarios()
                     if df_users is not None:
-                        # Verifica se o email existe na base
                         user_row = df_users[df_users['email'] == email_input]
                         
                         if not user_row.empty:
-                            # Se achou o email, entra direto (sem senha)
                             nome_upper = user_row.iloc[0]['nome']
                             st.session_state.update({'logado': True, 'usuario_nome': nome_upper, 'perfil': 'user', 'usuario_email': email_input})
                             st.rerun()
@@ -418,7 +418,6 @@ with st.sidebar:
     
     df_users_cadastrados = carregar_usuarios()
     
-    # IMPORTANTE: Carrega dados brutos, mas não filtra ainda para não quebrar ranking
     if df_raw is not None and not df_raw.empty:
         df_raw['Colaborador'] = df_raw['Colaborador'].str.title()
     
@@ -433,7 +432,7 @@ with st.sidebar:
     st.caption("Desenvolvido por:\n**Klebson Davi**\nSupervisor de Suporte Técnico")
 
 perfil = st.session_state['perfil']
-df_dados = df_raw # Gestor vê tudo, User vê filtrado na tela dele
+df_dados = df_raw
 
 if df_dados is None and perfil == 'user':
     st.info(f"👋 Olá, **{nome_logado}**! Dados de **{periodo_label}** indisponíveis.")
@@ -442,7 +441,7 @@ if df_dados is None and perfil == 'user':
 # --- GESTOR ---
 if perfil == 'admin':
     st.title(f"📊 Visão Gerencial")
-    tabs = st.tabs(["🚦 Semáforo", "🏆 Ranking Geral", "⏳ Evolução", "🔍 Indicadores", "💰 Comissões", "📋 Tabela Geral", "⚙️ Admin", "📘 Como Alimentar"])
+    tabs = st.tabs(["🚦 Semáforo", "🏆 Ranking Geral", "⏳ Evolução", "🔍 Indicadores", "💰 Comissões", "📋 Tabela Geral", "🏖️ Férias Equipe", "⚙️ Admin", "📘 Como Alimentar"])
     
     tem_tam = False
     if df_dados is not None:
@@ -630,7 +629,25 @@ if perfil == 'admin':
             try: st.dataframe(pivot.style.background_gradient(cmap='RdYlGn', vmin=0.7, vmax=1.0).format("{:.2%}"), use_container_width=True, height=600)
             except: st.dataframe(pivot.style.format("{:.2%}"), use_container_width=True, height=600)
 
+    # --- NOVA ABA DE FÉRIAS (GESTOR) ---
     with tabs[6]:
+        st.markdown("### 🏖️ Cronograma de Férias da Equipe")
+        if df_users_cadastrados is not None and not df_users_cadastrados.empty:
+            df_ferias_view = df_users_cadastrados[['nome', 'ferias']].copy()
+            df_ferias_view.rename(columns={'nome': 'Colaborador', 'ferias': 'Mês Programado'}, inplace=True)
+            df_ferias_view['Colaborador'] = df_ferias_view['Colaborador'].str.title()
+            
+            search_ferias = st.text_input("🔍 Buscar Colaborador:", placeholder="Digite o nome...")
+            if search_ferias:
+                df_ferias_view = df_ferias_view[df_ferias_view['Colaborador'].str.contains(search_ferias, case=False)]
+            
+            st.dataframe(df_ferias_view, use_container_width=True, hide_index=True)
+            csv_ferias = df_ferias_view.to_csv(index=False).encode('utf-8')
+            st.download_button("⬇️ Baixar Planilha de Férias", csv_ferias, "ferias_equipe.csv", "text/csv")
+        else:
+            st.warning("⚠️ Arquivo 'usuarios.csv' não carregado ou sem dados.")
+
+    with tabs[7]:
         st.markdown("### 📂 Gestão de Arquivos")
         subtabs = st.tabs(["📤 Upload & Atualização", "🗑️ Limpeza de Histórico", "💾 Backup"])
         with subtabs[0]:
@@ -709,7 +726,7 @@ if perfil == 'admin':
                 time.sleep(2)
                 st.rerun()
 
-    with tabs[7]:
+    with tabs[8]:
         st.markdown("### 📘 Como Alimentar o Sistema")
         st.info("Para garantir que os dados sejam lidos corretamente, siga os padrões abaixo.")
         with st.expander("1. Arquivo de Usuários (Login)"):
