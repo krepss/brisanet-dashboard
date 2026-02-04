@@ -6,10 +6,13 @@ import os
 import json
 import time
 from datetime import datetime
-from streamlit_google_auth import Authenticate
 
 # --- CONFIGURAÇÃO DA LOGO ---
 LOGO_FILE = "logo.ico"
+
+# --- SENHA DO GESTOR (Acesso Administrativo) ---
+SENHA_ADMIN = "admin123"
+EMAILS_ADMIN = ['gestor', 'admin']
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
 try:
@@ -17,7 +20,7 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
-# --- 2. CSS PREMIUM (ALTO CONTRASTE - NIGHT MODE FIX TOTAL) ---
+# --- 2. CSS PREMIUM (ALTO CONTRASTE - NIGHT MODE FIX) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
@@ -41,9 +44,6 @@ st.markdown("""
     }
     section[data-testid="stSidebar"] * {
         color: #FFFFFF !important;
-    }
-    section[data-testid="stSidebar"] input {
-        color: #333333 !important;
     }
     
     /* 4. CARDS DE MÉTRICAS -> FUNDO BRANCO, TEXTO ESCURO */
@@ -90,56 +90,15 @@ st.markdown("""
         color: #333333 !important;
         background-color: #FFFFFF !important;
     }
-    ul[data-testid="stSelectboxVirtualDropdown"] li:hover, 
-    ul[data-testid="stSelectboxVirtualDropdown"] li[aria-selected="true"] {
-        background-color: #F37021 !important;
-        color: #FFFFFF !important;
-    }
     
-    /* 7. ALERTAS */
-    div.stAlert > div {
-        color: #333333 !important;
-    }
-    div.stAlert p {
-        color: #333333 !important;
-    }
-    
-    /* 8. EXPANDER */
-    .streamlit-expanderHeader p, .streamlit-expanderHeader span {
-        color: #FFFFFF !important;
-        font-weight: bold;
-    }
-    div[data-testid="stExpanderDetails"] p {
-        color: #FFFFFF !important;
-    }
-
-    /* 9. DATAFRAME */
-    [data-testid="stDataFrame"] {
-        background-color: #FFFFFF !important;
-        padding: 5px;
-        border-radius: 8px;
-    }
-    [data-testid="stDataFrame"] * {
-        color: #333333 !important;
-    }
-
-    /* 10. BOTÕES */
-    div.stButton > button {
-        border-radius: 8px; font-weight: bold; transition: 0.3s;
-        background-color: #004e92; color: #FFFFFF !important; border: 1px solid white;
-    }
-    div.stButton > button:hover {
-        background-color: #F37021; border-color: #F37021;
-    }
-    
-    /* 11. ABAS */
+    /* 7. ABAS */
     button[data-baseweb="tab"] { color: rgba(255, 255, 255, 0.7) !important; }
     button[data-baseweb="tab"][aria-selected="true"] {
         color: #FFFFFF !important;
         border-top: 2px solid #F37021 !important;
     }
 
-    /* 12. NOVO CARTÃO DE FÉRIAS */
+    /* 8. NOVO CARTÃO DE FÉRIAS */
     .vacation-card {
         background-color: #ffffff;
         border-left: 5px solid #00bcd4;
@@ -158,54 +117,19 @@ st.markdown("""
         text-align: center; margin-top: 20px; font-size: 0.8em; 
         color: rgba(255,255,255,0.7) !important; font-style: italic;
     }
+    
+    /* Títulos do Login */
+    .login-title { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 2.2em; color: #003366 !important; text-align: center; margin-bottom: 0; }
+    .login-subtitle { font-family: 'Montserrat', sans-serif; font-size: 1.0em; color: #F37021 !important; text-align: center; margin-bottom: 20px; font-weight: 600; }
+    
+    div.stButton > button {
+        background-color: #003366; color: #FFFFFF !important; border: 1px solid white;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. AUTENTICAÇÃO GOOGLE ---
-authenticator = Authenticate(
-    secret_credentials_path='.streamlit/secrets.toml',
-    cookie_name='sofistas_auth',
-    cookie_key='chave_secreta_aleatoria_sofistas',
-    redirect_uri='http://localhost:8501',
-)
+# --- 3. FUNÇÕES DE BACKEND ---
 
-authenticator.check_authenticator()
-
-# --- TELA DE LOGIN ---
-if not st.session_state.get('connected'):
-    c1, c2, c3 = st.columns([1, 2, 1])
-    with c2:
-        st.markdown("<br><br>", unsafe_allow_html=True)
-        if os.path.exists(LOGO_FILE):
-            st.image(LOGO_FILE, width=120)
-        
-        with st.form("form_login_google"):
-            st.markdown('<p style="font-family: Montserrat; font-weight: 800; font-size: 2.2em; color: #003366 !important; text-align: center; margin-bottom: 0;">Team Sofistas</p>', unsafe_allow_html=True)
-            st.markdown('<p style="font-family: Montserrat; font-size: 1.0em; color: #F37021 !important; text-align: center; margin-bottom: 20px; font-weight: 600;">Acesso Corporativo</p>', unsafe_allow_html=True)
-            st.markdown('<p style="color: #666 !important; text-align: center;">Faça login com seu e-mail da Brisanet</p>', unsafe_allow_html=True)
-            
-            authenticator.login()
-            st.form_submit_button("Entrar", disabled=True)
-            
-    st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
-    st.stop()
-
-# --- PÓS LOGIN ---
-user_info = st.session_state.get('user_info', {})
-email_logado = user_info.get('email', '').lower()
-nome_logado_google = user_info.get('name', 'Usuario').upper()
-
-EMAILS_ADMIN_MASTER = ['gestor@brisanet.com.br', 'admin@brisanet.com.br'] 
-
-if '@brisanet.com.br' not in email_logado and email_logado not in EMAILS_ADMIN_MASTER:
-    st.error(f"🚫 Acesso negado para **{email_logado}**. Use um e-mail corporativo (@brisanet.com.br).")
-    if st.button("Sair"):
-        authenticator.logout()
-    st.stop()
-
-perfil_usuario = 'admin' if ('gestor' in email_logado or 'admin' in email_logado or email_logado in EMAILS_ADMIN_MASTER) else 'user'
-
-# --- 4. FUNÇÕES DE BACKEND (Mantidas) ---
 def formatar_nome_visual(nome_cru):
     nome = str(nome_cru).strip().upper()
     if "ADER" in nome: return "Aderência"
@@ -242,7 +166,7 @@ def limpar_base_dados_completa():
     for f in arquivos: os.remove(f)
 def faxina_arquivos_temporarios():
     arquivos = [f for f in os.listdir('.') if f.endswith('.csv')]
-    protegidos = ['historico_consolidado.csv', 'config.json', LOGO_FILE]
+    protegidos = ['historico_consolidado.csv', 'usuarios.csv', 'config.json', LOGO_FILE]
     for f in arquivos:
         if f not in protegidos:
             try: os.remove(f)
@@ -409,23 +333,26 @@ def carregar_usuarios():
         if df is not None:
             df.columns = df.columns.str.lower()
             
-            # Mapeia colunas (Nome, Email, Férias)
+            # Mapeamento Flexível
             col_email = next((c for c in df.columns if 'mail' in c), None)
             col_nome = next((c for c in df.columns if 'colaborador' in c or 'nome' in c), None)
-            col_ferias = next((c for c in df.columns if 'ferias' in c or 'férias' in c), None)
+            col_ferias = next((c for c in df.columns if 'férias' in c or 'ferias' in c), None)
+            col_senha = next((c for c in df.columns if 'senha' in c or 'pass' in c), None)
             
             if col_email and col_nome:
                 rename_map = {col_email: 'email', col_nome: 'nome'}
                 if col_ferias: rename_map[col_ferias] = 'ferias'
+                if col_senha: rename_map[col_senha] = 'senha'
                 
                 df.rename(columns=rename_map, inplace=True)
                 df['email'] = df['email'].astype(str).str.strip().str.lower()
                 df['nome'] = df['nome'].astype(str).str.strip().str.upper()
                 
-                if 'ferias' not in df.columns:
-                    df['ferias'] = "Não informado"
-                else:
-                    df['ferias'] = df['ferias'].astype(str).replace('nan', 'Não informado')
+                if 'ferias' not in df.columns: df['ferias'] = "Não informado"
+                else: df['ferias'] = df['ferias'].astype(str).replace('nan', 'Não informado')
+                
+                if 'senha' not in df.columns: df['senha'] = ""
+                else: df['senha'] = df['senha'].astype(str).strip()
                     
                 return df
     return None
@@ -436,6 +363,58 @@ def filtrar_por_usuarios_cadastrados(df_dados, df_users):
     lista_vip = df_users['nome'].unique()
     return df_dados[df_dados['Colaborador'].isin(lista_vip)].copy()
 
+# --- 4. LOGIN RENOVADO (COM SENHA OU SEM SENHA DO CSV) ---
+if 'logado' not in st.session_state:
+    st.session_state.update({'logado': False, 'usuario_nome': '', 'perfil': '', 'usuario_email': ''})
+
+if not st.session_state['logado']:
+    c1, c2, c3 = st.columns([1, 2, 1])
+    with c2:
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        with st.form("form_login"):
+            st.markdown('<p class="login-title">Team Sofistas</p>', unsafe_allow_html=True)
+            st.markdown('<p class="login-subtitle">Analytics & Performance</p>', unsafe_allow_html=True)
+            
+            email_input = st.text_input("E-mail Corporativo", placeholder="seu.email@brisanet.com.br").strip().lower()
+            senha_input = st.text_input("Senha", type="password", placeholder="Digite sua senha")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            if st.form_submit_button("ACESSAR SISTEMA"):
+                # LOGIN GESTOR
+                if email_input in EMAILS_ADMIN and senha_input == SENHA_ADMIN:
+                    st.session_state.update({'logado': True, 'usuario_nome': 'Gestor', 'perfil': 'admin', 'usuario_email': 'admin'})
+                    st.rerun()
+                
+                # LOGIN OPERADOR
+                else:
+                    df_users = carregar_usuarios()
+                    if df_users is not None:
+                        user_row = df_users[df_users['email'] == email_input]
+                        if not user_row.empty:
+                            # Se tiver coluna senha no CSV, valida. Se não tiver, avisa (ou deixa passar se preferir, mas aqui mantive a segurança)
+                            senha_real = user_row.iloc[0]['senha']
+                            nome_upper = user_row.iloc[0]['nome']
+                            
+                            # Lógica: Se a senha no CSV estiver vazia ou coluna não existir, avisa.
+                            if not senha_real:
+                                st.warning("⚠️ Seu usuário não possui senha cadastrada no arquivo 'usuarios.csv'. Contate o gestor.")
+                            elif str(senha_real) == senha_input:
+                                st.session_state.update({'logado': True, 'usuario_nome': nome_upper, 'perfil': 'user', 'usuario_email': email_input})
+                                st.rerun()
+                            else:
+                                st.error("🚫 Senha incorreta.")
+                        else:
+                            st.error("🚫 E-mail não encontrado na base de usuários.")
+                    else:
+                        st.error("⚠️ Base de usuários (usuarios.csv) não carregada.")
+    
+    st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
+    st.stop()
+
+# --- 5. SISTEMA LOGADO ---
+st.markdown("""<style>.stApp { background: #f4f7f6; }</style>""", unsafe_allow_html=True)
+
 # --- 6. SIDEBAR ---
 lista_periodos = listar_periodos_disponiveis()
 opcoes_periodo = lista_periodos if lista_periodos else ["Nenhum histórico disponível"]
@@ -444,7 +423,7 @@ with st.sidebar:
     if os.path.exists(LOGO_FILE): st.image(LOGO_FILE, use_column_width=True)
     else: st.title("🦁 Team Sofistas")
         
-    st.caption(f"Logado como: {nome_logado_google.split()[0]}")
+    st.caption("Performance Analytics")
     st.markdown("---")
     periodo_selecionado = st.selectbox("📅 Mês de Referência:", opcoes_periodo)
     
@@ -465,13 +444,23 @@ with st.sidebar:
         df_dados['Colaborador'] = df_dados['Colaborador'].str.title()
 
     st.markdown("---")
+    nome_logado = st.session_state['usuario_nome'].title() if st.session_state['usuario_nome'] != 'Gestor' else 'Gestor'
+    st.markdown(f"### 👤 {nome_logado.split()[0]}")
+    
     if st.button("Sair"):
-        authenticator.logout()
+        st.session_state.update({'logado': False})
+        st.rerun()
     st.markdown("---")
     st.caption("Desenvolvido por:\n**Klebson Davi**\nSupervisor de Suporte Técnico")
 
+perfil = st.session_state['perfil']
+
+if df_dados is None and perfil == 'user':
+    st.info(f"👋 Olá, **{nome_logado}**! Dados de **{periodo_label}** indisponíveis.")
+    st.stop()
+
 # --- GESTOR ---
-if perfil_usuario == 'admin':
+if perfil == 'admin':
     st.title(f"📊 Visão Gerencial")
     tabs = st.tabs(["🚦 Semáforo", "🏆 Ranking Geral", "⏳ Evolução", "🔍 Indicadores", "💰 Comissões", "📋 Tabela Geral", "⚙️ Admin", "📘 Como Alimentar"])
     
@@ -746,9 +735,9 @@ if perfil_usuario == 'admin':
         with st.expander("1. Arquivo de Usuários (Login)"):
             st.markdown("""
             **Nome do Arquivo:** `usuarios.csv` (obrigatório).
-            **Colunas:** `Nome`, `Email`, `Férias` (opcional).
+            **Colunas:** `Nome`, `Email`, `Senha` (para login), `Ferias` (opcional).
             """)
-            st.code("Nome,Email,Férias\nJoão Silva,joao@brisanet.com.br,Novembro")
+            st.code("Nome,Email,Senha,Ferias\nJoão Silva,joao@brisanet.com.br,123456,Novembro")
         with st.expander("2. Arquivos de Indicadores (KPIs)"):
             st.markdown("**Nome do Arquivo:** Pode ser qualquer um (ex: `ir.csv`, `csat.csv`).\n**Colunas:** `Colaborador`, `% Atingimento`, `Diamantes`, `Max. Diamantes`.")
             st.code("Colaborador,% Atingimento,Diamantes,Max. Diamantes\nJoão Silva,0.95,95,100")
@@ -759,18 +748,17 @@ if perfil_usuario == 'admin':
 
 # --- VISÃO OPERADOR ---
 else:
-    st.markdown(f"## 🚀 Olá, **{nome_logado_google.split()[0]}**!")
+    st.markdown(f"## 🚀 Olá, **{nome_logado.split()[0]}**!")
     st.caption(f"📅 Referência: **{periodo_label}**")
     
     # Busca dados do usuário (férias, etc)
     minhas_ferias = "Não informado"
     if df_users_cadastrados is not None:
         try:
-            # Match aproximado para achar as férias
-            for _, u_row in df_users_cadastrados.iterrows():
-                if nome_logado_google.upper() in str(u_row['nome']).upper() or str(u_row['nome']).upper() in nome_logado_google.upper():
-                    minhas_ferias = u_row['ferias']
-                    break
+            # Match exato do nome logado com a tabela de usuários
+            user_info = df_users_cadastrados[df_users_cadastrados['nome'] == nome_logado.upper()]
+            if not user_info.empty:
+                minhas_ferias = user_info.iloc[0]['ferias']
         except: pass
 
     # Criação das Abas
@@ -778,18 +766,7 @@ else:
 
     # --- ABA 1: RESULTADOS (Tudo que já existia) ---
     with tab_results:
-        meus_dados = pd.DataFrame()
-        if df_dados is not None and not df_dados.empty:
-            nomes_disponiveis = df_dados['Colaborador'].unique()
-            nome_encontrado = None
-            for n in nomes_disponiveis:
-                if nome_logado_google.upper() in str(n).upper() or str(n).upper() in nome_logado_google.upper():
-                    nome_encontrado = n
-                    break
-            if nome_encontrado:
-                meus_dados = df_dados[df_dados['Colaborador'] == nome_encontrado].copy()
-            else:
-                st.warning(f"⚠️ Não encontramos dados de performance para **{nome_logado_google}**.")
+        meus_dados = df_dados[df_dados['Colaborador'] == nome_logado].copy()
         
         if not meus_dados.empty:
             # Lógica TAM First
