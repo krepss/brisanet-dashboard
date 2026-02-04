@@ -20,44 +20,42 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
-# --- 2. CSS DE ALTA LEGIBILIDADE (MODO CLARO FORÇADO) ---
+# --- 2. CSS DE ALTO CONTRASTE E CORREÇÃO DE CORES ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
     html, body, [class*="css"] { font-family: 'Roboto', sans-serif; }
     
-    /* 1. FUNDO GERAL CLARO (GARANTIA DE LEITURA) */
+    /* 1. FUNDO GERAL CLARO (Área Principal) */
     .stApp { 
-        background-color: #F4F7F6 !important; /* Cinza gelo muito suave */
-        background-image: none !important; /* Remove gradientes escuros antigos */
+        background-color: #F4F7F6 !important;
     }
     
-    /* 2. TEXTOS GERAIS -> ESCUROS */
-    h1, h2, h3, h4, h5, h6 {
-        color: #003366 !important; /* Azul Brisanet Escuro */
-        font-family: 'Montserrat', sans-serif !important;
-        font-weight: 700;
+    /* 2. SIDEBAR (Barra Lateral) - AZUL ESCURO FORÇADO */
+    [data-testid="stSidebar"] {
+        background-color: #002b55 !important;
+        background-image: linear-gradient(180deg, #002b55 0%, #004e92 100%) !important;
     }
-    p, li, span, div, label {
-        color: #333333 !important; /* Cinza chumbo para leitura */
-    }
-    
-    /* 3. SIDEBAR (BARRA LATERAL) -> AZUL COM TEXTO BRANCO */
-    section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #002b55 0%, #004e92 100%) !important;
-    }
-    /* Força TUDO na sidebar a ser branco */
-    section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, 
-    section[data-testid="stSidebar"] h3, section[data-testid="stSidebar"] p, 
-    section[data-testid="stSidebar"] span, section[data-testid="stSidebar"] label,
-    section[data-testid="stSidebar"] div {
+    /* Força todo texto na sidebar a ser BRANCO */
+    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, 
+    [data-testid="stSidebar"] p, [data-testid="stSidebar"] label, [data-testid="stSidebar"] span,
+    [data-testid="stSidebar"] div {
         color: #FFFFFF !important;
     }
-    /* Exceção: O texto que você digita dentro da caixinha (input) na sidebar deve ser escuro */
-    section[data-testid="stSidebar"] input {
-        color: #333333 !important;
+    /* Inputs na sidebar (fundo branco, texto preto) */
+    [data-testid="stSidebar"] input {
         background-color: #FFFFFF !important;
+        color: #333333 !important;
     }
+    /* Selectbox na sidebar */
+    [data-testid="stSidebar"] div[data-baseweb="select"] > div {
+        background-color: #FFFFFF !important;
+        color: #333333 !important;
+    }
+    
+    /* 3. TEXTOS DA ÁREA PRINCIPAL (ESCUROS) */
+    h1, h2, h3, h4, h5, h6 { color: #003366 !important; font-family: 'Montserrat', sans-serif !important; }
+    p, li, div { color: #333333; }
     
     /* 4. CARTÃO DE LOGIN */
     [data-testid="stForm"] {
@@ -67,21 +65,10 @@ st.markdown("""
         box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         border-top: 5px solid #F37021;
     }
-    
-    /* 5. INPUTS E SELETORES */
-    .stTextInput input, .stSelectbox div[data-baseweb="select"] > div {
-        background-color: #FFFFFF !important;
-        color: #333333 !important;
-        border: 1px solid #cccccc;
-        border-radius: 5px;
-    }
-    /* O label (título) do input */
-    .stTextInput label, .stSelectbox label {
-        color: #333333 !important;
-        font-weight: 600;
-    }
-    
-    /* 6. MÉTRICAS (Kpis) */
+    .login-title { font-weight: 800; font-size: 2.5em; color: #003366 !important; text-align: center; }
+    .login-subtitle { font-size: 1.2em; color: #F37021 !important; text-align: center; margin-bottom: 20px; font-weight: 600; }
+
+    /* 5. MÉTRICAS (Cards) */
     div.stMetric {
         background-color: #FFFFFF !important;
         border: 1px solid #e0e0e0;
@@ -92,27 +79,24 @@ st.markdown("""
     }
     div.stMetric label { color: #666 !important; }
     div.stMetric div[data-testid="stMetricValue"] { color: #003366 !important; }
-    div.stMetric div[data-testid="stMetricDelta"] { color: #333 !important; }
-
-    /* 7. TABELAS */
-    [data-testid="stDataFrame"] {
-        background-color: #FFFFFF;
-        border: 1px solid #ddd;
-    }
-
-    /* 8. BOTÕES */
+    
+    /* 6. TABELAS */
+    [data-testid="stDataFrame"] { background-color: #FFFFFF; }
+    
+    /* 7. BOTÕES */
     div.stButton > button {
-        background-color: #003366; 
-        color: #FFFFFF !important; 
-        border: none;
-        border-radius: 8px; 
+        background-color: #003366; color: #FFFFFF !important; border-radius: 8px; font-weight: bold; border: none;
+    }
+    div.stButton > button:hover { background-color: #F37021; color: #FFFFFF !important; }
+
+    /* 8. ABAS (TABS) */
+    button[data-baseweb="tab"] { background-color: transparent !important; color: #666 !important; }
+    button[data-baseweb="tab"][aria-selected="true"] {
+        color: #003366 !important;
+        border-top: 3px solid #F37021 !important;
         font-weight: bold;
     }
-    div.stButton > button:hover {
-        background-color: #F37021;
-        color: #FFFFFF !important;
-    }
-    
+
     /* 9. CARTÃO DE FÉRIAS */
     .vacation-card {
         background-color: #FFFFFF;
@@ -123,34 +107,12 @@ st.markdown("""
         box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         margin-top: 20px;
     }
-    .vacation-title {
-        font-size: 1.3em !important;
-        font-weight: 600 !important;
-        color: #555555 !important;
-        margin-bottom: 10px !important;
-    }
-    .vacation-date {
-        font-size: 2.8em !important;
-        font-weight: 800 !important;
-        color: #00838f !important;
-        margin: 15px 0 !important;
-        text-transform: uppercase;
-    }
-    .vacation-note {
-        font-size: 0.9em !important;
-        color: #999999 !important;
-        font-style: italic;
-    }
-
-    /* Rodapé */
-    .dev-footer {
-        text-align: center; margin-top: 30px; font-size: 0.8em; 
-        color: #999 !important;
-    }
+    .vacation-title { font-size: 1.3em !important; font-weight: 600 !important; color: #555555 !important; margin-bottom: 10px !important; }
+    .vacation-date { font-size: 2.8em !important; font-weight: 800 !important; color: #00838f !important; margin: 15px 0 !important; text-transform: uppercase; }
+    .vacation-note { font-size: 0.9em !important; color: #999999 !important; font-style: italic; }
     
-    /* Títulos Login */
-    .login-title { font-weight: 800; font-size: 2.5em; color: #003366 !important; text-align: center; }
-    .login-subtitle { font-size: 1.2em; color: #F37021 !important; text-align: center; margin-bottom: 20px; font-weight: 600; }
+    /* Rodapé */
+    .dev-footer { text-align: center; margin-top: 30px; font-size: 0.8em; color: #999 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -359,6 +321,7 @@ def carregar_usuarios():
         if df is not None:
             df.columns = df.columns.str.lower()
             
+            # Mapeamento Flexível
             col_email = next((c for c in df.columns if 'mail' in c), None)
             col_nome = next((c for c in df.columns if 'colaborador' in c or 'nome' in c), None)
             col_ferias = next((c for c in df.columns if 'ferias' in c or 'férias' in c), None)
@@ -452,11 +415,8 @@ with st.sidebar:
         periodo_label = periodo_selecionado
     
     df_users_cadastrados = carregar_usuarios()
-    df_dados = filtrar_por_usuarios_cadastrados(df_raw, df_users_cadastrados)
+    # Importante: Gestor vê tudo, Operador vê filtrado depois
     
-    if df_dados is not None and not df_dados.empty:
-        df_dados['Colaborador'] = df_dados['Colaborador'].str.title()
-
     st.markdown("---")
     nome_logado = st.session_state['usuario_nome'].title() if st.session_state['usuario_nome'] != 'Gestor' else 'Gestor'
     st.markdown(f"### 👤 {nome_logado.split()[0]}")
@@ -468,6 +428,18 @@ with st.sidebar:
     st.caption("Desenvolvido por:\n**Klebson Davi**\nSupervisor de Suporte Técnico")
 
 perfil = st.session_state['perfil']
+
+# Filtro de dados GLOBAL
+if df_raw is not None and not df_raw.empty:
+    df_raw['Colaborador'] = df_raw['Colaborador'].str.title()
+    if perfil == 'user':
+        # Se for usuário, filtramos os dados globais para mostrar apenas a equipe "validada", mas precisamos
+        # manter o dataset completo para calcular ranking.
+        df_dados = filtrar_por_usuarios_cadastrados(df_raw, df_users_cadastrados)
+    else:
+        df_dados = df_raw
+else:
+    df_dados = None
 
 if df_dados is None and perfil == 'user':
     st.info(f"👋 Olá, **{nome_logado}**! Dados de **{periodo_label}** indisponíveis.")
@@ -778,8 +750,29 @@ else:
     # Criação das Abas
     tab_results, tab_ferias = st.tabs(["📊 Meus Resultados", "🏖️ Minhas Férias"])
 
-    # --- ABA 1: RESULTADOS (Tudo que já existia) ---
+    # --- ABA 1: RESULTADOS ---
     with tab_results:
+        # Calcular Ranking antes de filtrar
+        ranking_msg = "Não classificado"
+        if df_dados is not None and not df_dados.empty:
+            # Lógica TAM First para Ranking
+            tem_tam = 'TAM' in df_dados['Indicador'].unique()
+            if tem_tam:
+                df_rank = df_dados[df_dados['Indicador'] == 'TAM'].copy()
+                df_rank = df_rank.sort_values(by='% Atingimento', ascending=False).reset_index(drop=True)
+            else:
+                df_rank = df_dados.groupby('Colaborador').agg({'Diamantes': 'sum', 'Max. Diamantes': 'sum'}).reset_index()
+                df_rank['Score'] = df_rank['Diamantes'] / df_rank['Max. Diamantes']
+                df_rank = df_rank.sort_values(by='Score', ascending=False).reset_index(drop=True)
+            
+            # Achar posição do usuário
+            try:
+                posicao = df_rank[df_rank['Colaborador'] == nome_logado].index[0] + 1
+                total_colabs = len(df_rank)
+                ranking_msg = f"{posicao}º de {total_colabs}"
+            except: pass
+
+        # Agora filtra os dados do usuário
         meus_dados = df_dados[df_dados['Colaborador'] == nome_logado].copy()
         
         if not meus_dados.empty:
@@ -796,27 +789,36 @@ else:
                     total_max = meus_dados['Max. Diamantes'].sum()
                     resultado_global = (total_dia_bruto / total_max) if total_max > 0 else 0
                 
-                col_gamif, col_gauge = st.columns([1.5, 1])
-                with col_gamif:
-                    st.markdown("### 💎 Gamificação")
+                # --- VISÃO SUPERIOR (RANKING + GAMIFICAÇÃO) ---
+                c_rank, c_gamif, c_gauge = st.columns([1, 1.5, 1])
+                
+                with c_rank:
+                    st.markdown("##### 🏆 Ranking")
+                    st.metric("Sua Posição", ranking_msg)
+                
+                with c_gamif:
+                    st.markdown("##### 💎 Gamificação")
                     st.progress(resultado_global if resultado_global <= 1.0 else 1.0)
                     st.write(f"**{int(total_dia_bruto)} / {int(total_max)}** Diamantes")
-                with col_gauge:
+                
+                with c_gauge:
                     fig_gauge = go.Figure(go.Indicator(
                         mode = "gauge+number",
                         value = resultado_global * 100,
-                        number = {'font': {'size': 24}}, 
+                        number = {'font': {'size': 24, 'color': '#003366'}}, 
                         gauge = {
-                            'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': "white"},
+                            'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': "#003366"},
                             'bar': {'color': "#F37021"},
                             'bgcolor': "white",
                             'steps': [{'range': [0, 100], 'color': '#f4f7f6'}],
                             'threshold': {'line': {'color': "green", 'width': 4}, 'thickness': 0.75, 'value': 100}
                         }))
-                    fig_gauge.update_layout(height=160, margin=dict(l=10, r=10, t=30, b=10), paper_bgcolor='rgba(0,0,0,0)')
+                    fig_gauge.update_layout(height=140, margin=dict(l=10, r=10, t=30, b=10), paper_bgcolor='rgba(0,0,0,0)', font={'color': '#003366'})
                     st.plotly_chart(fig_gauge, use_container_width=True)
+                
                 st.markdown("---")
                 
+                # --- LÓGICA FINANCEIRA ---
                 df_conf = meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE']
                 atingimento_conf = df_conf.iloc[0]['% Atingimento'] if not df_conf.empty else 0.0
                 tem_dado_conf = not df_conf.empty
@@ -848,6 +850,7 @@ else:
                         st.success(f"✅ **Gatilho Financeiro Atingido**: Conformidade **{atingimento_conf:.2%}** (>= 92%). Todos os diamantes computados.")
                 st.divider()
 
+            # --- CARDS DE KPIs ---
             cols = st.columns(len(meus_dados))
             for i, (_, row) in enumerate(meus_dados.iterrows()):
                 val = row['% Atingimento']
@@ -861,16 +864,26 @@ else:
                     color = "inverse"
                 with cols[i]:
                     st.metric(label, f"{val:.2%}", delta_msg, delta_color=color)
+            
             st.markdown("---")
+            
+            # --- GRÁFICO COMPARATIVO ---
             media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
             media_equipe.rename(columns={'% Atingimento': 'Média Equipe'}, inplace=True)
             df_comp = pd.merge(meus_dados, media_equipe, on='Indicador')
             df_comp['Indicador'] = df_comp['Indicador'].apply(formatar_nome_visual)
             df_melt = df_comp.melt(id_vars=['Indicador'], value_vars=['% Atingimento', 'Média Equipe'], var_name='Tipo', value_name='Resultado')
+            
             fig = px.bar(df_melt, x='Indicador', y='Resultado', color='Tipo', barmode='group',
                         color_discrete_map={'% Atingimento': '#F37021', 'Média Equipe': '#003366'})
             fig.add_hline(y=0.8, line_dash="dash", line_color="green", annotation_text="Meta 80%")
-            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+            # Ajuste de cores do gráfico para fundo claro
+            fig.update_layout(
+                paper_bgcolor='rgba(0,0,0,0)', 
+                plot_bgcolor='rgba(0,0,0,0)',
+                font={'color': '#333333'},
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            )
             st.plotly_chart(fig, use_container_width=True)
 
     # --- ABA 2: FÉRIAS ---
