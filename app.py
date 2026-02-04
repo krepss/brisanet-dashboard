@@ -12,7 +12,6 @@ LOGO_FILE = "logo.ico"
 
 # --- SENHA DO GESTOR (Acesso Administrativo) ---
 SENHA_ADMIN = "admin123"
-# Usuários que exigem senha
 USUARIOS_ADMIN = ['gestor', 'admin']
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
@@ -21,151 +20,137 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
-# --- 2. CSS PREMIUM (RESTAURADO DO ARQUIVO ORIGINAL + FÉRIAS) ---
+# --- 2. CSS DE ALTA LEGIBILIDADE (MODO CLARO FORÇADO) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
     html, body, [class*="css"] { font-family: 'Roboto', sans-serif; }
     
-    /* 1. FUNDO GLOBAL */
+    /* 1. FUNDO GERAL CLARO (GARANTIA DE LEITURA) */
     .stApp { 
-        background: linear-gradient(135deg, #002b55 0%, #004e92 50%, #F37021 100%);
-        background-attachment: fixed;
+        background-color: #F4F7F6 !important; /* Cinza gelo muito suave */
+        background-image: none !important; /* Remove gradientes escuros antigos */
     }
     
-    /* 2. TEXTOS GERAIS -> BRANCO */
-    /* Garante que todo texto padrão fora de containers especiais seja branco */
-    .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6, 
-    .stApp p, .stApp li, .stApp span, .stApp div.stMarkdown, .stApp label {
-        color: #FFFFFF !important;
+    /* 2. TEXTOS GERAIS -> ESCUROS */
+    h1, h2, h3, h4, h5, h6 {
+        color: #003366 !important; /* Azul Brisanet Escuro */
+        font-family: 'Montserrat', sans-serif !important;
+        font-weight: 700;
+    }
+    p, li, span, div, label {
+        color: #333333 !important; /* Cinza chumbo para leitura */
     }
     
-    /* 3. SIDEBAR -> TEXTO BRANCO */
+    /* 3. SIDEBAR (BARRA LATERAL) -> AZUL COM TEXTO BRANCO */
     section[data-testid="stSidebar"] {
-        background-color: rgba(0, 43, 85, 0.95);
+        background: linear-gradient(180deg, #002b55 0%, #004e92 100%) !important;
     }
-    section[data-testid="stSidebar"] * {
+    /* Força TUDO na sidebar a ser branco */
+    section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, 
+    section[data-testid="stSidebar"] h3, section[data-testid="stSidebar"] p, 
+    section[data-testid="stSidebar"] span, section[data-testid="stSidebar"] label,
+    section[data-testid="stSidebar"] div {
         color: #FFFFFF !important;
     }
-    
-    /* 4. CARDS DE MÉTRICAS -> FUNDO BRANCO, TEXTO ESCURO */
-    div.stMetric {
-        background-color: #FFFFFF !important;
-        border: 1px solid #e0e0e0;
-        padding: 15px 20px;
-        border-radius: 12px;
-        border-left: 5px solid #F37021;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-    }
-    div.stMetric label, div.stMetric div[data-testid="stMetricLabel"] p {
-        color: #555555 !important; font-weight: 600;
-    }
-    div.stMetric div[data-testid="stMetricValue"] {
-        color: #003366 !important;
-    }
-    div.stMetric div[data-testid="stMetricDelta"] {
+    /* Exceção: O texto que você digita dentro da caixinha (input) na sidebar deve ser escuro */
+    section[data-testid="stSidebar"] input {
         color: #333333 !important;
+        background-color: #FFFFFF !important;
     }
     
-    /* 5. CARTÃO DE LOGIN */
+    /* 4. CARTÃO DE LOGIN */
     [data-testid="stForm"] {
-        background-color: rgba(255, 255, 255, 0.95) !important;
+        background-color: #FFFFFF !important;
         padding: 40px;
         border-radius: 20px;
-        box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         border-top: 5px solid #F37021;
     }
-    [data-testid="stForm"] h1, [data-testid="stForm"] p {
-        color: #003366 !important;
-    }
     
-    /* 6. INPUTS E DROPDOWNS (CORREÇÃO CRÍTICA) */
-    /* Caixa de input fechada */
+    /* 5. INPUTS E SELETORES */
     .stTextInput input, .stSelectbox div[data-baseweb="select"] > div {
         background-color: #FFFFFF !important;
         color: #333333 !important;
+        border: 1px solid #cccccc;
         border-radius: 5px;
     }
-    
-    /* LISTA SUSPENSA (O POPUP DO SELECTBOX) */
-    /* Isso garante que as opções do menu não fiquem invisíveis */
-    ul[data-testid="stSelectboxVirtualDropdown"] {
-        background-color: #FFFFFF !important;
-    }
-    ul[data-testid="stSelectboxVirtualDropdown"] li {
+    /* O label (título) do input */
+    .stTextInput label, .stSelectbox label {
         color: #333333 !important;
+        font-weight: 600;
+    }
+    
+    /* 6. MÉTRICAS (Kpis) */
+    div.stMetric {
         background-color: #FFFFFF !important;
+        border: 1px solid #e0e0e0;
+        padding: 15px;
+        border-radius: 10px;
+        border-left: 5px solid #F37021;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
-    /* Item selecionado/hover na lista */
-    ul[data-testid="stSelectboxVirtualDropdown"] li:hover, 
-    ul[data-testid="stSelectboxVirtualDropdown"] li[aria-selected="true"] {
-        background-color: #F37021 !important;
-        color: #FFFFFF !important;
+    div.stMetric label { color: #666 !important; }
+    div.stMetric div[data-testid="stMetricValue"] { color: #003366 !important; }
+    div.stMetric div[data-testid="stMetricDelta"] { color: #333 !important; }
+
+    /* 7. TABELAS */
+    [data-testid="stDataFrame"] {
+        background-color: #FFFFFF;
+        border: 1px solid #ddd;
     }
-    
-    /* 7. ALERTAS (WARNING, SUCCESS, ERROR) */
-    div.stAlert > div {
-        color: #333333 !important; /* Texto escuro dentro dos alertas coloridos */
-    }
-    div.stAlert p {
-        color: #333333 !important;
-    }
-    
-    /* 8. EXPANDER (Cabeçalho) */
-    .streamlit-expanderHeader p, .streamlit-expanderHeader span {
-        color: #FFFFFF !important; /* Título do expander branco no fundo azul */
+
+    /* 8. BOTÕES */
+    div.stButton > button {
+        background-color: #003366; 
+        color: #FFFFFF !important; 
+        border: none;
+        border-radius: 8px; 
         font-weight: bold;
     }
-    /* Conteúdo dentro do expander (geralmente segue o global, mas forçamos contraste se precisar) */
-    div[data-testid="stExpanderDetails"] p {
-        color: #FFFFFF !important;
-    }
-
-    /* 9. DATAFRAME (TABELAS) */
-    [data-testid="stDataFrame"] {
-        background-color: #FFFFFF !important;
-        padding: 5px;
-        border-radius: 8px;
-    }
-    [data-testid="stDataFrame"] * {
-        color: #333333 !important;
-    }
-
-    /* 10. BOTÕES */
-    div.stButton > button {
-        border-radius: 8px; font-weight: bold; transition: 0.3s;
-        background-color: #004e92; color: #FFFFFF !important; border: 1px solid white;
-    }
     div.stButton > button:hover {
-        background-color: #F37021; border-color: #F37021;
+        background-color: #F37021;
+        color: #FFFFFF !important;
     }
     
-    /* 11. ABAS */
-    button[data-baseweb="tab"] { color: rgba(255, 255, 255, 0.7) !important; }
-    button[data-baseweb="tab"][aria-selected="true"] {
-        color: #FFFFFF !important;
-        border-top: 2px solid #F37021 !important;
-    }
-
-    /* 12. CARTÃO DE FÉRIAS (NOVO) */
+    /* 9. CARTÃO DE FÉRIAS */
     .vacation-card {
-        background-color: #ffffff;
-        border-left: 5px solid #00bcd4;
-        padding: 20px;
-        border-radius: 10px;
+        background-color: #FFFFFF;
+        border-left: 6px solid #00bcd4;
+        padding: 25px;
+        border-radius: 12px;
         text-align: center;
-        color: #333;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         margin-top: 20px;
     }
-    .vacation-title { font-size: 1.2em; font-weight: 600; color: #555555 !important; margin-bottom: 10px; }
-    .vacation-date { font-size: 2.5em; font-weight: 800; color: #00838f !important; margin: 10px 0; text-transform: uppercase; }
-    .vacation-note { font-size: 0.8em; opacity: 0.8; color: #777777 !important; }
-
-    .dev-footer {
-        text-align: center; margin-top: 20px; font-size: 0.8em; 
-        color: rgba(255,255,255,0.7) !important; font-style: italic;
+    .vacation-title {
+        font-size: 1.3em !important;
+        font-weight: 600 !important;
+        color: #555555 !important;
+        margin-bottom: 10px !important;
     }
+    .vacation-date {
+        font-size: 2.8em !important;
+        font-weight: 800 !important;
+        color: #00838f !important;
+        margin: 15px 0 !important;
+        text-transform: uppercase;
+    }
+    .vacation-note {
+        font-size: 0.9em !important;
+        color: #999999 !important;
+        font-style: italic;
+    }
+
+    /* Rodapé */
+    .dev-footer {
+        text-align: center; margin-top: 30px; font-size: 0.8em; 
+        color: #999 !important;
+    }
+    
+    /* Títulos Login */
+    .login-title { font-weight: 800; font-size: 2.5em; color: #003366 !important; text-align: center; }
+    .login-subtitle { font-size: 1.2em; color: #F37021 !important; text-align: center; margin-bottom: 20px; font-weight: 600; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -374,11 +359,9 @@ def carregar_usuarios():
         if df is not None:
             df.columns = df.columns.str.lower()
             
-            # Mapeamento Flexível
             col_email = next((c for c in df.columns if 'mail' in c), None)
             col_nome = next((c for c in df.columns if 'colaborador' in c or 'nome' in c), None)
-            # Procura coluna de ferias (flexivel)
-            col_ferias = next((c for c in df.columns if 'férias' in c or 'ferias' in c), None)
+            col_ferias = next((c for c in df.columns if 'ferias' in c or 'férias' in c), None)
             
             if col_email and col_nome:
                 rename_map = {col_email: 'email', col_nome: 'nome'}
@@ -402,7 +385,7 @@ def filtrar_por_usuarios_cadastrados(df_dados, df_users):
     lista_vip = df_users['nome'].unique()
     return df_dados[df_dados['Colaborador'].isin(lista_vip)].copy()
 
-# --- 4. LOGIN RENOVADO (HÍBRIDO: GESTOR COM SENHA / OPERADOR SÓ EMAIL) ---
+# --- 4. LOGIN RENOVADO ---
 if 'logado' not in st.session_state:
     st.session_state.update({'logado': False, 'usuario_nome': '', 'perfil': '', 'usuario_email': ''})
 
@@ -420,20 +403,18 @@ if not st.session_state['logado']:
             st.markdown("<br>", unsafe_allow_html=True)
             
             if st.form_submit_button("ACESSAR"):
-                # 1. LOGIN GESTOR (Usuário/Email + Senha)
+                # LOGIN GESTOR
                 if email_input in USUARIOS_ADMIN and senha_input == SENHA_ADMIN:
                     st.session_state.update({'logado': True, 'usuario_nome': 'Gestor', 'perfil': 'admin', 'usuario_email': 'admin'})
                     st.rerun()
                 
-                # 2. LOGIN OPERADOR (Apenas E-mail do CSV)
+                # LOGIN OPERADOR (SEM SENHA)
                 else:
                     df_users = carregar_usuarios()
                     if df_users is not None:
-                        # Verifica se o email existe na base
                         user_row = df_users[df_users['email'] == email_input]
                         
                         if not user_row.empty:
-                            # Se achou o email, entra direto (sem senha)
                             nome_upper = user_row.iloc[0]['nome']
                             st.session_state.update({'logado': True, 'usuario_nome': nome_upper, 'perfil': 'user', 'usuario_email': email_input})
                             st.rerun()
@@ -446,7 +427,7 @@ if not st.session_state['logado']:
     st.stop()
 
 # --- 5. SISTEMA LOGADO ---
-st.markdown("""<style>.stApp { background: #f4f7f6; }</style>""", unsafe_allow_html=True)
+# CSS já carrega o fundo claro
 
 # --- 6. SIDEBAR ---
 lista_periodos = listar_periodos_disponiveis()
@@ -558,7 +539,7 @@ if perfil == 'admin':
                     'threshold': {'line': {'color': "red", 'width': 4}, 'thickness': 0.75, 'value': 100}
                 }
             ))
-            fig_team.update_layout(height=250, margin=dict(l=20, r=20, t=30, b=20))
+            fig_team.update_layout(height=250, margin=dict(l=20, r=20, t=30, b=20), paper_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig_team, use_container_width=True)
             
             st.markdown("---")
@@ -788,11 +769,10 @@ else:
     minhas_ferias = "Não informado"
     if df_users_cadastrados is not None:
         try:
-            # Match aproximado para achar as férias
-            for _, u_row in df_users_cadastrados.iterrows():
-                if nome_logado.upper() in str(u_row['nome']).upper() or str(u_row['nome']).upper() in nome_logado.upper():
-                    minhas_ferias = u_row['ferias']
-                    break
+            # Match exato do nome logado com a tabela de usuários
+            user_info = df_users_cadastrados[df_users_cadastrados['nome'] == nome_logado.upper()]
+            if not user_info.empty:
+                minhas_ferias = user_info.iloc[0]['ferias']
         except: pass
 
     # Criação das Abas
