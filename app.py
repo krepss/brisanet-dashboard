@@ -20,37 +20,41 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
-# --- 2. CSS DE ALTO CONTRASTE E CORREÇÃO DE CORES ---
+# --- 2. CSS CORRIGIDO (ALTO CONTRASTE REAL) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
     html, body, [class*="css"] { font-family: 'Roboto', sans-serif; }
     
-    /* 1. FUNDO GERAL CLARO (Área Principal) */
+    /* 1. FUNDO GERAL CLARO */
     .stApp { 
         background-color: #F4F7F6 !important;
     }
     
-    /* 2. SIDEBAR (Barra Lateral) - AZUL ESCURO FORÇADO */
+    /* 2. SIDEBAR (AZUL ESCURO) */
     [data-testid="stSidebar"] {
         background-color: #002b55 !important;
         background-image: linear-gradient(180deg, #002b55 0%, #004e92 100%) !important;
     }
-    /* Força todo texto na sidebar a ser BRANCO */
+    
+    /* Títulos e Textos SOLTOS na Sidebar -> BRANCO */
     [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, 
     [data-testid="stSidebar"] p, [data-testid="stSidebar"] label, [data-testid="stSidebar"] span,
-    [data-testid="stSidebar"] div {
+    [data-testid="stSidebar"] .stMarkdown {
         color: #FFFFFF !important;
     }
-    /* Inputs na sidebar (fundo branco, texto preto) */
-    [data-testid="stSidebar"] input {
-        background-color: #FFFFFF !important;
-        color: #333333 !important;
-    }
-    /* Selectbox na sidebar */
+    
+    /* CORREÇÃO CRÍTICA: INPUTS E SELECTBOX NA SIDEBAR */
+    /* Garante que o texto DENTRO da caixa branca seja PRETO */
     [data-testid="stSidebar"] div[data-baseweb="select"] > div {
         background-color: #FFFFFF !important;
-        color: #333333 !important;
+        color: #000000 !important;
+    }
+    [data-testid="stSidebar"] div[data-baseweb="select"] span {
+        color: #000000 !important;
+    }
+    [data-testid="stSidebar"] input {
+        color: #000000 !important;
     }
     
     /* 3. TEXTOS DA ÁREA PRINCIPAL (ESCUROS) */
@@ -325,10 +329,12 @@ def carregar_usuarios():
             col_email = next((c for c in df.columns if 'mail' in c), None)
             col_nome = next((c for c in df.columns if 'colaborador' in c or 'nome' in c), None)
             col_ferias = next((c for c in df.columns if 'ferias' in c or 'férias' in c), None)
+            col_senha = next((c for c in df.columns if 'senha' in c or 'pass' in c), None)
             
             if col_email and col_nome:
                 rename_map = {col_email: 'email', col_nome: 'nome'}
                 if col_ferias: rename_map[col_ferias] = 'ferias'
+                if col_senha: rename_map[col_senha] = 'senha'
                 
                 df.rename(columns=rename_map, inplace=True)
                 df['email'] = df['email'].astype(str).str.strip().str.lower()
@@ -342,13 +348,7 @@ def carregar_usuarios():
                 return df
     return None
 
-def filtrar_por_usuarios_cadastrados(df_dados, df_users):
-    if df_dados is None or df_dados.empty: return df_dados
-    if df_users is None or df_users.empty: return df_dados
-    lista_vip = df_users['nome'].unique()
-    return df_dados[df_dados['Colaborador'].isin(lista_vip)].copy()
-
-# --- 4. LOGIN RENOVADO ---
+# --- 4. LOGIN RENOVADO (HÍBRIDO: GESTOR COM SENHA / OPERADOR SÓ EMAIL) ---
 if 'logado' not in st.session_state:
     st.session_state.update({'logado': False, 'usuario_nome': '', 'perfil': '', 'usuario_email': ''})
 
@@ -366,18 +366,20 @@ if not st.session_state['logado']:
             st.markdown("<br>", unsafe_allow_html=True)
             
             if st.form_submit_button("ACESSAR"):
-                # LOGIN GESTOR
+                # 1. LOGIN GESTOR (Usuário/Email + Senha)
                 if email_input in USUARIOS_ADMIN and senha_input == SENHA_ADMIN:
                     st.session_state.update({'logado': True, 'usuario_nome': 'Gestor', 'perfil': 'admin', 'usuario_email': 'admin'})
                     st.rerun()
                 
-                # LOGIN OPERADOR (SEM SENHA)
+                # 2. LOGIN OPERADOR (Apenas E-mail do CSV)
                 else:
                     df_users = carregar_usuarios()
                     if df_users is not None:
+                        # Verifica se o email existe na base
                         user_row = df_users[df_users['email'] == email_input]
                         
                         if not user_row.empty:
+                            # Se achou o email, entra direto (sem senha)
                             nome_upper = user_row.iloc[0]['nome']
                             st.session_state.update({'logado': True, 'usuario_nome': nome_upper, 'perfil': 'user', 'usuario_email': email_input})
                             st.rerun()
@@ -415,7 +417,10 @@ with st.sidebar:
         periodo_label = periodo_selecionado
     
     df_users_cadastrados = carregar_usuarios()
-    # Importante: Gestor vê tudo, Operador vê filtrado depois
+    
+    # IMPORTANTE: Carrega dados brutos, mas não filtra ainda para não quebrar ranking
+    if df_raw is not None and not df_raw.empty:
+        df_raw['Colaborador'] = df_raw['Colaborador'].str.title()
     
     st.markdown("---")
     nome_logado = st.session_state['usuario_nome'].title() if st.session_state['usuario_nome'] != 'Gestor' else 'Gestor'
@@ -428,18 +433,7 @@ with st.sidebar:
     st.caption("Desenvolvido por:\n**Klebson Davi**\nSupervisor de Suporte Técnico")
 
 perfil = st.session_state['perfil']
-
-# Filtro de dados GLOBAL
-if df_raw is not None and not df_raw.empty:
-    df_raw['Colaborador'] = df_raw['Colaborador'].str.title()
-    if perfil == 'user':
-        # Se for usuário, filtramos os dados globais para mostrar apenas a equipe "validada", mas precisamos
-        # manter o dataset completo para calcular ranking.
-        df_dados = filtrar_por_usuarios_cadastrados(df_raw, df_users_cadastrados)
-    else:
-        df_dados = df_raw
-else:
-    df_dados = None
+df_dados = df_raw # Gestor vê tudo, User vê filtrado na tela dele
 
 if df_dados is None and perfil == 'user':
     st.info(f"👋 Olá, **{nome_logado}**! Dados de **{periodo_label}** indisponíveis.")
@@ -511,7 +505,7 @@ if perfil == 'admin':
                     'threshold': {'line': {'color': "red", 'width': 4}, 'thickness': 0.75, 'value': 100}
                 }
             ))
-            fig_team.update_layout(height=250, margin=dict(l=20, r=20, t=30, b=20), paper_bgcolor='rgba(0,0,0,0)')
+            fig_team.update_layout(height=250, margin=dict(l=20, r=20, t=30, b=20))
             st.plotly_chart(fig_team, use_container_width=True)
             
             st.markdown("---")
@@ -772,9 +766,13 @@ else:
                 ranking_msg = f"{posicao}º de {total_colabs}"
             except: pass
 
-        # Agora filtra os dados do usuário
+        # Agora filtra os dados do usuário com busca robusta (Exact match ou Contains)
         meus_dados = df_dados[df_dados['Colaborador'] == nome_logado].copy()
         
+        # Se exato falhou, tenta aproximado
+        if meus_dados.empty:
+             meus_dados = df_dados[df_dados['Colaborador'].str.contains(nome_logado, case=False, na=False)].copy()
+
         if not meus_dados.empty:
             # Lógica TAM First
             tem_tam = 'TAM' in meus_dados['Indicador'].unique()
@@ -885,6 +883,12 @@ else:
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
             )
             st.plotly_chart(fig, use_container_width=True)
+        else:
+            # DEBUG PARA O USUÁRIO: MOSTRA POR QUE ESTÁ VAZIO
+            st.error(f"⚠️ Não encontramos dados de performance para o nome **{nome_logado}**.")
+            st.info("Isso acontece quando o nome no login (usuarios.csv) não bate com o nome no arquivo de indicadores.")
+            st.write("**Nomes disponíveis no arquivo de indicadores:**")
+            st.dataframe(pd.DataFrame(df_dados['Colaborador'].unique(), columns=['Nomes Encontrados']), hide_index=True)
 
     # --- ABA 2: FÉRIAS ---
     with tab_ferias:
