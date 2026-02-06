@@ -18,9 +18,9 @@ USUARIOS_ADMIN = ['gestor', 'admin']
 # --- DICAS AUTOMÁTICAS (SMART COACH) ---
 DICAS_KPI = {
     "ADERENCIA": "Atenção aos horários de login/logoff e pausas. Cumpra a escala rigorosamente.",
-    "CONFORMIDADE": "Revise o script e os processos obrigatórios. Acompanhe a monitoria.",
+    "CONFORMIDADE": "Revise as pausas e sua programação. A conformidade é seu tempo de fila.",
     "INTERACOES": "Seja mais proativo durante o atendimento. Evite silêncio excessivo.",
-    "PONTUALIDADE": "Evite atrasos na primeira conexão do dia. Chegue 5 min antes.",
+    "PONTUALIDADE": "Evite atrasos na primeira conexão do dia e também nas suas pausas. Dica: Chegue minutos antes.",
     "CSAT": "Aposte na empatia e na escuta ativa. Confirme a resolução com o cliente.",
     "IR": "Investigue a causa raiz para evitar retorno. Resolva de vez.",
     "TPC": "Use o roteiro para ser ágil sem perder qualidade no atendimento.",
