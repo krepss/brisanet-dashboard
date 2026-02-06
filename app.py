@@ -814,21 +814,40 @@ else:
                 with c_gamif:
                     st.markdown("##### 💎 Gamificação")
                     st.progress(resultado_global if resultado_global <= 1.0 else 1.0)
-                    # --- BADGES (MEDALHAS) ---
+                    
+                    # --- NOVO: BADGES (MEDALHAS) EXPANDIDAS ---
                     badges = []
+                    # 1. Guardião (Conformidade)
                     if not meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE'].iloc[0]['% Atingimento'] >= 1.0: badges.append("🛡️ Guardião")
+                    # 2. Amado (CSAT)
                     if not meus_dados[meus_dados['Indicador'] == 'CSAT'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'CSAT'].iloc[0]['% Atingimento'] >= 0.95: badges.append("❤️ Amado")
-                    
+                    # 3. Relógio Suíço (Aderência)
+                    if not meus_dados[meus_dados['Indicador'] == 'ADERENCIA'].empty:
+                        if meus_dados[meus_dados['Indicador'] == 'ADERENCIA'].iloc[0]['% Atingimento'] >= 0.98: badges.append("⏰ Relógio Suíço")
+                    # 4. Sherlock (Resolução/IR)
+                    if not meus_dados[meus_dados['Indicador'] == 'IR'].empty:
+                        if meus_dados[meus_dados['Indicador'] == 'IR'].iloc[0]['% Atingimento'] >= 0.90: badges.append("🧩 Sherlock")
+                    # 5. No Alvo (Pontualidade)
+                    if not meus_dados[meus_dados['Indicador'] == 'PONTUALIDADE'].empty:
+                        if meus_dados[meus_dados['Indicador'] == 'PONTUALIDADE'].iloc[0]['% Atingimento'] >= 1.0: badges.append("🎯 No Alvo")
+                    # 6. The Flash (TPC - assumindo meta batida >= 100%)
+                    if not meus_dados[meus_dados['Indicador'] == 'TPC'].empty:
+                        if meus_dados[meus_dados['Indicador'] == 'TPC'].iloc[0]['% Atingimento'] >= 1.0: badges.append("⚡ The Flash")
+
                     st.write(f"**{int(total_dia_bruto)} / {int(total_max)}** Diamantes")
                     if badges: st.success(f"Conquistas: {' '.join(badges)}")
 
                     # Legenda das Conquistas
                     with st.expander("ℹ️ Legenda das Conquistas"):
                         st.markdown("""
-                        * 🛡️ **Guardião:** 100% em Conformidade.
+                        * 🛡️ **Guardião:** 100% Conformidade.
                         * ❤️ **Amado:** CSAT acima de 95%.
+                        * ⏰ **Relógio Suíço:** Aderência acima de 98%.
+                        * 🧩 **Sherlock:** Resolução (IR) acima de 90%.
+                        * 🎯 **No Alvo:** Pontualidade 100%.
+                        * ⚡ **The Flash:** TPC dentro da meta.
                         """)
 
                 with c_gauge:
@@ -901,9 +920,9 @@ else:
 
             st.markdown("---")
             
-            # --- RADAR CHART (Com proteção contra erro de dados vazios e renomeação) ---
+            # --- RADAR CHART (Com proteção e Correção do Erro KeyError) ---
             media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
-            # Renomeia para evitar colisão no merge (Correção do KeyError)
+            # Renomeia para evitar conflito com a coluna do usuário
             media_equipe.rename(columns={'% Atingimento': 'Média Equipe'}, inplace=True)
             
             if not media_equipe.empty:
