@@ -6,7 +6,7 @@ import os
 import json
 import time
 from datetime import datetime
-import unicodedata # NOVO: Para corrigir acentos (Bárbara -> BARBARA)
+import unicodedata # Essencial para corrigir acentos (Bárbara -> BARBARA)
 
 # --- CONFIGURAÇÃO DA LOGO ---
 LOGO_FILE = "logo.ico"
@@ -17,14 +17,14 @@ USUARIOS_ADMIN = ['gestor', 'admin']
 
 # --- DICAS AUTOMÁTICAS (SMART COACH) ---
 DICAS_KPI = {
-    "ADERENCIA": "Cumpra rigorosamente os horários de log in, log out e pausas da sua escala.",
-    "CONFORMIDADE": "Aqui se trata do tempo de fila, não estrapole nas pausas e tire pausas desnecessárias.",
-    "INTERACOES": "Evite tempos de silêncio (mudo) prolongados. Mantenha o cliente informado enquanto analisa.",
-    "PONTUALIDADE": "Programe-se para estar logado e pronto para atender no minuto exato do início de cada pausa.",
-    "CSAT": "Demonstre empatia e gentileza. A nota do cliente reflete como ele se sentiu durante o atendimento.",
-    "IR": "Garanta que o serviço voltou a funcionar. Faça todos os testes finais e confirme a solução com o cliente antes de encerrar.",
-    "TPC": "Otimize a tabulação no tempo certo, aqui é fácil recuperar.",
-    "TAM": "Assuma o comando da ligação. Seja objetivo nas perguntas e guie o cliente para a solução de forma ágil."
+    "ADERENCIA": "Atenção aos horários de login/logoff e pausas. Cumpra a escala rigorosamente.",
+    "CONFORMIDADE": "Revise o script e os processos obrigatórios. Acompanhe a monitoria.",
+    "INTERACOES": "Seja mais proativo durante o atendimento. Evite silêncio excessivo.",
+    "PONTUALIDADE": "Evite atrasos na primeira conexão do dia. Chegue 5 min antes.",
+    "CSAT": "Aposte na empatia e na escuta ativa. Confirme a resolução com o cliente.",
+    "IR": "Garanta que o serviço voltou a funcionar. Faça testes finais antes de encerrar.",
+    "TPC": "Otimize a tabulação: registre informações enquanto ainda fala com o cliente.",
+    "TAM": "Assuma o comando da ligação. Seja objetivo e guie o cliente para a solução."
 }
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
