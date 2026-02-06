@@ -60,6 +60,7 @@ st.markdown("""
         -webkit-text-fill-color: #000000 !important;
     }
     [data-testid="stSidebar"] div[data-baseweb="select"] span,
+    [data-testid="stSidebar"] div[data-baseweb="select"] div,
     [data-testid="stSidebar"] div[data-baseweb="select"] svg {
         color: #000000 !important;
         fill: #000000 !important;
@@ -893,8 +894,11 @@ else:
 
             st.markdown("---")
             
-            # --- RADAR CHART (Com proteção contra erro de dados vazios) ---
+            # --- RADAR CHART (Protegido contra erros) ---
             media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
+            # Renomeia para evitar colisão no merge (Correção do KeyError)
+            media_equipe.rename(columns={'% Atingimento': 'Média Equipe'}, inplace=True)
+            
             if not media_equipe.empty:
                 df_comp = pd.merge(meus_dados, media_equipe, on='Indicador')
                 if not df_comp.empty:
@@ -902,7 +906,7 @@ else:
                     
                     categorias = df_comp['Indicador'].tolist()
                     valores_user = df_comp['% Atingimento'].tolist()
-                    valores_media = df_comp['% Atingimento_y'].tolist()
+                    valores_media = df_comp['Média Equipe'].tolist()
                     
                     if categorias:
                         categorias.append(categorias[0])
