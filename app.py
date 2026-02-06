@@ -6,16 +6,16 @@ import os
 import json
 import time
 from datetime import datetime
-import unicodedata # NOVO: Correção de acentos para evitar "0%" quando o nome não bate
+import unicodedata # NOVO: Para corrigir acentos (Bárbara -> BARBARA)
 
 # --- CONFIGURAÇÃO DA LOGO ---
 LOGO_FILE = "logo.ico"
 
-# --- SENHA DO GESTOR (Acesso Administrativo) ---
+# --- SENHA DO GESTOR ---
 SENHA_ADMIN = "admin123"
 USUARIOS_ADMIN = ['gestor', 'admin']
 
-# --- NOVO: DICAS AUTOMÁTICAS (SMART COACH) ---
+# --- DICAS AUTOMÁTICAS (SMART COACH) ---
 DICAS_KPI = {
     "ADERENCIA": "Atenção aos horários de login/logoff e pausas. Cumpra a escala rigorosamente.",
     "CONFORMIDADE": "Revise o script e os processos obrigatórios. Acompanhe a monitoria.",
@@ -33,133 +33,65 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
-# --- 2. CSS CORRIGIDO (FONTS MENORES NOS CARDS) ---
+# --- 2. CSS ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
     html, body, [class*="css"] { font-family: 'Roboto', sans-serif; }
-    
-    /* 1. FUNDO GERAL CLARO */
-    .stApp { 
-        background-color: #F4F7F6 !important;
-    }
-    
-    /* 2. SIDEBAR (AZUL ESCURO) */
+    .stApp { background-color: #F4F7F6 !important; }
     [data-testid="stSidebar"] {
         background-color: #002b55 !important;
         background-image: linear-gradient(180deg, #002b55 0%, #004e92 100%) !important;
     }
+    [data-testid="stSidebar"] * { color: #FFFFFF !important; }
+    [data-testid="stSidebar"] input { background-color: #FFFFFF !important; color: #000000 !important; }
+    [data-testid="stSidebar"] div[data-baseweb="select"] > div { background-color: #FFFFFF !important; color: #000000 !important; }
+    [data-testid="stSidebar"] div[data-baseweb="select"] span { color: #000000 !important; }
     
-    /* Texto Sidebar */
-    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, 
-    [data-testid="stSidebar"] p, [data-testid="stSidebar"] label, [data-testid="stSidebar"] span,
-    [data-testid="stSidebar"] .stMarkdown {
-        color: #FFFFFF !important;
-    }
-    
-    /* Inputs Sidebar */
-    [data-testid="stSidebar"] div[data-baseweb="select"] > div {
-        background-color: #FFFFFF !important;
-        color: #000000 !important;
-    }
-    [data-testid="stSidebar"] div[data-baseweb="select"] span {
-        color: #000000 !important;
-    }
-    [data-testid="stSidebar"] input {
-        color: #000000 !important;
-    }
-    
-    /* 3. TEXTOS DA ÁREA PRINCIPAL (ESCUROS) */
     h1, h2, h3, h4, h5, h6 { color: #003366 !important; font-family: 'Montserrat', sans-serif !important; }
     p, li, div { color: #333333; }
     
-    /* 4. CARDS E CONTAINERS */
     [data-testid="stForm"], div.stMetric, .vacation-card, .insight-box {
         background-color: #FFFFFF !important;
         box-shadow: 0 4px 10px rgba(0,0,0,0.05);
         border-radius: 10px;
     }
-    
-    /* 5. MÉTRICAS (Cards) */
-    div.stMetric {
-        border: 1px solid #e0e0e0;
-        padding: 10px 15px !important;
-        border-left: 5px solid #F37021;
-    }
-    div.stMetric label { 
-        color: #666 !important; 
-        font-size: 14px !important; 
-    }
-    div.stMetric div[data-testid="stMetricValue"] { 
-        color: #003366 !important; 
-        font-size: 26px !important; 
-        font-weight: 700;
-    }
-    div.stMetric div[data-testid="stMetricDelta"] {
-        font-size: 13px !important; 
-    }
-    
-    /* 6. TABELAS */
+    div.stMetric { border: 1px solid #e0e0e0; border-left: 5px solid #F37021; padding: 10px 15px !important; }
+    div.stMetric label { color: #666 !important; font-size: 14px !important; }
+    div.stMetric div[data-testid="stMetricValue"] { color: #003366 !important; font-size: 26px !important; font-weight: 700; }
+    div.stMetric div[data-testid="stMetricDelta"] { font-size: 13px !important; }
     [data-testid="stDataFrame"] { background-color: #FFFFFF; }
     
-    /* 7. BOTÕES */
     div.stButton > button {
-        background-color: #003366 !important; 
-        color: #FFFFFF !important; 
-        border-radius: 8px; 
-        font-weight: bold; 
-        border: none;
+        background-color: #003366 !important; color: #FFFFFF !important; border-radius: 8px; font-weight: bold; border: none;
     }
-    div.stButton > button p, div.stButton > button span, div.stButton > button div {
-        color: #FFFFFF !important;
-    }
-    div.stButton > button:hover { 
-        background-color: #F37021 !important; 
-    }
-
-    /* 8. ABAS (TABS) */
+    div.stButton > button p { color: #FFFFFF !important; }
+    div.stButton > button:hover { background-color: #F37021 !important; }
+    
     button[data-baseweb="tab"] { background-color: transparent !important; color: #666 !important; }
     button[data-baseweb="tab"][aria-selected="true"] {
-        color: #003366 !important;
-        border-top: 3px solid #F37021 !important;
-        font-weight: bold;
+        color: #003366 !important; border-top: 3px solid #F37021 !important; font-weight: bold;
     }
-
-    /* 9. CARTÃO DE FÉRIAS */
-    .vacation-card {
-        border-left: 6px solid #00bcd4;
-        padding: 25px;
-        text-align: center;
-        margin-top: 20px;
-    }
-    .vacation-title { font-size: 1.3em !important; font-weight: 600 !important; color: #555555 !important; }
-    .vacation-date { font-size: 2.8em !important; font-weight: 800 !important; color: #00838f !important; margin: 15px 0 !important; text-transform: uppercase; }
-    .vacation-note { font-size: 0.9em !important; color: #999999 !important; font-style: italic; }
     
-    /* 10. BADGE DE ATUALIZAÇÃO */
+    .vacation-card { border-left: 6px solid #00bcd4; padding: 25px; text-align: center; margin-top: 20px; }
+    .vacation-title { font-size: 1.3em !important; font-weight: 600; color: #555 !important; }
+    .vacation-date { font-size: 2.5em; font-weight: 800; color: #00838f !important; margin: 15px 0; text-transform: uppercase; }
+    
     .update-badge {
-        background-color: #e3f2fd;
-        color: #0d47a1;
-        padding: 5px 10px;
-        border-radius: 15px;
-        font-size: 0.85em;
-        font-weight: bold;
-        display: inline-block;
-        margin-left: 10px;
-        border: 1px solid #bbdefb;
+        background-color: #e3f2fd; color: #0d47a1; padding: 5px 10px; 
+        border-radius: 15px; font-size: 0.85em; font-weight: bold; border: 1px solid #bbdefb;
     }
     
-    /* 11. NOVO: CARD DE INSIGHT */
+    /* NOVO CSS PARA INSIGHTS */
     .insight-box {
         background-color: #fff8e1 !important;
         border-left: 5px solid #ffc107 !important;
         padding: 15px;
         margin-bottom: 20px;
     }
-    .insight-title { font-weight: bold; color: #d35400; font-size: 1.1em; display: flex; align-items: center; gap: 8px; }
-    .insight-text { font-size: 0.95em; margin-top: 5px; color: #555; }
+    .insight-title { font-weight: bold; color: #d35400; font-size: 1.1em; margin-bottom: 5px; }
+    .insight-text { font-size: 0.95em; color: #555; }
 
-    /* Rodapé */
     .dev-footer { text-align: center; margin-top: 30px; font-size: 0.8em; color: #999 !important; }
     .login-title { font-weight: 800; font-size: 2.5em; color: #003366 !important; text-align: center; }
     .login-subtitle { font-size: 1.2em; color: #F37021 !important; text-align: center; margin-bottom: 20px; font-weight: 600; }
@@ -528,17 +460,6 @@ if perfil == 'admin':
             c1.metric("💎 Excelência", f"{qtd_verde}", delta=">=90%")
             c2.metric("🟢 Meta Batida", f"{qtd_amarelo}", delta="80-90%", delta_color="off")
             c3.metric("🔴 Crítico", f"{qtd_vermelho}", delta="<80%", delta_color="inverse")
-            st.markdown("---")
-            
-            df_dados['Status_Farol'] = df_dados['% Atingimento'].apply(classificar_farol)
-            df_farol = df_dados.copy()
-            df_farol['Indicador'] = df_farol['Indicador'].apply(formatar_nome_visual)
-            df_agrupado = df_farol.groupby(['Indicador', 'Status_Farol']).size().reset_index(name='Quantidade')
-            fig_farol = px.bar(df_agrupado, x='Indicador', y='Quantidade', color='Status_Farol', 
-                               text='Quantidade', title="Farol de Performance (Distribuição por Indicador)",
-                               color_discrete_map={'💎 Excelência': '#003366', '🟢 Meta Batida': '#2ecc71', '🔴 Crítico': '#e74c3c'})
-            fig_farol.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-            st.plotly_chart(fig_farol, use_container_width=True)
             st.markdown("---")
             
             # --- NOVO: GERADOR DE FEEDBACK ---
@@ -920,15 +841,20 @@ else:
             for i, (_, row) in enumerate(meus_dados.iterrows()):
                 val = row['% Atingimento']
                 label = formatar_nome_visual(row['Indicador'])
-                delta_msg = "Meta 80%"
-                color = "normal"
-                if val >= 0.90: delta_msg = "💎 Excelência"
-                elif val >= 0.80: delta_msg = "✅ Na Meta"
-                else: 
-                    delta_msg = "🔻 Abaixo"
+                
+                # --- LÓGICA DE META DINÂMICA (92% para Conformidade/Aderência, 80% Outros) ---
+                meta = 0.92 if row['Indicador'] in ['CONFORMIDADE', 'ADERENCIA'] else 0.80
+                
+                if val >= meta:
+                    delta_msg = "✅ Meta Batida"
+                    color = "normal"
+                else:
+                    delta_msg = f"🔻 Meta {meta:.0%}" # Ex: "Meta 92%"
                     color = "inverse"
+                
                 with cols[i]:
                     st.metric(label, f"{val:.2%}", delta_msg, delta_color=color)
+
             st.markdown("---")
             media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
             media_equipe.rename(columns={'% Atingimento': 'Média Equipe'}, inplace=True)
