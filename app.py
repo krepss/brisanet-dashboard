@@ -17,14 +17,14 @@ USUARIOS_ADMIN = ['gestor', 'admin']
 
 # --- DICAS AUTOMÁTICAS (SMART COACH) ---
 DICAS_KPI = {
-    "ADERENCIA": "Atenção aos horários de login/logoff e pausas. Cumpra a escala rigorosamente.",
-    "CONFORMIDADE": "Revise as pausas e sua programação. A conformidade é seu tempo de fila.",
-    "INTERACOES": "Seja mais proativo durante o atendimento. Evite silêncio excessivo.",
-    "PONTUALIDADE": "Evite atrasos na primeira conexão do dia e também nas suas pausas. Dica: Chegue minutos antes.",
-    "CSAT": "Aposte na empatia e na escuta ativa. Confirme a resolução com o cliente.",
-    "IR": "Investigue a causa raiz para evitar retorno. Resolva de vez.",
-    "TPC": "Use o roteiro para ser ágil sem perder qualidade no atendimento.",
-    "TAM": "Controle o tempo mas priorize a resolução efetiva."
+    "ADERENCIA": "Cumpra rigorosamente os horários de log in, log out e pausas da sua escala.",
+    "CONFORMIDADE": "Aqui se trata do tempo de fila, não estrapole nas pausas e tire pausas desnecessárias.",
+    "INTERACOES": "Evite tempos de silêncio (mudo) prolongados. Mantenha o cliente informado enquanto analisa.",
+    "PONTUALIDADE": "Programe-se para estar logado e pronto para atender no minuto exato do início de cada pausa.",
+    "CSAT": "Demonstre empatia e gentileza. A nota do cliente reflete como ele se sentiu durante o atendimento.",
+    "IR": "Garanta que o serviço voltou a funcionar. Faça todos os testes finais e confirme a solução com o cliente antes de encerrar.",
+    "TPC": "Otimize a tabulação no tempo certo, aqui é fácil recuperar.",
+    "TAM": "Assuma o comando da ligação. Seja objetivo nas perguntas e guie o cliente para a solução de forma ágil."
 }
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
