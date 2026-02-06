@@ -6,6 +6,7 @@ import os
 import json
 import time
 from datetime import datetime
+import unicodedata # NOVO: Correção de acentos para evitar "0%" quando o nome não bate
 
 # --- CONFIGURAÇÃO DA LOGO ---
 LOGO_FILE = "logo.ico"
@@ -13,6 +14,18 @@ LOGO_FILE = "logo.ico"
 # --- SENHA DO GESTOR (Acesso Administrativo) ---
 SENHA_ADMIN = "admin123"
 USUARIOS_ADMIN = ['gestor', 'admin']
+
+# --- NOVO: DICAS AUTOMÁTICAS (SMART COACH) ---
+DICAS_KPI = {
+    "ADERENCIA": "Atenção aos horários de login/logoff e pausas. Cumpra a escala rigorosamente.",
+    "CONFORMIDADE": "Revise o script e os processos obrigatórios. Acompanhe a monitoria.",
+    "INTERACOES": "Seja mais proativo durante o atendimento. Evite silêncio excessivo.",
+    "PONTUALIDADE": "Evite atrasos na primeira conexão do dia. Chegue 5 min antes.",
+    "CSAT": "Aposte na empatia e na escuta ativa. Confirme a resolução com o cliente.",
+    "IR": "Investigue a causa raiz para evitar retorno. Resolva de vez.",
+    "TPC": "Use o roteiro para ser ágil sem perder qualidade no atendimento.",
+    "TAM": "Controle o tempo mas priorize a resolução efetiva."
+}
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
 try:
@@ -60,43 +73,30 @@ st.markdown("""
     h1, h2, h3, h4, h5, h6 { color: #003366 !important; font-family: 'Montserrat', sans-serif !important; }
     p, li, div { color: #333333; }
     
-    /* 4. CARTÃO DE LOGIN */
-    [data-testid="stForm"] {
+    /* 4. CARDS E CONTAINERS */
+    [data-testid="stForm"], div.stMetric, .vacation-card, .insight-box {
         background-color: #FFFFFF !important;
-        padding: 40px;
-        border-radius: 20px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        border-top: 5px solid #F37021;
-    }
-    .login-title { font-weight: 800; font-size: 2.5em; color: #003366 !important; text-align: center; }
-    .login-subtitle { font-size: 1.2em; color: #F37021 !important; text-align: center; margin-bottom: 20px; font-weight: 600; }
-
-    /* 5. MÉTRICAS (Cards) - TAMANHO DA FONTE REDUZIDO */
-    div.stMetric {
-        background-color: #FFFFFF !important;
-        border: 1px solid #e0e0e0;
-        padding: 10px 15px !important; /* Padding um pouco menor */
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
         border-radius: 10px;
-        border-left: 5px solid #F37021;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
     
-    /* Título do Card (ex: "Aderência") */
+    /* 5. MÉTRICAS (Cards) */
+    div.stMetric {
+        border: 1px solid #e0e0e0;
+        padding: 10px 15px !important;
+        border-left: 5px solid #F37021;
+    }
     div.stMetric label { 
         color: #666 !important; 
-        font-size: 14px !important; /* Reduzido */
+        font-size: 14px !important; 
     }
-    
-    /* Valor do Card (ex: "99.8%") */
     div.stMetric div[data-testid="stMetricValue"] { 
         color: #003366 !important; 
-        font-size: 26px !important; /* Reduzido (o padrão é uns 32px) */
+        font-size: 26px !important; 
         font-weight: 700;
     }
-    
-    /* Delta (ex: "Excelência") */
     div.stMetric div[data-testid="stMetricDelta"] {
-        font-size: 13px !important; /* Reduzido */
+        font-size: 13px !important; 
     }
     
     /* 6. TABELAS */
@@ -110,16 +110,11 @@ st.markdown("""
         font-weight: bold; 
         border: none;
     }
-    /* Força QUALQUER texto dentro do botão a ser branco */
     div.stButton > button p, div.stButton > button span, div.stButton > button div {
         color: #FFFFFF !important;
     }
     div.stButton > button:hover { 
         background-color: #F37021 !important; 
-        color: #FFFFFF !important; 
-    }
-    div.stButton > button:hover p, div.stButton > button:hover span {
-        color: #FFFFFF !important;
     }
 
     /* 8. ABAS (TABS) */
@@ -132,15 +127,12 @@ st.markdown("""
 
     /* 9. CARTÃO DE FÉRIAS */
     .vacation-card {
-        background-color: #FFFFFF;
         border-left: 6px solid #00bcd4;
         padding: 25px;
-        border-radius: 12px;
         text-align: center;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         margin-top: 20px;
     }
-    .vacation-title { font-size: 1.3em !important; font-weight: 600 !important; color: #555555 !important; margin-bottom: 10px !important; }
+    .vacation-title { font-size: 1.3em !important; font-weight: 600 !important; color: #555555 !important; }
     .vacation-date { font-size: 2.8em !important; font-weight: 800 !important; color: #00838f !important; margin: 15px 0 !important; text-transform: uppercase; }
     .vacation-note { font-size: 0.9em !important; color: #999999 !important; font-style: italic; }
     
@@ -156,9 +148,21 @@ st.markdown("""
         margin-left: 10px;
         border: 1px solid #bbdefb;
     }
+    
+    /* 11. NOVO: CARD DE INSIGHT */
+    .insight-box {
+        background-color: #fff8e1 !important;
+        border-left: 5px solid #ffc107 !important;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    .insight-title { font-weight: bold; color: #d35400; font-size: 1.1em; display: flex; align-items: center; gap: 8px; }
+    .insight-text { font-size: 0.95em; margin-top: 5px; color: #555; }
 
     /* Rodapé */
     .dev-footer { text-align: center; margin-top: 30px; font-size: 0.8em; color: #999 !important; }
+    .login-title { font-weight: 800; font-size: 2.5em; color: #003366 !important; text-align: center; }
+    .login-subtitle { font-size: 1.2em; color: #F37021 !important; text-align: center; margin-bottom: 20px; font-weight: 600; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -307,10 +311,15 @@ def normalizar_nome_indicador(nome_arquivo):
     if 'TAM' in nome: return 'TAM'
     return nome.split('.')[0].upper()
 
-# --- FUNÇÃO NOVA: NORMALIZAR NOMES (REMOVE ESPAÇOS DUPLOS) ---
+# --- NOVO: NORMALIZAR NOMES (COM CORREÇÃO DE ACENTOS E ESPAÇOS) ---
 def normalizar_chave(texto):
     if pd.isna(texto): return ""
-    return " ".join(str(texto).strip().upper().split())
+    texto = str(texto).strip().upper()
+    # Remove acentos (Bárbara -> BARBARA)
+    nfkd = unicodedata.normalize('NFKD', texto)
+    texto_sem_acento = u"".join([c for c in nfkd if not unicodedata.combining(c)])
+    # Remove espaços duplos
+    return " ".join(texto_sem_acento.split())
 
 def tratar_arquivo_especial(df, nome_arquivo):
     df.columns = [str(c).strip().lower() for c in df.columns]
@@ -418,7 +427,13 @@ def filtrar_por_usuarios_cadastrados(df_dados, df_users):
     if df_dados is None or df_dados.empty: return df_dados
     if df_users is None or df_users.empty: return df_dados
     lista_vip = df_users['nome'].unique()
-    return df_dados[df_dados['Colaborador'].isin(lista_vip)].copy()
+    
+    # Filtro robusto com normalização
+    df_filtrado = df_dados.copy()
+    df_filtrado['TEMP_NOME_UPPER'] = df_filtrado['Colaborador'].apply(normalizar_chave)
+    df_filtrado = df_filtrado[df_filtrado['TEMP_NOME_UPPER'].isin(lista_vip)]
+    df_filtrado.drop(columns=['TEMP_NOME_UPPER'], inplace=True)
+    return df_filtrado
 
 # --- 4. LOGIN RENOVADO ---
 if 'logado' not in st.session_state:
@@ -514,6 +529,7 @@ if perfil == 'admin':
             c2.metric("🟢 Meta Batida", f"{qtd_amarelo}", delta="80-90%", delta_color="off")
             c3.metric("🔴 Crítico", f"{qtd_vermelho}", delta="<80%", delta_color="inverse")
             st.markdown("---")
+            
             df_dados['Status_Farol'] = df_dados['% Atingimento'].apply(classificar_farol)
             df_farol = df_dados.copy()
             df_farol['Indicador'] = df_farol['Indicador'].apply(formatar_nome_visual)
@@ -524,6 +540,28 @@ if perfil == 'admin':
             fig_farol.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig_farol, use_container_width=True)
             st.markdown("---")
+            
+            # --- NOVO: GERADOR DE FEEDBACK ---
+            st.subheader("💬 Gerador de Feedback (1:1)")
+            colab_feedback = st.selectbox("Selecione para análise:", sorted(df_dados['Colaborador'].unique()), key="sb_feedback")
+            if colab_feedback:
+                user_kpis = df_dados[df_dados['Colaborador'] == colab_feedback].sort_values(by='% Atingimento', ascending=True)
+                if not user_kpis.empty:
+                    pior = user_kpis.iloc[0]
+                    melhor = user_kpis.iloc[-1]
+                    dica_geral = DICAS_KPI.get(pior['Indicador'], "Verifique os processos operacionais.")
+                    st.markdown(f"""
+                    <div class="insight-box">
+                        <div class="insight-title">⚡ Análise Rápida: {colab_feedback}</div>
+                        <ul style="margin-top:10px; color:#444;">
+                            <li><b>Ponto Forte:</b> {formatar_nome_visual(melhor['Indicador'])} ({melhor['% Atingimento']:.1%}) - <i>Elogie!</i> 👏</li>
+                            <li><b>Ponto de Atenção:</b> {formatar_nome_visual(pior['Indicador'])} ({pior['% Atingimento']:.1%}) - <i>Foque aqui!</i> ⚠️</li>
+                            <li><b>Dica Sugerida:</b> {dica_geral}</li>
+                        </ul>
+                    </div>
+                    """, unsafe_allow_html=True)
+            st.markdown("---")
+
             st.markdown("### 🦁 Performance Global da Equipe")
             remove_pont = st.checkbox("Remover Pontualidade do Cálculo Global", value=False)
             total_dia_team = 0
@@ -556,6 +594,7 @@ if perfil == 'admin':
             ))
             fig_team.update_layout(height=250, margin=dict(l=20, r=20, t=30, b=20))
             st.plotly_chart(fig_team, use_container_width=True)
+            
             st.markdown("---")
             st.subheader("📋 Atenção Prioritária")
             df_atencao = df_media_pessoas[df_media_pessoas['% Atingimento'] < 0.80].sort_values(by='% Atingimento')
@@ -652,7 +691,6 @@ if perfil == 'admin':
             df_show_visual = df_show.copy()
             df_show_visual['Indicador'] = df_show_visual['Indicador'].apply(formatar_nome_visual)
             pivot = df_show_visual.pivot_table(index='Colaborador', columns='Indicador', values='% Atingimento')
-            # CORREÇÃO CRÍTICA: Preenche NaNs com 0 para não ficarem "pretos" ou invisíveis
             pivot = pivot.fillna(0.0)
             try: st.dataframe(pivot.style.background_gradient(cmap='RdYlGn', vmin=0.7, vmax=1.0).format("{:.2%}"), use_container_width=True, height=600)
             except: st.dataframe(pivot.style.format("{:.2%}"), use_container_width=True, height=600)
@@ -771,38 +809,21 @@ if perfil == 'admin':
 # --- VISÃO OPERADOR ---
 else:
     st.markdown(f"## 🚀 Olá, **{nome_logado.split()[0]}**!")
-    
-    # 🕒 DATA DE ATUALIZAÇÃO (NOVO)
     data_atualizacao = obter_data_atualizacao()
-    st.markdown(
-        f"""
-        <div style='display: flex; align-items: center; margin-bottom: 20px; color: #666;'>
-            <span style='margin-right: 15px;'>📅 Referência: <b>{periodo_label}</b></span>
-            <span class='update-badge'>🕒 Atualizado em: {data_atualizacao}</span>
-        </div>
-        """, 
-        unsafe_allow_html=True
-    )
+    st.markdown(f"<div style='display: flex; align-items: center; margin-bottom: 20px; color: #666;'><span style='margin-right: 15px;'>📅 Referência: <b>{periodo_label}</b></span><span class='update-badge'>🕒 Atualizado em: {data_atualizacao}</span></div>", unsafe_allow_html=True)
     
-    # Busca dados do usuário (férias, etc)
     minhas_ferias = "Não informado"
     if df_users_cadastrados is not None:
         try:
-            # Match exato do nome logado com a tabela de usuários
             user_info = df_users_cadastrados[df_users_cadastrados['nome'] == nome_logado.upper()]
-            if not user_info.empty:
-                minhas_ferias = user_info.iloc[0]['ferias']
+            if not user_info.empty: minhas_ferias = user_info.iloc[0]['ferias']
         except: pass
 
-    # Criação das Abas
     tab_results, tab_ferias = st.tabs(["📊 Meus Resultados", "🏖️ Minhas Férias"])
 
-    # --- ABA 1: RESULTADOS ---
     with tab_results:
-        # Calcular Ranking antes de filtrar
         ranking_msg = "Não classificado"
         if df_dados is not None and not df_dados.empty:
-            # Lógica TAM First para Ranking
             tem_tam = 'TAM' in df_dados['Indicador'].unique()
             if tem_tam:
                 df_rank = df_dados[df_dados['Indicador'] == 'TAM'].copy()
@@ -811,23 +832,16 @@ else:
                 df_rank = df_dados.groupby('Colaborador').agg({'Diamantes': 'sum', 'Max. Diamantes': 'sum'}).reset_index()
                 df_rank['Score'] = df_rank['Diamantes'] / df_rank['Max. Diamantes']
                 df_rank = df_rank.sort_values(by='Score', ascending=False).reset_index(drop=True)
-            
-            # Achar posição do usuário
             try:
                 posicao = df_rank[df_rank['Colaborador'] == nome_logado].index[0] + 1
                 total_colabs = len(df_rank)
                 ranking_msg = f"{posicao}º de {total_colabs}"
             except: pass
 
-        # Agora filtra os dados do usuário com busca robusta (Exact match ou Contains)
         meus_dados = df_dados[df_dados['Colaborador'] == nome_logado].copy()
-        
-        # Se exato falhou, tenta aproximado
-        if meus_dados.empty:
-             meus_dados = df_dados[df_dados['Colaborador'].str.contains(nome_logado, case=False, na=False)].copy()
+        if meus_dados.empty: meus_dados = df_dados[df_dados['Colaborador'].str.contains(nome_logado, case=False, na=False)].copy()
 
         if not meus_dados.empty:
-            # Lógica TAM First
             tem_tam = 'TAM' in meus_dados['Indicador'].unique()
             if 'Diamantes' in meus_dados.columns:
                 if tem_tam:
@@ -840,18 +854,14 @@ else:
                     total_max = meus_dados['Max. Diamantes'].sum()
                     resultado_global = (total_dia_bruto / total_max) if total_max > 0 else 0
                 
-                # --- VISÃO SUPERIOR (RANKING + GAMIFICAÇÃO) ---
                 c_rank, c_gamif, c_gauge = st.columns([1, 1.5, 1])
-                
                 with c_rank:
                     st.markdown("##### 🏆 Ranking")
                     st.metric("Sua Posição", ranking_msg)
-                
                 with c_gamif:
                     st.markdown("##### 💎 Gamificação")
                     st.progress(resultado_global if resultado_global <= 1.0 else 1.0)
                     st.write(f"**{int(total_dia_bruto)} / {int(total_max)}** Diamantes")
-                
                 with c_gauge:
                     fig_gauge = go.Figure(go.Indicator(
                         mode = "gauge+number",
@@ -866,26 +876,31 @@ else:
                         }))
                     fig_gauge.update_layout(height=140, margin=dict(l=10, r=10, t=30, b=10), paper_bgcolor='rgba(0,0,0,0)', font={'color': '#003366'})
                     st.plotly_chart(fig_gauge, use_container_width=True)
-                
                 st.markdown("---")
                 
-                # --- LÓGICA FINANCEIRA ---
+                # --- NOVO: SMART COACH ---
+                pior_row = meus_dados.sort_values(by='% Atingimento').iloc[0]
+                if pior_row['% Atingimento'] < 0.9:
+                    dica = DICAS_KPI.get(pior_row['Indicador'], "Fale com seu gestor.")
+                    st.markdown(f"""
+                    <div class="insight-box">
+                        <div class="insight-title">💡 Smart Coach: {formatar_nome_visual(pior_row['Indicador'])}</div>
+                        <div class="insight-text">{dica} (Atual: {pior_row['% Atingimento']:.1%})</div>
+                    </div>""", unsafe_allow_html=True)
+
                 df_conf = meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE']
                 atingimento_conf = df_conf.iloc[0]['% Atingimento'] if not df_conf.empty else 0.0
                 tem_dado_conf = not df_conf.empty
                 desconto_diamantes = 0
                 motivo_desconto = ""
                 GATILHO_FINANCEIRO = 0.92
-                
                 if tem_dado_conf and atingimento_conf < GATILHO_FINANCEIRO:
                     df_pont = meus_dados[meus_dados['Indicador'] == 'PONTUALIDADE']
                     if not df_pont.empty:
                         desconto_diamantes = df_pont.iloc[0]['Diamantes']
                         motivo_desconto = f"(Perdeu {desconto_diamantes} de Pontualidade)"
-                
                 total_dia_liquido = total_dia_bruto - desconto_diamantes
                 valor_final = total_dia_liquido * 0.50
-                
                 st.markdown("#### 💰 Extrato Financeiro")
                 c1, c2, c3 = st.columns(3)
                 c1.metric("Diamantes Válidos", f"{int(total_dia_liquido)}", f"{motivo_desconto}", delta_color="inverse" if desconto_diamantes > 0 else "normal")
@@ -901,7 +916,6 @@ else:
                         st.success(f"✅ **Gatilho Financeiro Atingido**: Conformidade **{atingimento_conf:.2%}** (>= 92%). Todos os diamantes computados.")
                 st.divider()
 
-            # --- CARDS DE KPIs ---
             cols = st.columns(len(meus_dados))
             for i, (_, row) in enumerate(meus_dados.iterrows()):
                 val = row['% Atingimento']
@@ -915,41 +929,26 @@ else:
                     color = "inverse"
                 with cols[i]:
                     st.metric(label, f"{val:.2%}", delta_msg, delta_color=color)
-            
             st.markdown("---")
-            
-            # --- GRÁFICO COMPARATIVO ---
             media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
             media_equipe.rename(columns={'% Atingimento': 'Média Equipe'}, inplace=True)
             df_comp = pd.merge(meus_dados, media_equipe, on='Indicador')
             df_comp['Indicador'] = df_comp['Indicador'].apply(formatar_nome_visual)
             df_melt = df_comp.melt(id_vars=['Indicador'], value_vars=['% Atingimento', 'Média Equipe'], var_name='Tipo', value_name='Resultado')
-            
-            fig = px.bar(df_melt, x='Indicador', y='Resultado', color='Tipo', barmode='group',
-                        color_discrete_map={'% Atingimento': '#F37021', 'Média Equipe': '#003366'})
+            fig = px.bar(df_melt, x='Indicador', y='Resultado', color='Tipo', barmode='group', color_discrete_map={'% Atingimento': '#F37021', 'Média Equipe': '#003366'})
             fig.add_hline(y=0.8, line_dash="dash", line_color="green", annotation_text="Meta 80%")
-            # Ajuste de cores do gráfico para fundo claro
-            fig.update_layout(
-                paper_bgcolor='rgba(0,0,0,0)', 
-                plot_bgcolor='rgba(0,0,0,0)',
-                font={'color': '#333333'},
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-            )
+            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font={'color': '#333333'}, legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
             st.plotly_chart(fig, use_container_width=True)
         else:
-            # DEBUG PARA O USUÁRIO: MOSTRA POR QUE ESTÁ VAZIO
             st.error(f"⚠️ Não encontramos dados de performance para o nome **{nome_logado}**.")
             st.info("Isso acontece quando o nome no login (usuarios.csv) não bate com o nome no arquivo de indicadores.")
             st.write("**Nomes disponíveis no arquivo de indicadores:**")
             st.dataframe(pd.DataFrame(df_dados['Colaborador'].unique(), columns=['Nomes Encontrados']), hide_index=True)
 
-    # --- ABA 2: FÉRIAS ---
     with tab_ferias:
         st.markdown("### 🗓️ Planejamento de Férias")
         st.markdown("Aqui você confere o mês programado para o seu descanso.")
-        
         st.markdown("<br>", unsafe_allow_html=True)
-        
         c1, c2, c3 = st.columns([1, 2, 1])
         with c2:
             st.markdown(f"""
