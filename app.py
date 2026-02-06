@@ -39,15 +39,43 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
     html, body, [class*="css"] { font-family: 'Roboto', sans-serif; }
     .stApp { background-color: #F4F7F6 !important; }
+    
+    /* SIDEBAR AZUL */
     [data-testid="stSidebar"] {
         background-color: #002b55 !important;
         background-image: linear-gradient(180deg, #002b55 0%, #004e92 100%) !important;
     }
-    [data-testid="stSidebar"] * { color: #FFFFFF !important; }
-    [data-testid="stSidebar"] input { background-color: #FFFFFF !important; color: #000000 !important; }
-    [data-testid="stSidebar"] div[data-baseweb="select"] > div { background-color: #FFFFFF !important; color: #000000 !important; }
-    [data-testid="stSidebar"] div[data-baseweb="select"] span { color: #000000 !important; }
     
+    /* Texto GERAL da Sidebar -> BRANCO */
+    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, 
+    [data-testid="stSidebar"] p, [data-testid="stSidebar"] label, [data-testid="stSidebar"] span, 
+    [data-testid="stSidebar"] div {
+        color: #FFFFFF !important;
+    }
+
+    /* --- CORREÇÃO DO SELECTBOX (Mês de Referência) --- */
+    /* Força o fundo da caixa a ser branco e o texto PRETO */
+    [data-testid="stSidebar"] div[data-baseweb="select"] > div {
+        background-color: #FFFFFF !important;
+        color: #000000 !important;
+    }
+    /* Força o texto selecionado e as opções a serem pretos */
+    [data-testid="stSidebar"] div[data-baseweb="select"] span,
+    [data-testid="stSidebar"] div[data-baseweb="select"] div {
+        color: #000000 !important;
+    }
+    /* Ícone da seta em preto */
+    [data-testid="stSidebar"] div[data-baseweb="select"] svg {
+        fill: #000000 !important;
+    }
+    /* Menu suspenso (dropdown) */
+    ul[data-testid="stSelectboxVirtualDropdown"] li {
+        color: #000000 !important;
+        background-color: #FFFFFF !important;
+    }
+    /* ------------------------------------------------ */
+
+    /* Textos Gerais do Corpo */
     h1, h2, h3, h4, h5, h6 { color: #003366 !important; font-family: 'Montserrat', sans-serif !important; }
     p, li, div { color: #333333; }
     
@@ -56,10 +84,12 @@ st.markdown("""
         box-shadow: 0 4px 10px rgba(0,0,0,0.05);
         border-radius: 10px;
     }
+    
     div.stMetric { border: 1px solid #e0e0e0; border-left: 5px solid #F37021; padding: 10px 15px !important; }
     div.stMetric label { color: #666 !important; font-size: 14px !important; }
     div.stMetric div[data-testid="stMetricValue"] { color: #003366 !important; font-size: 26px !important; font-weight: 700; }
     div.stMetric div[data-testid="stMetricDelta"] { font-size: 13px !important; }
+    
     [data-testid="stDataFrame"] { background-color: #FFFFFF; }
     
     div.stButton > button {
@@ -82,7 +112,6 @@ st.markdown("""
         border-radius: 15px; font-size: 0.85em; font-weight: bold; border: 1px solid #bbdefb;
     }
     
-    /* NOVO CSS PARA INSIGHTS */
     .insight-box {
         background-color: #fff8e1 !important;
         border-left: 5px solid #ffc107 !important;
