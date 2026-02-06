@@ -33,7 +33,7 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
-# --- 2. CSS CORRIGIDO (BARRA LATERAL VISÍVEL) ---
+# --- 2. CSS ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
@@ -46,32 +46,34 @@ st.markdown("""
         background-image: linear-gradient(180deg, #002b55 0%, #004e92 100%) !important;
     }
     
-    /* Texto GERAL da Sidebar -> BRANCO (Títulos, Labels, Textos soltos) */
+    /* Texto GERAL da Sidebar -> BRANCO */
     [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, 
     [data-testid="stSidebar"] p, [data-testid="stSidebar"] label, [data-testid="stSidebar"] span {
         color: #FFFFFF !important;
     }
 
     /* --- CORREÇÃO DOS INPUTS E SELECTBOX NA SIDEBAR --- */
-    /* Garante que o texto DENTRO da caixa de seleção seja PRETO */
     [data-testid="stSidebar"] div[data-baseweb="select"] > div,
     [data-testid="stSidebar"] input {
         background-color: #FFFFFF !important;
         color: #000000 !important;
         -webkit-text-fill-color: #000000 !important;
     }
-    /* Texto da opção selecionada e setinha */
     [data-testid="stSidebar"] div[data-baseweb="select"] span,
     [data-testid="stSidebar"] div[data-baseweb="select"] svg {
         color: #000000 !important;
         fill: #000000 !important;
     }
+    ul[data-testid="stSelectboxVirtualDropdown"] li {
+        color: #000000 !important;
+        background-color: #FFFFFF !important;
+    }
     
-    /* Textos Gerais do Corpo Principal */
+    /* Textos Gerais */
     h1, h2, h3, h4, h5, h6 { color: #003366 !important; font-family: 'Montserrat', sans-serif !important; }
     p, li, div { color: #333333; }
     
-    /* Cards e Containers */
+    /* Cards */
     [data-testid="stForm"], div.stMetric, .vacation-card, .insight-box, .badge-card {
         background-color: #FFFFFF !important;
         box-shadow: 0 4px 10px rgba(0,0,0,0.05);
@@ -96,7 +98,7 @@ st.markdown("""
     
     .vacation-card { border-left: 6px solid #00bcd4; padding: 25px; text-align: center; margin-top: 20px; }
     .vacation-title { font-size: 1.3em !important; font-weight: 600; color: #555 !important; }
-    .vacation-date { font-size: 2.8em; font-weight: 800; color: #00838f !important; margin: 15px 0; text-transform: uppercase; }
+    .vacation-date { font-size: 2.5em; font-weight: 800; color: #00838f !important; margin: 15px 0; text-transform: uppercase; }
     
     .update-badge {
         background-color: #e3f2fd; color: #0d47a1; padding: 5px 10px; 
@@ -262,10 +264,8 @@ def normalizar_nome_indicador(nome_arquivo):
 def normalizar_chave(texto):
     if pd.isna(texto): return ""
     texto = str(texto).strip().upper()
-    # Remove acentos (Bárbara -> BARBARA)
     nfkd = unicodedata.normalize('NFKD', texto)
     texto_sem_acento = u"".join([c for c in nfkd if not unicodedata.combining(c)])
-    # Remove espaços duplos
     return " ".join(texto_sem_acento.split())
 
 def tratar_arquivo_especial(df, nome_arquivo):
@@ -278,8 +278,6 @@ def tratar_arquivo_especial(df, nome_arquivo):
             break
     if not col_agente: return None, "Coluna de Nome não encontrada"
     df.rename(columns={col_agente: 'Colaborador'}, inplace=True)
-    
-    # NORMALIZAÇÃO DE NOME AQUI
     df['Colaborador'] = df['Colaborador'].apply(normalizar_chave)
     
     col_ad = next((c for c in df.columns if 'ader' in c and ('%' in c or 'perc' in c or 'aderencia' in c)), None)
@@ -815,7 +813,16 @@ else:
                 with c_gamif:
                     st.markdown("##### 💎 Gamificação")
                     st.progress(resultado_global if resultado_global <= 1.0 else 1.0)
+                    # --- BADGES (MEDALHAS) ---
+                    badges = []
+                    if not meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE'].empty:
+                        if meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE'].iloc[0]['% Atingimento'] >= 1.0: badges.append("🛡️ Guardião")
+                    if not meus_dados[meus_dados['Indicador'] == 'CSAT'].empty:
+                        if meus_dados[meus_dados['Indicador'] == 'CSAT'].iloc[0]['% Atingimento'] >= 0.95: badges.append("❤️ Amado")
+                    
                     st.write(f"**{int(total_dia_bruto)} / {int(total_max)}** Diamantes")
+                    if badges: st.success(f"Conquistas: {' '.join(badges)}")
+
                 with c_gauge:
                     fig_gauge = go.Figure(go.Indicator(
                         mode = "gauge+number",
@@ -837,15 +844,6 @@ else:
                 if pior_row['% Atingimento'] < 0.9:
                     dica = DICAS_KPI.get(pior_row['Indicador'], "Fale com seu gestor.")
                     st.markdown(f"""<div class="insight-box"><div class="insight-title">💡 Smart Coach: {formatar_nome_visual(pior_row['Indicador'])}</div><div class="insight-text">{dica} (Atual: {pior_row['% Atingimento']:.1%})</div></div>""", unsafe_allow_html=True)
-
-                # --- SIMULADOR ---
-                with st.expander("🔮 Simulador de Ganhos"):
-                    sim_diamantes = st.slider("Se eu fizer X diamantes...", 0, 1000, 500)
-                    sim_conf = st.checkbox("E mantiver Conformidade > 92%?", value=True)
-                    ganho = sim_diamantes * 0.50 if sim_conf else (sim_diamantes * 0.50) * 0.8
-                    st.metric("Eu ganharia:", f"R$ {ganho:.2f}")
-
-                st.markdown("---")
 
                 df_conf = meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE']
                 atingimento_conf = df_conf.iloc[0]['% Atingimento'] if not df_conf.empty else 0.0
@@ -894,26 +892,30 @@ else:
                     st.metric(label, f"{val:.2%}", delta_msg, delta_color=color)
 
             st.markdown("---")
-            # --- RADAR ---
-            media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
-            df_comp = pd.merge(meus_dados, media_equipe, on='Indicador')
-            df_comp['Indicador'] = df_comp['Indicador'].apply(formatar_nome_visual)
             
-            categorias = df_comp['Indicador'].tolist()
-            valores_user = df_comp['% Atingimento'].tolist()
-            valores_media = df_comp['% Atingimento_y'].tolist()
-            if categorias:
-                categorias.append(categorias[0])
-                valores_user.append(valores_user[0])
-                valores_media.append(valores_media[0])
-                fig = go.Figure()
-                fig.add_trace(go.Scatterpolar(r=valores_media, theta=categorias, fill='toself', name='Média Equipe', line_color='#cccccc', opacity=0.5))
-                fig.add_trace(go.Scatterpolar(r=valores_user, theta=categorias, fill='toself', name='Você', line_color='#F37021'))
-                fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1.1])), showlegend=True, height=350, margin=dict(l=40, r=40, t=20, b=20))
-                st.markdown("##### 🕸️ Raio-X de Competências")
-                st.plotly_chart(fig, use_container_width=True)
+            # --- RADAR CHART (Com proteção contra erro de dados vazios) ---
+            media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
+            if not media_equipe.empty:
+                df_comp = pd.merge(meus_dados, media_equipe, on='Indicador')
+                if not df_comp.empty:
+                    df_comp['Indicador'] = df_comp['Indicador'].apply(formatar_nome_visual)
+                    
+                    categorias = df_comp['Indicador'].tolist()
+                    valores_user = df_comp['% Atingimento'].tolist()
+                    valores_media = df_comp['% Atingimento_y'].tolist()
+                    
+                    if categorias:
+                        categorias.append(categorias[0])
+                        valores_user.append(valores_user[0])
+                        valores_media.append(valores_media[0])
+                        fig = go.Figure()
+                        fig.add_trace(go.Scatterpolar(r=valores_media, theta=categorias, fill='toself', name='Média Equipe', line_color='#cccccc', opacity=0.5))
+                        fig.add_trace(go.Scatterpolar(r=valores_user, theta=categorias, fill='toself', name='Você', line_color='#F37021'))
+                        fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1.1])), showlegend=True, height=350, margin=dict(l=40, r=40, t=20, b=20), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                        st.markdown("##### 🕸️ Raio-X de Competências")
+                        st.plotly_chart(fig, use_container_width=True)
 
-            # --- HISTÓRICO ---
+            # --- HISTÓRICO PESSOAL ---
             st.markdown("---")
             st.markdown("### 📈 Sua Evolução (Últimos Meses)")
             df_hist_full = carregar_historico_completo()
