@@ -824,6 +824,13 @@ else:
                     st.write(f"**{int(total_dia_bruto)} / {int(total_max)}** Diamantes")
                     if badges: st.success(f"Conquistas: {' '.join(badges)}")
 
+                    # Legenda das Conquistas
+                    with st.expander("ℹ️ Legenda das Conquistas"):
+                        st.markdown("""
+                        * 🛡️ **Guardião:** 100% em Conformidade.
+                        * ❤️ **Amado:** CSAT acima de 95%.
+                        """)
+
                 with c_gauge:
                     fig_gauge = go.Figure(go.Indicator(
                         mode = "gauge+number",
@@ -894,7 +901,7 @@ else:
 
             st.markdown("---")
             
-            # --- RADAR CHART (Protegido contra erros) ---
+            # --- RADAR CHART (Com proteção contra erro de dados vazios e renomeação) ---
             media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
             # Renomeia para evitar colisão no merge (Correção do KeyError)
             media_equipe.rename(columns={'% Atingimento': 'Média Equipe'}, inplace=True)
