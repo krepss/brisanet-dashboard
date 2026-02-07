@@ -33,7 +33,7 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
-# --- 2. CSS (ESTÁVEL E LEGÍVEL) ---
+# --- 2. CSS (DESIGN PREMIUM) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
@@ -45,64 +45,104 @@ st.markdown("""
         background-color: #002b55 !important;
         background-image: linear-gradient(180deg, #002b55 0%, #004e92 100%) !important;
     }
-    
-    /* Texto GERAL da Sidebar -> BRANCO */
     [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, 
     [data-testid="stSidebar"] p, [data-testid="stSidebar"] label, [data-testid="stSidebar"] span {
         color: #FFFFFF !important;
     }
 
-    /* --- CORREÇÃO CRÍTICA: INPUTS E SELECTBOX NA SIDEBAR --- */
-    /* Fundo branco e texto preto para inputs */
+    /* --- CORREÇÃO INPUTS SIDEBAR --- */
     [data-testid="stSidebar"] div[data-baseweb="select"] > div,
     [data-testid="stSidebar"] input {
         background-color: #FFFFFF !important;
         color: #000000 !important;
         -webkit-text-fill-color: #000000 !important;
     }
-    /* Ícones e textos internos do selectbox */
     [data-testid="stSidebar"] div[data-baseweb="select"] span,
     [data-testid="stSidebar"] div[data-baseweb="select"] div,
     [data-testid="stSidebar"] div[data-baseweb="select"] svg {
         color: #000000 !important;
         fill: #000000 !important;
     }
-    /* Dropdown menu */
     ul[data-testid="stSelectboxVirtualDropdown"] li {
         color: #000000 !important;
         background-color: #FFFFFF !important;
     }
     
-    /* Textos Gerais */
+    /* --- DESIGN GERAL --- */
     h1, h2, h3, h4, h5, h6 { color: #003366 !important; font-family: 'Montserrat', sans-serif !important; }
     p, li, div { color: #333333; }
     
-    /* Cards */
-    [data-testid="stForm"], div.stMetric, .vacation-card, .insight-box, .badge-card {
+    /* Cards Padrão */
+    div.stMetric, .vacation-card, .insight-box, .badge-card {
         background-color: #FFFFFF !important;
         box-shadow: 0 4px 10px rgba(0,0,0,0.05);
         border-radius: 10px;
     }
+    
+    /* --- TELA DE LOGIN (ESTILO EXCLUSIVO) --- */
+    /* Estiliza o formulário de login especificamente */
+    [data-testid="stForm"] {
+        background-color: #FFFFFF !important;
+        padding: 3rem 2rem !important;
+        border-radius: 20px !important;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.1) !important;
+        border: none !important;
+        border-top: 6px solid #F37021 !important; /* Laranja Sofistas */
+    }
+    
+    /* Títulos do Login */
+    .login-title {
+        font-family: 'Montserrat', sans-serif !important;
+        font-weight: 800 !important;
+        font-size: 2.2rem !important;
+        color: #003366 !important;
+        text-align: center;
+        margin-bottom: 0px;
+    }
+    .login-subtitle {
+        font-family: 'Roboto', sans-serif !important;
+        font-size: 1.1rem !important;
+        color: #666 !important;
+        text-align: center;
+        margin-bottom: 25px;
+    }
+    
+    /* Inputs do Login */
+    [data-testid="stForm"] input {
+        background-color: #f8f9fa !important;
+        border: 1px solid #e9ecef !important;
+        border-radius: 8px !important;
+        padding: 10px !important;
+        color: #333 !important;
+    }
+    
+    /* Botão de Login */
+    [data-testid="stForm"] button {
+        width: 100% !important;
+        background-image: linear-gradient(to right, #002b55, #004e92) !important;
+        border: none !important;
+        color: white !important;
+        font-size: 1.1rem !important;
+        padding: 0.6rem !important;
+        border-radius: 8px !important;
+        transition: transform 0.2s !important;
+    }
+    [data-testid="stForm"] button:hover {
+        transform: scale(1.02) !important;
+        box-shadow: 0 5px 15px rgba(0, 78, 146, 0.3) !important;
+        background-color: #F37021 !important; /* Muda levemente a cor no hover se quiser */
+    }
+
+    /* --- OUTROS ELEMENTOS --- */
     div.stMetric { border: 1px solid #e0e0e0; border-left: 5px solid #F37021; padding: 10px 15px !important; }
     div.stMetric label { color: #666 !important; font-size: 14px !important; }
     div.stMetric div[data-testid="stMetricValue"] { color: #003366 !important; font-size: 26px !important; font-weight: 700; }
     div.stMetric div[data-testid="stMetricDelta"] { font-size: 13px !important; }
-    [data-testid="stDataFrame"] { background-color: #FFFFFF; }
     
+    /* Botões Padrão do Sistema (fora do login) */
     div.stButton > button {
-        background-color: #003366 !important; color: #FFFFFF !important; border-radius: 8px; font-weight: bold; border: none;
+        background-color: #003366; color: #FFFFFF; border-radius: 8px; font-weight: bold; border: none;
     }
-    div.stButton > button p { color: #FFFFFF !important; }
-    div.stButton > button:hover { background-color: #F37021 !important; }
-    
-    button[data-baseweb="tab"] { background-color: transparent !important; color: #666 !important; }
-    button[data-baseweb="tab"][aria-selected="true"] {
-        color: #003366 !important; border-top: 3px solid #F37021 !important; font-weight: bold;
-    }
-    
-    .vacation-card { border-left: 6px solid #00bcd4; padding: 25px; text-align: center; margin-top: 20px; }
-    .vacation-title { font-size: 1.3em !important; font-weight: 600; color: #555 !important; }
-    .vacation-date { font-size: 2.5em; font-weight: 800; color: #00838f !important; margin: 15px 0; text-transform: uppercase; }
     
     .update-badge {
         background-color: #e3f2fd; color: #0d47a1; padding: 5px 10px; 
@@ -118,9 +158,7 @@ st.markdown("""
     .insight-title { font-weight: bold; color: #d35400; font-size: 1.1em; display: flex; align-items: center; gap: 8px; }
     .insight-text { font-size: 0.95em; margin-top: 5px; color: #555; }
 
-    .dev-footer { text-align: center; margin-top: 30px; font-size: 0.8em; color: #999 !important; }
-    .login-title { font-weight: 800; font-size: 2.5em; color: #003366 !important; text-align: center; }
-    .login-subtitle { font-size: 1.2em; color: #F37021 !important; text-align: center; margin-bottom: 20px; font-weight: 600; }
+    .dev-footer { text-align: center; margin-top: 40px; font-size: 0.8em; color: #aaa !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -397,28 +435,42 @@ def filtrar_por_usuarios_cadastrados(df_dados, df_users):
     df_filtrado.drop(columns=['TEMP_NOME_UPPER'], inplace=True)
     return df_filtrado
 
-# --- 4. LOGIN RENOVADO ---
+# --- 4. LOGIN RENOVADO (DESIGN NOVO E ELEGANTE) ---
 if 'logado' not in st.session_state:
     st.session_state.update({'logado': False, 'usuario_nome': '', 'perfil': '', 'usuario_email': ''})
 
 if not st.session_state['logado']:
-    c1, c2, c3 = st.columns([1, 1.5, 1])
+    # Cria colunas para centralizar o card no meio da tela
+    c1, c2, c3 = st.columns([1, 1.2, 1]) 
+    
     with c2:
         st.markdown("<br><br>", unsafe_allow_html=True)
+        # O formulário agora está dentro de um container customizado via CSS .login-card
         with st.form("form_login"):
+            # Se tiver logo, mostra centralizada e pequena
             if os.path.exists(LOGO_FILE):
                 st.image(LOGO_FILE, width=100)
-            st.markdown('<div class="login-header">Team Sofistas</div>', unsafe_allow_html=True)
-            st.markdown('<div class="login-subheader">Analytics & Performance</div>', unsafe_allow_html=True)
+            
+            st.markdown('<div class="login-title">Team Sofistas</div>', unsafe_allow_html=True)
+            st.markdown('<div class="login-subtitle">Analytics & Performance</div>', unsafe_allow_html=True)
+            
             st.markdown("---")
-            email_input = st.text_input("E-mail Corporativo ou Usuário Gestor").strip().lower()
-            senha_input = st.text_input("Senha (Obrigatório apenas para Gestor)", type="password")
+            
+            email_input = st.text_input("E-mail ou Usuário", placeholder="ex: usuario@brisanet.com.br").strip().lower()
+            senha_input = st.text_input("Senha", type="password", placeholder="Obrigatório para Gestores")
+            
             st.markdown("<br>", unsafe_allow_html=True)
+            
+            # Botão ocupa toda a largura e tem estilo novo via CSS
             submit_btn = st.form_submit_button("ACESSAR SISTEMA", use_container_width=True)
+            
             if submit_btn:
+                # LOGIN GESTOR
                 if email_input in USUARIOS_ADMIN and senha_input == SENHA_ADMIN:
                     st.session_state.update({'logado': True, 'usuario_nome': 'Gestor', 'perfil': 'admin', 'usuario_email': 'admin'})
                     st.rerun()
+                
+                # LOGIN OPERADOR
                 else:
                     df_users = carregar_usuarios()
                     if df_users is not None:
@@ -427,8 +479,11 @@ if not st.session_state['logado']:
                             nome_upper = user_row.iloc[0]['nome']
                             st.session_state.update({'logado': True, 'usuario_nome': nome_upper, 'perfil': 'user', 'usuario_email': email_input})
                             st.rerun()
-                        else: st.error("🚫 E-mail não encontrado.")
-                    else: st.error("⚠️ Base de usuários não carregada.")
+                        else:
+                            st.error("🚫 Usuário não encontrado.")
+                    else:
+                        st.error("⚠️ Base de usuários não carregada.")
+    
     st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
     st.stop()
 
@@ -822,7 +877,7 @@ else:
                     st.markdown("##### 💎 Gamificação")
                     st.progress(resultado_global if resultado_global <= 1.0 else 1.0)
                     
-                    # --- BADGES ---
+                    # --- BADGES (MEDALHAS) EXPANDIDAS ---
                     badges = []
                     # 1. Guardião (Conformidade)
                     if not meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE'].empty:
@@ -848,7 +903,7 @@ else:
 
                     st.write(f"**{int(total_dia_bruto)} / {int(total_max)}** Diamantes")
                     if badges: st.success(f"Conquistas: {' '.join(badges)}")
-                    
+
                     with st.expander("ℹ️ Legenda das Conquistas"):
                         st.markdown("""
                         * 🛡️ **Guardião:** 100% Conformidade.
