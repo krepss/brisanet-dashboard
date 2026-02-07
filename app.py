@@ -18,12 +18,12 @@ USUARIOS_ADMIN = ['gestor', 'admin']
 # --- DICAS AUTOMÁTICAS (SMART COACH) ---
 DICAS_KPI = {
     "ADERENCIA": "Atenção aos horários de login/logoff e pausas. Cumpra a escala rigorosamente.",
-    "CONFORMIDADE": "Aqui é lembrar do tempo de fila!",
+    "CONFORMIDADE": "Revise o script e os processos obrigatórios. Acompanhe a monitoria.",
     "INTERACOES": "Seja mais proativo durante o atendimento. Evite silêncio excessivo.",
-    "PONTUALIDADE": "Evite atrasos na primeira conexão do dia e no decorrer das pausas obrigatórias.",
+    "PONTUALIDADE": "Evite atrasos na primeira conexão do dia. Chegue 5 min antes.",
     "CSAT": "Aposte na empatia e na escuta ativa. Confirme a resolução com o cliente.",
     "IR": "Garanta que o serviço voltou a funcionar. Faça testes finais antes de encerrar.",
-    "TPC": "Otimize a tabulação, aqui o segredo é ser preciso.",
+    "TPC": "Otimize a tabulação: registre informações enquanto ainda fala com o cliente.",
     "TAM": "Assuma o comando da ligação. Seja objetivo e guie o cliente para a solução."
 }
 
@@ -33,7 +33,7 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
-# --- 2. CSS ---
+# --- 2. CSS (NOVO DESIGN DE LOGIN + ESTILOS GERAIS) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
@@ -427,24 +427,41 @@ def filtrar_por_usuarios_cadastrados(df_dados, df_users):
     df_filtrado.drop(columns=['TEMP_NOME_UPPER'], inplace=True)
     return df_filtrado
 
-# --- 4. LOGIN RENOVADO ---
+# --- 4. LOGIN RENOVADO (DESIGN NOVO) ---
 if 'logado' not in st.session_state:
     st.session_state.update({'logado': False, 'usuario_nome': '', 'perfil': '', 'usuario_email': ''})
 
 if not st.session_state['logado']:
-    c1, c2, c3 = st.columns([1, 2, 1])
+    # Layout centralizado vertical e horizontalmente
+    c1, c2, c3 = st.columns([1, 1.5, 1]) # Coluna do meio um pouco mais larga, mas controlada
+    
     with c2:
         st.markdown("<br><br>", unsafe_allow_html=True)
+        # O formulário agora está dentro de um container estilizado pelo CSS .login-card
         with st.form("form_login"):
-            st.markdown('<p class="login-title">Team Sofistas</p>', unsafe_allow_html=True)
-            st.markdown('<p class="login-subtitle">Analytics & Performance</p>', unsafe_allow_html=True)
-            email_input = st.text_input("E-mail Corporativo ou Usuário Gestor").strip().lower()
-            senha_input = st.text_input("Senha (Obrigatório apenas para Gestor)", type="password")
+            # Se tiver logo, mostra
+            if os.path.exists(LOGO_FILE):
+                st.image(LOGO_FILE, width=100)
+            
+            st.markdown('<div class="login-header">Team Sofistas</div>', unsafe_allow_html=True)
+            st.markdown('<div class="login-subheader">Analytics & Performance</div>', unsafe_allow_html=True)
+            
+            st.markdown("---")
+            
+            email_input = st.text_input("E-mail Corporativo ou Usuário Gestor", placeholder="ex: nome@empresa.com").strip().lower()
+            senha_input = st.text_input("Senha", type="password", placeholder="Apenas para Gestores")
+            
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.form_submit_button("ACESSAR"):
+            
+            submit_btn = st.form_submit_button("ACESSAR SISTEMA", use_container_width=True)
+            
+            if submit_btn:
+                # LOGIN GESTOR
                 if email_input in USUARIOS_ADMIN and senha_input == SENHA_ADMIN:
                     st.session_state.update({'logado': True, 'usuario_nome': 'Gestor', 'perfil': 'admin', 'usuario_email': 'admin'})
                     st.rerun()
+                
+                # LOGIN OPERADOR
                 else:
                     df_users = carregar_usuarios()
                     if df_users is not None:
@@ -453,12 +470,18 @@ if not st.session_state['logado']:
                             nome_upper = user_row.iloc[0]['nome']
                             st.session_state.update({'logado': True, 'usuario_nome': nome_upper, 'perfil': 'user', 'usuario_email': email_input})
                             st.rerun()
-                        else: st.error("🚫 E-mail não encontrado.")
-                    else: st.error("⚠️ Base de usuários não carregada.")
+                        else:
+                            st.error("🚫 E-mail não encontrado na base de dados.")
+                    else:
+                        st.error("⚠️ Base de usuários não carregada.")
+    
     st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
     st.stop()
 
-# --- 5. SIDEBAR ---
+# --- 5. SISTEMA LOGADO ---
+# CSS já carrega o fundo claro
+
+# --- 6. SIDEBAR ---
 lista_periodos = listar_periodos_disponiveis()
 opcoes_periodo = lista_periodos if lista_periodos else ["Nenhum histórico disponível"]
 
@@ -847,40 +870,35 @@ else:
                 with c_gamif:
                     st.markdown("##### 💎 Gamificação")
                     st.progress(resultado_global if resultado_global <= 1.0 else 1.0)
-                    
-                    # --- NOVO: BADGES (MEDALHAS) EXPANDIDAS ---
+                    # --- BADGES (MEDALHAS) EXPANDIDAS ---
                     badges = []
-                    # 1. Guardião (Conformidade)
                     if not meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE'].iloc[0]['% Atingimento'] >= 1.0: badges.append("🛡️ Guardião")
-                    # 2. Amado (CSAT)
                     if not meus_dados[meus_dados['Indicador'] == 'CSAT'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'CSAT'].iloc[0]['% Atingimento'] >= 0.95: badges.append("❤️ Amado")
-                    # 3. Relógio Suíço (Aderência)
                     if not meus_dados[meus_dados['Indicador'] == 'ADERENCIA'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'ADERENCIA'].iloc[0]['% Atingimento'] >= 0.98: badges.append("⏰ Relógio Suíço")
-                    # 4. Sherlock (Resolução/IR)
                     if not meus_dados[meus_dados['Indicador'] == 'IR'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'IR'].iloc[0]['% Atingimento'] >= 0.90: badges.append("🧩 Sherlock")
-                    # 5. No Alvo (Pontualidade)
                     if not meus_dados[meus_dados['Indicador'] == 'PONTUALIDADE'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'PONTUALIDADE'].iloc[0]['% Atingimento'] >= 1.0: badges.append("🎯 No Alvo")
-                    # 6. The Flash (TPC - assumindo meta batida >= 100%)
                     if not meus_dados[meus_dados['Indicador'] == 'TPC'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'TPC'].iloc[0]['% Atingimento'] >= 1.0: badges.append("⚡ The Flash")
+                    if not meus_dados[meus_dados['Indicador'] == 'INTERACOES'].empty:
+                        if meus_dados[meus_dados['Indicador'] == 'INTERACOES'].iloc[0]['% Atingimento'] >= 1.0: badges.append("🤖 Ciborgue")
 
                     st.write(f"**{int(total_dia_bruto)} / {int(total_max)}** Diamantes")
                     if badges: st.success(f"Conquistas: {' '.join(badges)}")
 
-                    # Legenda das Conquistas
                     with st.expander("ℹ️ Legenda das Conquistas"):
                         st.markdown("""
-                        * 🛡️ **Guardião:** 100% Conformidade.
-                        * ❤️ **Amado:** CSAT acima de 95%.
-                        * ⏰ **Relógio Suíço:** Aderência acima de 98%.
-                        * 🧩 **Sherlock:** Resolução (IR) acima de 90%.
-                        * 🎯 **No Alvo:** Pontualidade 100%.
-                        * ⚡ **The Flash:** TPC dentro da meta.
+                        * 🛡️ **Guardião:** 100% Conformidade
+                        * ❤️ **Amado:** CSAT > 95%
+                        * ⏰ **Relógio Suíço:** Aderência > 98%
+                        * 🧩 **Sherlock:** Resolução > 90%
+                        * 🎯 **No Alvo:** Pontualidade 100%
+                        * ⚡ **The Flash:** TPC na Meta
+                        * 🤖 **Ciborgue:** Interações na Meta
                         """)
 
                 with c_gauge:
@@ -955,7 +973,7 @@ else:
             
             # --- RADAR CHART (Com proteção e Correção do Erro KeyError) ---
             media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
-            # Renomeia para evitar conflito com a coluna do usuário
+            # Renomeia para evitar colisão no merge (Correção do KeyError)
             media_equipe.rename(columns={'% Atingimento': 'Média Equipe'}, inplace=True)
             
             if not media_equipe.empty:
