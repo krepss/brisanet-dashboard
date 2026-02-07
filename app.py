@@ -18,12 +18,12 @@ USUARIOS_ADMIN = ['gestor', 'admin']
 # --- DICAS AUTOMÁTICAS (SMART COACH) ---
 DICAS_KPI = {
     "ADERENCIA": "Atenção aos horários de login/logoff e pausas. Cumpra a escala rigorosamente.",
-    "CONFORMIDADE": "Revise o script e os processos obrigatórios. Acompanhe a monitoria.",
+    "CONFORMIDADE": "Aqui é o tempo de fila, evite utilizar pausas desnecessárias.",
     "INTERACOES": "Seja mais proativo durante o atendimento. Evite silêncio excessivo.",
-    "PONTUALIDADE": "Evite atrasos na primeira conexão do dia. Chegue 5 min antes.",
+    "PONTUALIDADE": "Evite atrasos na primeira conexão do dia e nas demais pausas.",
     "CSAT": "Aposte na empatia e na escuta ativa. Confirme a resolução com o cliente.",
     "IR": "Garanta que o serviço voltou a funcionar. Faça testes finais antes de encerrar.",
-    "TPC": "Otimize a tabulação: registre informações enquanto ainda fala com o cliente.",
+    "TPC": "Aqui é fácil recuperar, sejá mais rápido!",
     "TAM": "Assuma o comando da ligação. Seja objetivo e guie o cliente para a solução."
 }
 
@@ -33,11 +33,10 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
-# --- 2. CSS (NOVO DESIGN DE LOGIN + ESTILOS GERAIS) ---
+# --- 2. CSS ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
-    
     html, body, [class*="css"] { font-family: 'Roboto', sans-serif; }
     .stApp { background-color: #F4F7F6 !important; }
     
@@ -46,17 +45,22 @@ st.markdown("""
         background-color: #002b55 !important;
         background-image: linear-gradient(180deg, #002b55 0%, #004e92 100%) !important;
     }
-    [data-testid="stSidebar"] * { color: #FFFFFF !important; }
-    [data-testid="stSidebar"] input { 
-        background-color: #FFFFFF !important; 
-        color: #000000 !important; 
+    
+    /* Texto GERAL da Sidebar -> BRANCO */
+    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, 
+    [data-testid="stSidebar"] p, [data-testid="stSidebar"] label, [data-testid="stSidebar"] span {
+        color: #FFFFFF !important;
+    }
+
+    /* --- CORREÇÃO DOS INPUTS E SELECTBOX NA SIDEBAR --- */
+    [data-testid="stSidebar"] div[data-baseweb="select"] > div,
+    [data-testid="stSidebar"] input {
+        background-color: #FFFFFF !important;
+        color: #000000 !important;
         -webkit-text-fill-color: #000000 !important;
     }
-    [data-testid="stSidebar"] div[data-baseweb="select"] > div { 
-        background-color: #FFFFFF !important; 
-        color: #000000 !important; 
-    }
     [data-testid="stSidebar"] div[data-baseweb="select"] span,
+    [data-testid="stSidebar"] div[data-baseweb="select"] div,
     [data-testid="stSidebar"] div[data-baseweb="select"] svg {
         color: #000000 !important;
         fill: #000000 !important;
@@ -66,66 +70,42 @@ st.markdown("""
         background-color: #FFFFFF !important;
     }
     
-    /* --- ESTILOS GERAIS --- */
+    /* Textos Gerais */
     h1, h2, h3, h4, h5, h6 { color: #003366 !important; font-family: 'Montserrat', sans-serif !important; }
     p, li, div { color: #333333; }
     
-    /* --- CARDS E CONTAINERS --- */
-    div.stMetric, .vacation-card, .insight-box, .badge-card {
+    /* Cards */
+    [data-testid="stForm"], div.stMetric, .vacation-card, .insight-box, .badge-card {
         background-color: #FFFFFF !important;
         box-shadow: 0 4px 10px rgba(0,0,0,0.05);
         border-radius: 10px;
     }
-    
-    /* Card de Login Específico */
-    .login-card {
-        background-color: #FFFFFF !important;
-        padding: 40px;
-        border-radius: 20px;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-        text-align: center;
-        border-top: 5px solid #F37021;
-    }
-    
-    /* Métricas */
     div.stMetric { border: 1px solid #e0e0e0; border-left: 5px solid #F37021; padding: 10px 15px !important; }
     div.stMetric label { color: #666 !important; font-size: 14px !important; }
     div.stMetric div[data-testid="stMetricValue"] { color: #003366 !important; font-size: 26px !important; font-weight: 700; }
     div.stMetric div[data-testid="stMetricDelta"] { font-size: 13px !important; }
     [data-testid="stDataFrame"] { background-color: #FFFFFF; }
     
-    /* Botões */
     div.stButton > button {
-        background-color: #003366 !important; 
-        color: #FFFFFF !important; 
-        border-radius: 8px; 
-        font-weight: bold; 
-        border: none;
-        transition: all 0.3s ease;
+        background-color: #003366 !important; color: #FFFFFF !important; border-radius: 8px; font-weight: bold; border: none;
     }
     div.stButton > button p { color: #FFFFFF !important; }
-    div.stButton > button:hover { 
-        background-color: #F37021 !important; 
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(243, 112, 33, 0.3);
-    }
+    div.stButton > button:hover { background-color: #F37021 !important; }
     
-    /* Abas */
     button[data-baseweb="tab"] { background-color: transparent !important; color: #666 !important; }
     button[data-baseweb="tab"][aria-selected="true"] {
         color: #003366 !important; border-top: 3px solid #F37021 !important; font-weight: bold;
     }
     
-    /* Férias */
     .vacation-card { border-left: 6px solid #00bcd4; padding: 25px; text-align: center; margin-top: 20px; }
     .vacation-title { font-size: 1.3em !important; font-weight: 600; color: #555 !important; }
     .vacation-date { font-size: 2.5em; font-weight: 800; color: #00838f !important; margin: 15px 0; text-transform: uppercase; }
     
-    /* Badges e Insights */
     .update-badge {
         background-color: #e3f2fd; color: #0d47a1; padding: 5px 10px; 
         border-radius: 15px; font-size: 0.85em; font-weight: bold; border: 1px solid #bbdefb;
     }
+    
     .insight-box {
         background-color: #fff8e1 !important;
         border-left: 5px solid #ffc107 !important;
@@ -135,22 +115,9 @@ st.markdown("""
     .insight-title { font-weight: bold; color: #d35400; font-size: 1.1em; display: flex; align-items: center; gap: 8px; }
     .insight-text { font-size: 0.95em; margin-top: 5px; color: #555; }
 
-    /* Login Styles */
-    .login-header {
-        font-family: 'Montserrat', sans-serif;
-        color: #003366;
-        font-weight: 800;
-        font-size: 2.2rem;
-        margin-bottom: 0.5rem;
-    }
-    .login-subheader {
-        font-family: 'Roboto', sans-serif;
-        color: #666;
-        font-size: 1.1rem;
-        margin-bottom: 2rem;
-    }
-    
     .dev-footer { text-align: center; margin-top: 30px; font-size: 0.8em; color: #999 !important; }
+    .login-title { font-weight: 800; font-size: 2.5em; color: #003366 !important; text-align: center; }
+    .login-subtitle { font-size: 1.2em; color: #F37021 !important; text-align: center; margin-bottom: 20px; font-weight: 600; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -427,41 +394,24 @@ def filtrar_por_usuarios_cadastrados(df_dados, df_users):
     df_filtrado.drop(columns=['TEMP_NOME_UPPER'], inplace=True)
     return df_filtrado
 
-# --- 4. LOGIN RENOVADO (DESIGN NOVO) ---
+# --- 4. LOGIN RENOVADO ---
 if 'logado' not in st.session_state:
     st.session_state.update({'logado': False, 'usuario_nome': '', 'perfil': '', 'usuario_email': ''})
 
 if not st.session_state['logado']:
-    # Layout centralizado vertical e horizontalmente
-    c1, c2, c3 = st.columns([1, 1.5, 1]) # Coluna do meio um pouco mais larga, mas controlada
-    
+    c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
         st.markdown("<br><br>", unsafe_allow_html=True)
-        # O formulário agora está dentro de um container estilizado pelo CSS .login-card
         with st.form("form_login"):
-            # Se tiver logo, mostra
-            if os.path.exists(LOGO_FILE):
-                st.image(LOGO_FILE, width=100)
-            
-            st.markdown('<div class="login-header">Team Sofistas</div>', unsafe_allow_html=True)
-            st.markdown('<div class="login-subheader">Analytics & Performance</div>', unsafe_allow_html=True)
-            
-            st.markdown("---")
-            
-            email_input = st.text_input("E-mail Corporativo ou Usuário Gestor", placeholder="ex: nome@empresa.com").strip().lower()
-            senha_input = st.text_input("Senha", type="password", placeholder="Apenas para Gestores")
-            
+            st.markdown('<p class="login-title">Team Sofistas</p>', unsafe_allow_html=True)
+            st.markdown('<p class="login-subtitle">Analytics & Performance</p>', unsafe_allow_html=True)
+            email_input = st.text_input("E-mail Corporativo ou Usuário Gestor").strip().lower()
+            senha_input = st.text_input("Senha (Obrigatório apenas para Gestor)", type="password")
             st.markdown("<br>", unsafe_allow_html=True)
-            
-            submit_btn = st.form_submit_button("ACESSAR SISTEMA", use_container_width=True)
-            
-            if submit_btn:
-                # LOGIN GESTOR
+            if st.form_submit_button("ACESSAR"):
                 if email_input in USUARIOS_ADMIN and senha_input == SENHA_ADMIN:
                     st.session_state.update({'logado': True, 'usuario_nome': 'Gestor', 'perfil': 'admin', 'usuario_email': 'admin'})
                     st.rerun()
-                
-                # LOGIN OPERADOR
                 else:
                     df_users = carregar_usuarios()
                     if df_users is not None:
@@ -470,18 +420,12 @@ if not st.session_state['logado']:
                             nome_upper = user_row.iloc[0]['nome']
                             st.session_state.update({'logado': True, 'usuario_nome': nome_upper, 'perfil': 'user', 'usuario_email': email_input})
                             st.rerun()
-                        else:
-                            st.error("🚫 E-mail não encontrado na base de dados.")
-                    else:
-                        st.error("⚠️ Base de usuários não carregada.")
-    
+                        else: st.error("🚫 E-mail não encontrado.")
+                    else: st.error("⚠️ Base de usuários não carregada.")
     st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
     st.stop()
 
-# --- 5. SISTEMA LOGADO ---
-# CSS já carrega o fundo claro
-
-# --- 6. SIDEBAR ---
+# --- 5. SIDEBAR ---
 lista_periodos = listar_periodos_disponiveis()
 opcoes_periodo = lista_periodos if lista_periodos else ["Nenhum histórico disponível"]
 
@@ -870,35 +814,40 @@ else:
                 with c_gamif:
                     st.markdown("##### 💎 Gamificação")
                     st.progress(resultado_global if resultado_global <= 1.0 else 1.0)
-                    # --- BADGES (MEDALHAS) EXPANDIDAS ---
+                    
+                    # --- NOVO: BADGES (MEDALHAS) EXPANDIDAS ---
                     badges = []
+                    # 1. Guardião (Conformidade)
                     if not meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE'].iloc[0]['% Atingimento'] >= 1.0: badges.append("🛡️ Guardião")
+                    # 2. Amado (CSAT)
                     if not meus_dados[meus_dados['Indicador'] == 'CSAT'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'CSAT'].iloc[0]['% Atingimento'] >= 0.95: badges.append("❤️ Amado")
+                    # 3. Relógio Suíço (Aderência)
                     if not meus_dados[meus_dados['Indicador'] == 'ADERENCIA'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'ADERENCIA'].iloc[0]['% Atingimento'] >= 0.98: badges.append("⏰ Relógio Suíço")
+                    # 4. Sherlock (Resolução/IR)
                     if not meus_dados[meus_dados['Indicador'] == 'IR'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'IR'].iloc[0]['% Atingimento'] >= 0.90: badges.append("🧩 Sherlock")
+                    # 5. No Alvo (Pontualidade)
                     if not meus_dados[meus_dados['Indicador'] == 'PONTUALIDADE'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'PONTUALIDADE'].iloc[0]['% Atingimento'] >= 1.0: badges.append("🎯 No Alvo")
+                    # 6. The Flash (TPC - assumindo meta batida >= 100%)
                     if not meus_dados[meus_dados['Indicador'] == 'TPC'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'TPC'].iloc[0]['% Atingimento'] >= 1.0: badges.append("⚡ The Flash")
-                    if not meus_dados[meus_dados['Indicador'] == 'INTERACOES'].empty:
-                        if meus_dados[meus_dados['Indicador'] == 'INTERACOES'].iloc[0]['% Atingimento'] >= 1.0: badges.append("🤖 Ciborgue")
 
                     st.write(f"**{int(total_dia_bruto)} / {int(total_max)}** Diamantes")
                     if badges: st.success(f"Conquistas: {' '.join(badges)}")
 
+                    # Legenda das Conquistas
                     with st.expander("ℹ️ Legenda das Conquistas"):
                         st.markdown("""
-                        * 🛡️ **Guardião:** 100% Conformidade
-                        * ❤️ **Amado:** CSAT > 95%
-                        * ⏰ **Relógio Suíço:** Aderência > 98%
-                        * 🧩 **Sherlock:** Resolução > 90%
-                        * 🎯 **No Alvo:** Pontualidade 100%
-                        * ⚡ **The Flash:** TPC na Meta
-                        * 🤖 **Ciborgue:** Interações na Meta
+                        * 🛡️ **Guardião:** 100% Conformidade.
+                        * ❤️ **Amado:** CSAT acima de 95%.
+                        * ⏰ **Relógio Suíço:** Aderência acima de 98%.
+                        * 🧩 **Sherlock:** Resolução (IR) acima de 90%.
+                        * 🎯 **No Alvo:** Pontualidade 100%.
+                        * ⚡ **The Flash:** TPC dentro da meta.
                         """)
 
                 with c_gauge:
@@ -973,7 +922,7 @@ else:
             
             # --- RADAR CHART (Com proteção e Correção do Erro KeyError) ---
             media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
-            # Renomeia para evitar colisão no merge (Correção do KeyError)
+            # Renomeia para evitar conflito com a coluna do usuário
             media_equipe.rename(columns={'% Atingimento': 'Média Equipe'}, inplace=True)
             
             if not media_equipe.empty:
