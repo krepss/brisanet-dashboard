@@ -37,6 +37,7 @@ except:
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
+    
     html, body, [class*="css"] { font-family: 'Roboto', sans-serif; }
     .stApp { background-color: #F4F7F6 !important; }
     
@@ -45,22 +46,17 @@ st.markdown("""
         background-color: #002b55 !important;
         background-image: linear-gradient(180deg, #002b55 0%, #004e92 100%) !important;
     }
-    
-    /* Texto GERAL da Sidebar -> BRANCO */
-    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, 
-    [data-testid="stSidebar"] p, [data-testid="stSidebar"] label, [data-testid="stSidebar"] span {
-        color: #FFFFFF !important;
-    }
-
-    /* --- CORREÇÃO DOS INPUTS E SELECTBOX NA SIDEBAR --- */
-    [data-testid="stSidebar"] div[data-baseweb="select"] > div,
-    [data-testid="stSidebar"] input {
-        background-color: #FFFFFF !important;
-        color: #000000 !important;
+    [data-testid="stSidebar"] * { color: #FFFFFF !important; }
+    [data-testid="stSidebar"] input { 
+        background-color: #FFFFFF !important; 
+        color: #000000 !important; 
         -webkit-text-fill-color: #000000 !important;
     }
+    [data-testid="stSidebar"] div[data-baseweb="select"] > div { 
+        background-color: #FFFFFF !important; 
+        color: #000000 !important; 
+    }
     [data-testid="stSidebar"] div[data-baseweb="select"] span,
-    [data-testid="stSidebar"] div[data-baseweb="select"] div,
     [data-testid="stSidebar"] div[data-baseweb="select"] svg {
         color: #000000 !important;
         fill: #000000 !important;
@@ -70,42 +66,66 @@ st.markdown("""
         background-color: #FFFFFF !important;
     }
     
-    /* Textos Gerais */
+    /* --- ESTILOS GERAIS --- */
     h1, h2, h3, h4, h5, h6 { color: #003366 !important; font-family: 'Montserrat', sans-serif !important; }
     p, li, div { color: #333333; }
     
-    /* Cards */
-    [data-testid="stForm"], div.stMetric, .vacation-card, .insight-box, .badge-card {
+    /* --- CARDS E CONTAINERS --- */
+    div.stMetric, .vacation-card, .insight-box, .badge-card {
         background-color: #FFFFFF !important;
         box-shadow: 0 4px 10px rgba(0,0,0,0.05);
         border-radius: 10px;
     }
+    
+    /* Card de Login Específico */
+    .login-card {
+        background-color: #FFFFFF !important;
+        padding: 40px;
+        border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        text-align: center;
+        border-top: 5px solid #F37021;
+    }
+    
+    /* Métricas */
     div.stMetric { border: 1px solid #e0e0e0; border-left: 5px solid #F37021; padding: 10px 15px !important; }
     div.stMetric label { color: #666 !important; font-size: 14px !important; }
     div.stMetric div[data-testid="stMetricValue"] { color: #003366 !important; font-size: 26px !important; font-weight: 700; }
     div.stMetric div[data-testid="stMetricDelta"] { font-size: 13px !important; }
     [data-testid="stDataFrame"] { background-color: #FFFFFF; }
     
+    /* Botões */
     div.stButton > button {
-        background-color: #003366 !important; color: #FFFFFF !important; border-radius: 8px; font-weight: bold; border: none;
+        background-color: #003366 !important; 
+        color: #FFFFFF !important; 
+        border-radius: 8px; 
+        font-weight: bold; 
+        border: none;
+        transition: all 0.3s ease;
     }
     div.stButton > button p { color: #FFFFFF !important; }
-    div.stButton > button:hover { background-color: #F37021 !important; }
+    div.stButton > button:hover { 
+        background-color: #F37021 !important; 
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(243, 112, 33, 0.3);
+    }
     
+    /* Abas */
     button[data-baseweb="tab"] { background-color: transparent !important; color: #666 !important; }
     button[data-baseweb="tab"][aria-selected="true"] {
         color: #003366 !important; border-top: 3px solid #F37021 !important; font-weight: bold;
     }
     
+    /* Férias */
     .vacation-card { border-left: 6px solid #00bcd4; padding: 25px; text-align: center; margin-top: 20px; }
     .vacation-title { font-size: 1.3em !important; font-weight: 600; color: #555 !important; }
     .vacation-date { font-size: 2.5em; font-weight: 800; color: #00838f !important; margin: 15px 0; text-transform: uppercase; }
     
+    /* Badges e Insights */
     .update-badge {
         background-color: #e3f2fd; color: #0d47a1; padding: 5px 10px; 
         border-radius: 15px; font-size: 0.85em; font-weight: bold; border: 1px solid #bbdefb;
     }
-    
     .insight-box {
         background-color: #fff8e1 !important;
         border-left: 5px solid #ffc107 !important;
@@ -115,9 +135,22 @@ st.markdown("""
     .insight-title { font-weight: bold; color: #d35400; font-size: 1.1em; display: flex; align-items: center; gap: 8px; }
     .insight-text { font-size: 0.95em; margin-top: 5px; color: #555; }
 
+    /* Login Styles */
+    .login-header {
+        font-family: 'Montserrat', sans-serif;
+        color: #003366;
+        font-weight: 800;
+        font-size: 2.2rem;
+        margin-bottom: 0.5rem;
+    }
+    .login-subheader {
+        font-family: 'Roboto', sans-serif;
+        color: #666;
+        font-size: 1.1rem;
+        margin-bottom: 2rem;
+    }
+    
     .dev-footer { text-align: center; margin-top: 30px; font-size: 0.8em; color: #999 !important; }
-    .login-title { font-weight: 800; font-size: 2.5em; color: #003366 !important; text-align: center; }
-    .login-subtitle { font-size: 1.2em; color: #F37021 !important; text-align: center; margin-bottom: 20px; font-weight: 600; }
 </style>
 """, unsafe_allow_html=True)
 
