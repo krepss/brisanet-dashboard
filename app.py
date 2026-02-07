@@ -33,7 +33,7 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
-# --- 2. CSS (DESIGN CORRIGIDO) ---
+# --- 2. CSS (DESIGN PREMIUM + CORREÇÃO FÉRIAS) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
@@ -45,8 +45,6 @@ st.markdown("""
         background-color: #002b55 !important;
         background-image: linear-gradient(180deg, #002b55 0%, #004e92 100%) !important;
     }
-    
-    /* Texto GERAL da Sidebar -> BRANCO */
     [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, 
     [data-testid="stSidebar"] p, [data-testid="stSidebar"] label, [data-testid="stSidebar"] span {
         color: #FFFFFF !important;
@@ -74,16 +72,46 @@ st.markdown("""
     h1, h2, h3, h4, h5, h6 { color: #003366 !important; font-family: 'Montserrat', sans-serif !important; }
     p, li, div { color: #333333; }
     
-    /* Cards Padrão */
-    div.stMetric, .vacation-card, .insight-box, .badge-card {
+    /* Cards Padrão (Métricas e Insights) */
+    div.stMetric, .insight-box, .badge-card {
         background-color: #FFFFFF !important;
         box-shadow: 0 4px 10px rgba(0,0,0,0.05);
         border-radius: 10px;
     }
     
-    /* --- TELA DE LOGIN (CORREÇÃO DE BOTÕES E INPUTS) --- */
+    /* --- CARD DE FÉRIAS (RESTAURADO E REFORÇADO) --- */
+    .vacation-card {
+        background-color: #FFFFFF !important;
+        border-left: 8px solid #00bcd4 !important; /* Borda Azul Piscina */
+        padding: 30px !important;
+        border-radius: 12px !important;
+        text-align: center !important;
+        box-shadow: 0 6px 15px rgba(0,0,0,0.08) !important;
+        margin-top: 20px !important;
+    }
+    .vacation-title { 
+        font-family: 'Montserrat', sans-serif !important;
+        font-size: 1.4em !important; 
+        font-weight: 600 !important; 
+        color: #555555 !important; 
+        margin-bottom: 10px !important;
+    }
+    .vacation-date { 
+        font-family: 'Roboto', sans-serif !important;
+        font-size: 3.5em !important; /* Data bem grande */
+        font-weight: 800 !important; 
+        color: #00838f !important; 
+        margin: 20px 0 !important; 
+        text-transform: uppercase !important; 
+    }
+    .vacation-note { 
+        font-size: 0.9em !important; 
+        color: #999999 !important; 
+        font-style: italic !important; 
+    }
+    /* ------------------------------------------------ */
     
-    /* Card do Login */
+    /* --- TELA DE LOGIN --- */
     [data-testid="stForm"] {
         background-color: #FFFFFF !important;
         padding: 3rem 2rem !important;
@@ -92,8 +120,6 @@ st.markdown("""
         border: none !important;
         border-top: 6px solid #F37021 !important;
     }
-    
-    /* Títulos do Login */
     .login-title {
         font-family: 'Montserrat', sans-serif !important;
         font-weight: 800 !important;
@@ -109,33 +135,25 @@ st.markdown("""
         text-align: center;
         margin-bottom: 25px;
     }
-    
-    /* Inputs do Login (Correção: Fundo cinza claro, sem quebrar o layout do olho da senha) */
     [data-testid="stForm"] input {
         background-color: #f8f9fa !important;
         color: #333 !important;
         border-radius: 8px !important;
     }
-    
-    /* Botão de Login (Correção: Texto BRANCO forçado) */
+    /* Botão de Login */
     [data-testid="stForm"] [data-testid="stBaseButton-secondary"] {
         width: 100% !important;
         background-image: linear-gradient(to right, #002b55, #004e92) !important;
         border: none !important;
         border-radius: 8px !important;
-        transition: transform 0.2s !important;
         padding-top: 10px !important;
         padding-bottom: 10px !important;
     }
-    
-    /* Força o TEXTO dentro do botão a ser branco */
     [data-testid="stForm"] [data-testid="stBaseButton-secondary"] p {
         color: #FFFFFF !important;
         font-weight: bold !important;
         font-size: 1.1rem !important;
     }
-    
-    /* Efeito Hover do Botão */
     [data-testid="stForm"] [data-testid="stBaseButton-secondary"]:hover {
         transform: scale(1.02) !important;
         box-shadow: 0 5px 15px rgba(0, 78, 146, 0.3) !important;
@@ -147,7 +165,6 @@ st.markdown("""
     div.stMetric div[data-testid="stMetricValue"] { color: #003366 !important; font-size: 26px !important; font-weight: 700; }
     div.stMetric div[data-testid="stMetricDelta"] { font-size: 13px !important; }
     
-    /* Botões Padrão (Fora do Login) */
     div.stButton > button {
         background-color: #003366 !important; color: #FFFFFF !important; border-radius: 8px; font-weight: bold; border: none;
     }
@@ -888,7 +905,6 @@ else:
                 with c_gamif:
                     st.markdown("##### 💎 Gamificação")
                     st.progress(resultado_global if resultado_global <= 1.0 else 1.0)
-                    
                     # --- BADGES (MEDALHAS) EXPANDIDAS ---
                     badges = []
                     # 1. Guardião (Conformidade)
