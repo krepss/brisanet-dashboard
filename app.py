@@ -18,12 +18,12 @@ USUARIOS_ADMIN = ['gestor', 'admin']
 # --- DICAS AUTOMÁTICAS (SMART COACH) ---
 DICAS_KPI = {
     "ADERENCIA": "Atenção aos horários de login/logoff e pausas. Cumpra a escala rigorosamente.",
-    "CONFORMIDADE": "Aqui é o tempo de fila, evite utilizar pausas desnecessárias.",
+    "CONFORMIDADE": "Revise o script e os processos obrigatórios. Acompanhe a monitoria.",
     "INTERACOES": "Seja mais proativo durante o atendimento. Evite silêncio excessivo.",
-    "PONTUALIDADE": "Evite atrasos na primeira conexão do dia e nas demais pausas.",
+    "PONTUALIDADE": "Evite atrasos na primeira conexão do dia. Chegue 5 min antes.",
     "CSAT": "Aposte na empatia e na escuta ativa. Confirme a resolução com o cliente.",
     "IR": "Garanta que o serviço voltou a funcionar. Faça testes finais antes de encerrar.",
-    "TPC": "Aqui é fácil recuperar, sejá mais rápido!",
+    "TPC": "Otimize a tabulação: registre informações enquanto ainda fala com o cliente.",
     "TAM": "Assuma o comando da ligação. Seja objetivo e guie o cliente para a solução."
 }
 
@@ -33,7 +33,7 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
-# --- 2. CSS ---
+# --- 2. CSS (ESTÁVEL E LEGÍVEL) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
@@ -52,19 +52,22 @@ st.markdown("""
         color: #FFFFFF !important;
     }
 
-    /* --- CORREÇÃO DOS INPUTS E SELECTBOX NA SIDEBAR --- */
+    /* --- CORREÇÃO CRÍTICA: INPUTS E SELECTBOX NA SIDEBAR --- */
+    /* Fundo branco e texto preto para inputs */
     [data-testid="stSidebar"] div[data-baseweb="select"] > div,
     [data-testid="stSidebar"] input {
         background-color: #FFFFFF !important;
         color: #000000 !important;
         -webkit-text-fill-color: #000000 !important;
     }
+    /* Ícones e textos internos do selectbox */
     [data-testid="stSidebar"] div[data-baseweb="select"] span,
     [data-testid="stSidebar"] div[data-baseweb="select"] div,
     [data-testid="stSidebar"] div[data-baseweb="select"] svg {
         color: #000000 !important;
         fill: #000000 !important;
     }
+    /* Dropdown menu */
     ul[data-testid="stSelectboxVirtualDropdown"] li {
         color: #000000 !important;
         background-color: #FFFFFF !important;
@@ -399,16 +402,20 @@ if 'logado' not in st.session_state:
     st.session_state.update({'logado': False, 'usuario_nome': '', 'perfil': '', 'usuario_email': ''})
 
 if not st.session_state['logado']:
-    c1, c2, c3 = st.columns([1, 2, 1])
+    c1, c2, c3 = st.columns([1, 1.5, 1])
     with c2:
         st.markdown("<br><br>", unsafe_allow_html=True)
         with st.form("form_login"):
-            st.markdown('<p class="login-title">Team Sofistas</p>', unsafe_allow_html=True)
-            st.markdown('<p class="login-subtitle">Analytics & Performance</p>', unsafe_allow_html=True)
+            if os.path.exists(LOGO_FILE):
+                st.image(LOGO_FILE, width=100)
+            st.markdown('<div class="login-header">Team Sofistas</div>', unsafe_allow_html=True)
+            st.markdown('<div class="login-subheader">Analytics & Performance</div>', unsafe_allow_html=True)
+            st.markdown("---")
             email_input = st.text_input("E-mail Corporativo ou Usuário Gestor").strip().lower()
             senha_input = st.text_input("Senha (Obrigatório apenas para Gestor)", type="password")
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.form_submit_button("ACESSAR"):
+            submit_btn = st.form_submit_button("ACESSAR SISTEMA", use_container_width=True)
+            if submit_btn:
                 if email_input in USUARIOS_ADMIN and senha_input == SENHA_ADMIN:
                     st.session_state.update({'logado': True, 'usuario_nome': 'Gestor', 'perfil': 'admin', 'usuario_email': 'admin'})
                     st.rerun()
@@ -815,7 +822,7 @@ else:
                     st.markdown("##### 💎 Gamificação")
                     st.progress(resultado_global if resultado_global <= 1.0 else 1.0)
                     
-                    # --- NOVO: BADGES (MEDALHAS) EXPANDIDAS ---
+                    # --- BADGES ---
                     badges = []
                     # 1. Guardião (Conformidade)
                     if not meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE'].empty:
@@ -832,22 +839,25 @@ else:
                     # 5. No Alvo (Pontualidade)
                     if not meus_dados[meus_dados['Indicador'] == 'PONTUALIDADE'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'PONTUALIDADE'].iloc[0]['% Atingimento'] >= 1.0: badges.append("🎯 No Alvo")
-                    # 6. The Flash (TPC - assumindo meta batida >= 100%)
+                    # 6. The Flash (TPC)
                     if not meus_dados[meus_dados['Indicador'] == 'TPC'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'TPC'].iloc[0]['% Atingimento'] >= 1.0: badges.append("⚡ The Flash")
+                    # 7. Ciborgue (Interações)
+                    if not meus_dados[meus_dados['Indicador'] == 'INTERACOES'].empty:
+                        if meus_dados[meus_dados['Indicador'] == 'INTERACOES'].iloc[0]['% Atingimento'] >= 1.0: badges.append("🤖 Ciborgue")
 
                     st.write(f"**{int(total_dia_bruto)} / {int(total_max)}** Diamantes")
                     if badges: st.success(f"Conquistas: {' '.join(badges)}")
-
-                    # Legenda das Conquistas
+                    
                     with st.expander("ℹ️ Legenda das Conquistas"):
                         st.markdown("""
                         * 🛡️ **Guardião:** 100% Conformidade.
-                        * ❤️ **Amado:** CSAT acima de 95%.
-                        * ⏰ **Relógio Suíço:** Aderência acima de 98%.
-                        * 🧩 **Sherlock:** Resolução (IR) acima de 90%.
+                        * ❤️ **Amado:** CSAT > 95%.
+                        * ⏰ **Relógio Suíço:** Aderência > 98%.
+                        * 🧩 **Sherlock:** Resolução (IR) > 90%.
                         * 🎯 **No Alvo:** Pontualidade 100%.
-                        * ⚡ **The Flash:** TPC dentro da meta.
+                        * ⚡ **The Flash:** TPC na Meta.
+                        * 🤖 **Ciborgue:** Interações na Meta.
                         """)
 
                 with c_gauge:
@@ -922,7 +932,7 @@ else:
             
             # --- RADAR CHART (Com proteção e Correção do Erro KeyError) ---
             media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
-            # Renomeia para evitar conflito com a coluna do usuário
+            # Renomeia para evitar colisão no merge (Correção do KeyError)
             media_equipe.rename(columns={'% Atingimento': 'Média Equipe'}, inplace=True)
             
             if not media_equipe.empty:
