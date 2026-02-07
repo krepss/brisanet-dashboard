@@ -33,7 +33,7 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
-# --- 2. CSS (DESIGN PREMIUM) ---
+# --- 2. CSS (DESIGN CORRIGIDO) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
@@ -45,6 +45,8 @@ st.markdown("""
         background-color: #002b55 !important;
         background-image: linear-gradient(180deg, #002b55 0%, #004e92 100%) !important;
     }
+    
+    /* Texto GERAL da Sidebar -> BRANCO */
     [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, 
     [data-testid="stSidebar"] p, [data-testid="stSidebar"] label, [data-testid="stSidebar"] span {
         color: #FFFFFF !important;
@@ -79,15 +81,16 @@ st.markdown("""
         border-radius: 10px;
     }
     
-    /* --- TELA DE LOGIN (ESTILO EXCLUSIVO) --- */
-    /* Estiliza o formulário de login especificamente */
+    /* --- TELA DE LOGIN (CORREÇÃO DE BOTÕES E INPUTS) --- */
+    
+    /* Card do Login */
     [data-testid="stForm"] {
         background-color: #FFFFFF !important;
         padding: 3rem 2rem !important;
         border-radius: 20px !important;
         box-shadow: 0 15px 35px rgba(0,0,0,0.1) !important;
         border: none !important;
-        border-top: 6px solid #F37021 !important; /* Laranja Sofistas */
+        border-top: 6px solid #F37021 !important;
     }
     
     /* Títulos do Login */
@@ -107,30 +110,35 @@ st.markdown("""
         margin-bottom: 25px;
     }
     
-    /* Inputs do Login */
+    /* Inputs do Login (Correção: Fundo cinza claro, sem quebrar o layout do olho da senha) */
     [data-testid="stForm"] input {
         background-color: #f8f9fa !important;
-        border: 1px solid #e9ecef !important;
-        border-radius: 8px !important;
-        padding: 10px !important;
         color: #333 !important;
+        border-radius: 8px !important;
     }
     
-    /* Botão de Login */
-    [data-testid="stForm"] button {
+    /* Botão de Login (Correção: Texto BRANCO forçado) */
+    [data-testid="stForm"] [data-testid="stBaseButton-secondary"] {
         width: 100% !important;
         background-image: linear-gradient(to right, #002b55, #004e92) !important;
         border: none !important;
-        color: white !important;
-        font-size: 1.1rem !important;
-        padding: 0.6rem !important;
         border-radius: 8px !important;
         transition: transform 0.2s !important;
+        padding-top: 10px !important;
+        padding-bottom: 10px !important;
     }
-    [data-testid="stForm"] button:hover {
+    
+    /* Força o TEXTO dentro do botão a ser branco */
+    [data-testid="stForm"] [data-testid="stBaseButton-secondary"] p {
+        color: #FFFFFF !important;
+        font-weight: bold !important;
+        font-size: 1.1rem !important;
+    }
+    
+    /* Efeito Hover do Botão */
+    [data-testid="stForm"] [data-testid="stBaseButton-secondary"]:hover {
         transform: scale(1.02) !important;
         box-shadow: 0 5px 15px rgba(0, 78, 146, 0.3) !important;
-        background-color: #F37021 !important; /* Muda levemente a cor no hover se quiser */
     }
 
     /* --- OUTROS ELEMENTOS --- */
@@ -139,10 +147,11 @@ st.markdown("""
     div.stMetric div[data-testid="stMetricValue"] { color: #003366 !important; font-size: 26px !important; font-weight: 700; }
     div.stMetric div[data-testid="stMetricDelta"] { font-size: 13px !important; }
     
-    /* Botões Padrão do Sistema (fora do login) */
+    /* Botões Padrão (Fora do Login) */
     div.stButton > button {
-        background-color: #003366; color: #FFFFFF; border-radius: 8px; font-weight: bold; border: none;
+        background-color: #003366 !important; color: #FFFFFF !important; border-radius: 8px; font-weight: bold; border: none;
     }
+    div.stButton > button p { color: #FFFFFF !important; }
     
     .update-badge {
         background-color: #e3f2fd; color: #0d47a1; padding: 5px 10px; 
@@ -487,7 +496,10 @@ if not st.session_state['logado']:
     st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
     st.stop()
 
-# --- 5. SIDEBAR ---
+# --- 5. SISTEMA LOGADO ---
+# CSS já carrega o fundo claro
+
+# --- 6. SIDEBAR ---
 lista_periodos = listar_periodos_disponiveis()
 opcoes_periodo = lista_periodos if lista_periodos else ["Nenhum histórico disponível"]
 
