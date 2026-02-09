@@ -33,7 +33,7 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
-# --- 2. CSS (DESIGN PREMIUM + CORREÇÃO FÉRIAS + LOGIN) ---
+# --- 2. CSS (DESIGN PREMIUM + CORREÇÕES) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
@@ -81,7 +81,7 @@ st.markdown("""
         border-radius: 10px;
     }
     
-    /* --- CARD DE FÉRIAS (RESTAURADO) --- */
+    /* --- CARD DE FÉRIAS --- */
     .vacation-card {
         background-color: #FFFFFF !important;
         border-left: 8px solid #00bcd4 !important;
@@ -723,7 +723,8 @@ if perfil == 'admin':
 
     with tabs[4]:
         st.markdown(f"### 💰 Relatório de Comissões")
-        if df_dados is not None:
+        if df_dados is not None and not df_dados.empty:
+            st.info("ℹ️ Regra: R$ 0,50 por Diamante. **Trava:** Conformidade >= 92%.")
             lista_comissoes = []
             df_calc = df_dados.copy()
             df_calc['Colaborador_Key'] = df_calc['Colaborador'].str.upper()
@@ -732,18 +733,23 @@ if perfil == 'admin':
                 if tem_tam:
                     row_tam = df_user[df_user['Indicador'] == 'TAM']
                     total_diamantes = row_tam.iloc[0]['Diamantes'] if not row_tam.empty else 0
-                else: total_diamantes = df_user['Diamantes'].sum()
+                else:
+                    total_diamantes = df_user['Diamantes'].sum()
                 row_conf = df_user[df_user['Indicador'] == 'CONFORMIDADE']
                 conf_val = row_conf.iloc[0]['% Atingimento'] if not row_conf.empty else 0.0
                 desconto = 0
+                obs = "✅ Elegível"
                 if conf_val < 0.92:
                     row_pont = df_user[df_user['Indicador'] == 'PONTUALIDADE']
-                    if not row_pont.empty: desconto = row_pont.iloc[0]['Diamantes']
+                    if not row_pont.empty:
+                        desconto = row_pont.iloc[0]['Diamantes'] if 'Diamantes' in row_pont.columns else 0
+                        obs = "⚠️ Penalidade (Pontualidade)"
+                    else: obs = "⚠️ Conformidade Baixa"
                 diamantes_validos = total_diamantes - desconto
                 valor_final = diamantes_validos * 0.50
-                lista_comissoes.append({"Colaborador": colab.title(), "Conformidade": conf_val, "A Pagar (R$)": valor_final})
+                lista_comissoes.append({"Colaborador": colab.title(), "Conformidade": conf_val, "Total Diamantes": int(total_diamantes), "Desconto": int(desconto), "Diamantes Líquidos": int(diamantes_validos), "A Pagar (R$)": valor_final, "Status": obs})
             df_comissao = pd.DataFrame(lista_comissoes)
-            st.dataframe(df_comissao.style.format({"Conformidade": "{:.2%}", "A Pagar (R$)": "R$ {:.2f}"}), use_container_width=True, height=600)
+            st.dataframe(df_comissao.style.format({"Conformidade": "{:.2%}", "A Pagar (R$)": "R$ {:.2f}"}).background_gradient(subset=['A Pagar (R$)'], cmap='Greens'), use_container_width=True, height=600)
             csv = df_comissao.to_csv(index=False).encode('utf-8')
             st.download_button("⬇️ Baixar CSV", csv, "comissoes.csv", "text/csv")
 
