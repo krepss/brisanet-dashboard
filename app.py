@@ -593,7 +593,7 @@ if df_dados is None and perfil == 'user':
 # --- GESTOR ---
 if perfil == 'admin':
     st.title(f"📊 Visão Gerencial")
-    tabs = st.tabs(["🚦 Semáforo", "🏆 Ranking Geral", "⏳ Evolução", "🔍 Indicadores", "💰 Comissões", "📋 Tabela Geral", "🏖️ Férias Equipe", "⚙️ Admin", "📘 Como Alimentar", "⏰ Banco de Horas"])
+    tabs = st.tabs(["🚦 Semáforo", "🏆 Ranking Geral", "⏳ Evolução", "🔍 Indicadores", "💰 Comissões", "📋 Tabela Geral", "🏖️ Férias Equipe", "⚙️ Admin", "⏰ Banco de Horas"])
     
     tem_tam = False
     if df_dados is not None: tem_tam = 'TAM' in df_dados['Indicador'].unique()
@@ -803,12 +803,9 @@ if perfil == 'admin':
                 _, log_df = carregar_dados_completo_debug()
                 st.dataframe(log_df)
 
-    with tabs[8]:
-        st.info("Instruções de alimentação aqui.")
-
-    with tabs[9]: # Banco de Horas
+    with tabs[8]: # Banco de Horas
         st.markdown("### ⏰ Análise de Folha de Ponto")
-        st.info("Faça o upload do arquivo .xlsx ou .csv do Banco de Horas para visualizar quem está com saldo negativo (Crítico) ou positivo.")
+        st.info("Faça o upload do arquivo .xlsx ou .csv do Banco de Horas.")
         
         uploaded_ponto = st.file_uploader("Carregar Planilha de Ponto", type=['xlsx', 'csv'])
         
@@ -847,7 +844,7 @@ if perfil == 'admin':
                     
                     m1, m2, m3 = st.columns(3)
                     m1.metric("🔴 Pessoas Negativas", f"{qtd_neg}")
-                    m1.metric("📉 Total Horas Devidas", formatar_saldo_decimal(total_neg))
+                    m2.metric("📉 Total Horas Devidas", formatar_saldo_decimal(total_neg))
                     m3.metric("📈 Total Horas Crédito", formatar_saldo_decimal(total_pos))
                     
                     st.markdown("---")
@@ -958,7 +955,7 @@ else:
 
                     st.write(f"**{int(total_dia_bruto)} / {int(total_max)}** Diamantes")
                     if badges: st.success(f"Conquistas: {' '.join(badges)}")
-                    
+
                     with st.expander("ℹ️ Legenda das Conquistas"):
                         st.markdown("""
                         * 🛡️ **Guardião:** 100% Conformidade.
