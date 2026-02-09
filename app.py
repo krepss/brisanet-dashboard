@@ -18,12 +18,12 @@ USUARIOS_ADMIN = ['gestor', 'admin']
 # --- DICAS AUTOMÁTICAS (SMART COACH) ---
 DICAS_KPI = {
     "ADERENCIA": "Atenção aos horários de login/logoff e pausas. Cumpra a escala rigorosamente.",
-    "CONFORMIDADE": "Aqui é o tempo de fila, evite pausas desnecessárias!",
+    "CONFORMIDADE": "Revise o script e os processos obrigatórios. Acompanhe a monitoria.",
     "INTERACOES": "Seja mais proativo durante o atendimento. Evite silêncio excessivo.",
     "PONTUALIDADE": "Evite atrasos na primeira conexão do dia. Chegue 5 min antes.",
     "CSAT": "Aposte na empatia e na escuta ativa. Confirme a resolução com o cliente.",
     "IR": "Garanta que o serviço voltou a funcionar. Faça testes finais antes de encerrar.",
-    "TPC": "Aqui é no pulo do gato, da pra recuperar é só lembrar de tabuluar no momento certo!",
+    "TPC": "Otimize a tabulação: registre informações enquanto ainda fala com o cliente.",
     "TAM": "Assuma o comando da ligação. Seja objetivo e guie o cliente para a solução."
 }
 
@@ -500,37 +500,22 @@ if 'logado' not in st.session_state:
     st.session_state.update({'logado': False, 'usuario_nome': '', 'perfil': '', 'usuario_email': ''})
 
 if not st.session_state['logado']:
-    # Cria colunas para centralizar o card no meio da tela
     c1, c2, c3 = st.columns([1, 1.2, 1]) 
-    
     with c2:
         st.markdown("<br><br>", unsafe_allow_html=True)
-        # O formulário agora está dentro de um container customizado via CSS .login-card
         with st.form("form_login"):
-            # Se tiver logo, mostra centralizada e pequena
-            if os.path.exists(LOGO_FILE):
-                st.image(LOGO_FILE, width=100)
-            
+            if os.path.exists(LOGO_FILE): st.image(LOGO_FILE, width=100)
             st.markdown('<div class="login-title">Team Sofistas</div>', unsafe_allow_html=True)
             st.markdown('<div class="login-subtitle">Analytics & Performance</div>', unsafe_allow_html=True)
-            
             st.markdown("---")
-            
             email_input = st.text_input("E-mail ou Usuário", placeholder="ex: usuario@brisanet.com.br").strip().lower()
             senha_input = st.text_input("Senha", type="password", placeholder="Obrigatório para Gestores")
-            
             st.markdown("<br>", unsafe_allow_html=True)
-            
-            # Botão ocupa toda a largura e tem estilo novo via CSS
             submit_btn = st.form_submit_button("ACESSAR SISTEMA", use_container_width=True)
-            
             if submit_btn:
-                # LOGIN GESTOR
                 if email_input in USUARIOS_ADMIN and senha_input == SENHA_ADMIN:
                     st.session_state.update({'logado': True, 'usuario_nome': 'Gestor', 'perfil': 'admin', 'usuario_email': 'admin'})
                     st.rerun()
-                
-                # LOGIN OPERADOR
                 else:
                     df_users = carregar_usuarios()
                     if df_users is not None:
@@ -539,11 +524,8 @@ if not st.session_state['logado']:
                             nome_upper = user_row.iloc[0]['nome']
                             st.session_state.update({'logado': True, 'usuario_nome': nome_upper, 'perfil': 'user', 'usuario_email': email_input})
                             st.rerun()
-                        else:
-                            st.error("🚫 Usuário não encontrado.")
-                    else:
-                        st.error("⚠️ Base de usuários não carregada.")
-    
+                        else: st.error("🚫 Usuário não encontrado.")
+                    else: st.error("⚠️ Base de usuários não carregada.")
     st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
     st.stop()
 
@@ -557,7 +539,6 @@ with st.sidebar:
     st.caption("Performance Analytics")
     st.markdown("---")
     periodo_selecionado = st.selectbox("📅 Mês de Referência:", opcoes_periodo)
-    
     if periodo_selecionado == "Nenhum histórico disponível":
         df_raw = None
         periodo_label = "Aguardando Upload"
@@ -567,15 +548,12 @@ with st.sidebar:
             df_raw = df_hist_full[df_hist_full['Periodo'] == periodo_selecionado].copy()
         else: df_raw = None
         periodo_label = periodo_selecionado
-    
     df_users_cadastrados = carregar_usuarios()
     if df_raw is not None and not df_raw.empty:
         df_dados = filtrar_por_usuarios_cadastrados(df_raw, df_users_cadastrados)
         if df_dados is not None and not df_dados.empty:
             df_dados['Colaborador'] = df_dados['Colaborador'].str.title()
-    else:
-        df_dados = None
-    
+    else: df_dados = None
     st.markdown("---")
     nome_logado = st.session_state['usuario_nome'].title() if st.session_state['usuario_nome'] != 'Gestor' else 'Gestor'
     st.markdown(f"### 👤 {nome_logado.split()[0]}")
@@ -610,8 +588,6 @@ if perfil == 'admin':
             c2.metric("🟢 Meta Batida", f"{qtd_amarelo}", delta="80-90%", delta_color="off")
             c3.metric("🔴 Crítico", f"{qtd_vermelho}", delta="<80%", delta_color="inverse")
             st.markdown("---")
-            
-            # --- NOVO: GERADOR DE FEEDBACK ---
             st.subheader("💬 Gerador de Feedback (1:1)")
             colab_feedback = st.selectbox("Selecione para análise:", sorted(df_dados['Colaborador'].unique()), key="sb_feedback")
             if colab_feedback:
@@ -630,16 +606,10 @@ if perfil == 'admin':
                         </ul>
                     </div>""", unsafe_allow_html=True)
             st.markdown("---")
-            
             df_dados['Status_Farol'] = df_dados['% Atingimento'].apply(classificar_farol)
-            fig_farol = px.bar(df_dados.groupby(['Indicador', 'Status_Farol']).size().reset_index(name='Qtd'), 
-                               x='Indicador', y='Qtd', color='Status_Farol', text='Qtd',
-                               color_discrete_map={'💎 Excelência': '#003366', '🟢 Meta Batida': '#2ecc71', '🔴 Crítico': '#e74c3c'})
+            fig_farol = px.bar(df_dados.groupby(['Indicador', 'Status_Farol']).size().reset_index(name='Qtd'), x='Indicador', y='Qtd', color='Status_Farol', text='Qtd', color_discrete_map={'💎 Excelência': '#003366', '🟢 Meta Batida': '#2ecc71', '🔴 Crítico': '#e74c3c'})
             st.plotly_chart(fig_farol, use_container_width=True)
-            
             st.markdown("---")
-
-            # --- PERFORMANCE GLOBAL (VELOCÍMETRO) REINSERIDO ---
             st.markdown("### 🦁 Performance Global da Equipe")
             remove_pont = st.checkbox("Remover Pontualidade do Cálculo Global", value=False)
             total_dia_team = 0
@@ -659,20 +629,9 @@ if perfil == 'admin':
                 total_dia_team = df_calc_team['Diamantes'].sum()
                 total_max_team = df_calc_team['Max. Diamantes'].sum()
             perc_team = (total_dia_team / total_max_team) if total_max_team > 0 else 0
-            fig_team = go.Figure(go.Indicator(
-                mode = "gauge+number",
-                value = perc_team * 100,
-                domain = {'x': [0, 1], 'y': [0, 1]},
-                gauge = {
-                    'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': 'white'},
-                    'bar': {'color': "#003366"},
-                    'steps': [{'range': [0, 80], 'color': '#ffcccb'},{'range': [80, 90], 'color': '#fff4cc'},{'range': [90, 100], 'color': '#d9f7be'}],
-                    'threshold': {'line': {'color': "red", 'width': 4}, 'thickness': 0.75, 'value': 100}
-                }
-            ))
+            fig_team = go.Figure(go.Indicator(mode = "gauge+number", value = perc_team * 100, domain = {'x': [0, 1], 'y': [0, 1]}, gauge = {'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': 'white'}, 'bar': {'color': "#003366"}, 'steps': [{'range': [0, 80], 'color': '#ffcccb'},{'range': [80, 90], 'color': '#fff4cc'},{'range': [90, 100], 'color': '#d9f7be'}], 'threshold': {'line': {'color': "red", 'width': 4}, 'thickness': 0.75, 'value': 100}}))
             fig_team.update_layout(height=250, margin=dict(l=20, r=20, t=30, b=20))
             st.plotly_chart(fig_team, use_container_width=True)
-
             st.markdown("---")
             st.subheader("📋 Atenção Prioritária")
             df_atencao = df_media_pessoas[df_media_pessoas['% Atingimento'] < 0.80].sort_values(by='% Atingimento')
@@ -794,10 +753,32 @@ if perfil == 'admin':
                     st.rerun()
                 else: st.error("Erro ao processar arquivos.")
         with st2:
-            st.write("Gerencie o histórico aqui.")
-            if st.button("Limpar Histórico Completo"):
+            st.markdown("#### 🗑️ Gerenciar Meses no Sistema")
+            df_atual_hist = carregar_historico_completo()
+            if df_atual_hist is not None and not df_atual_hist.empty:
+                resumo = df_atual_hist.groupby('Periodo').size().reset_index(name='Registros')
+                for i, row in resumo.iterrows():
+                    c1, c2, c3 = st.columns([2, 1, 1])
+                    c1.write(f"📅 **{row['Periodo']}**")
+                    c2.write(f"{row['Registros']} linhas")
+                    if c3.button(f"Excluir {row['Periodo']}", key=f"del_{i}"):
+                        if excluir_periodo_historico(row['Periodo']):
+                            st.success(f"Mês {row['Periodo']} excluído!")
+                            time.sleep(1)
+                            st.rerun()
+            else: st.info("Histórico vazio.")
+            st.divider()
+            if st.button("🔥 Limpar TUDO (Reset Completo)", type="primary"):
                 limpar_base_dados_completa()
-                st.success("Limpo!")
+                st.success("Base limpa!")
+                time.sleep(1)
+                st.rerun()
+        with st3:
+            st.markdown("#### 💾 Backup de Segurança")
+            if os.path.exists('historico_consolidado.csv'):
+                with open('historico_consolidado.csv', 'rb') as f:
+                    st.download_button(label="⬇️ Baixar Histórico Completo (CSV)", data=f, file_name="historico_consolidado_backup.csv", mime="text/csv")
+            else: st.warning("⚠️ Nenhum histórico consolidado encontrado para backup.")
         with st4:
             if st.button("Rodar Diagnóstico"):
                 _, log_df = carregar_dados_completo_debug()
@@ -806,73 +787,36 @@ if perfil == 'admin':
     with tabs[8]: # Banco de Horas
         st.markdown("### ⏰ Análise de Folha de Ponto")
         st.info("Faça o upload do arquivo .xlsx ou .csv do Banco de Horas.")
-        
         uploaded_ponto = st.file_uploader("Carregar Planilha de Ponto", type=['xlsx', 'csv'])
-        
         if uploaded_ponto is not None:
             try:
-                # Tenta ler como Excel primeiro (skiprows 4 conforme a estrutura enviada)
-                if uploaded_ponto.name.endswith('.xlsx'):
-                    df_ponto = pd.read_excel(uploaded_ponto, skiprows=4)
-                else:
-                    # Se for CSV
-                    df_ponto = pd.read_csv(uploaded_ponto, skiprows=4)
-                
-                # Procura colunas chave
+                if uploaded_ponto.name.endswith('.xlsx'): df_ponto = pd.read_excel(uploaded_ponto, skiprows=4)
+                else: df_ponto = pd.read_csv(uploaded_ponto, skiprows=4)
                 col_nome = None
                 col_saldo = None
-                
                 for c in df_ponto.columns:
                     if "Nome" in str(c): col_nome = c
                     if "Total Banco" in str(c) or "Saldo Atual" in str(c): col_saldo = c
-                
                 if col_nome and col_saldo:
-                    # Processar os dados
                     df_ponto = df_ponto[[col_nome, col_saldo]].dropna()
                     df_ponto.rename(columns={col_nome: 'Colaborador', col_saldo: 'Saldo String'}, inplace=True)
-                    
-                    # Converter horas string para float
                     df_ponto['Saldo (h)'] = df_ponto['Saldo String'].apply(converter_hora_para_float)
-                    
-                    # Classificação
                     df_ponto['Status'] = df_ponto['Saldo (h)'].apply(lambda x: '🔴 Crítico (Negativo)' if x < 0 else '🟢 Positivo')
-                    
-                    # Métricas
                     total_neg = df_ponto[df_ponto['Saldo (h)'] < 0]['Saldo (h)'].sum()
                     total_pos = df_ponto[df_ponto['Saldo (h)'] > 0]['Saldo (h)'].sum()
                     qtd_neg = len(df_ponto[df_ponto['Saldo (h)'] < 0])
-                    
                     m1, m2, m3 = st.columns(3)
                     m1.metric("🔴 Pessoas Negativas", f"{qtd_neg}")
                     m2.metric("📉 Total Horas Devidas", formatar_saldo_decimal(total_neg))
                     m3.metric("📈 Total Horas Crédito", formatar_saldo_decimal(total_pos))
-                    
                     st.markdown("---")
-                    
-                    # Gráfico
-                    fig_ponto = px.bar(
-                        df_ponto.sort_values(by='Saldo (h)'), 
-                        x='Saldo (h)', 
-                        y='Colaborador', 
-                        orientation='h',
-                        color='Status',
-                        color_discrete_map={'🔴 Crítico (Negativo)': '#e74c3c', '🟢 Positivo': '#2ecc71'},
-                        text='Saldo String',
-                        title="Saldo de Banco de Horas por Colaborador"
-                    )
+                    fig_ponto = px.bar(df_ponto.sort_values(by='Saldo (h)'), x='Saldo (h)', y='Colaborador', orientation='h', color='Status', color_discrete_map={'🔴 Crítico (Negativo)': '#e74c3c', '🟢 Positivo': '#2ecc71'}, text='Saldo String')
                     fig_ponto.update_layout(height=600)
                     st.plotly_chart(fig_ponto, use_container_width=True)
-                    
-                    # Tabela
                     st.markdown("#### Detalhamento")
                     st.dataframe(df_ponto.style.background_gradient(subset=['Saldo (h)'], cmap='RdYlGn'), use_container_width=True)
-                    
-                else:
-                    st.error("Não foi possível identificar as colunas 'Nome' e 'Total Banco' no arquivo.")
-                    st.write("Colunas encontradas:", df_ponto.columns.tolist())
-                    
-            except Exception as e:
-                st.error(f"Erro ao processar arquivo: {e}")
+                else: st.error("Não foi possível identificar colunas 'Nome' e 'Total Banco'.")
+            except Exception as e: st.error(f"Erro: {e}")
 
 # --- VISÃO OPERADOR ---
 else:
