@@ -33,7 +33,7 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
-# --- 2. CSS (DESIGN PREMIUM + CORREÇÃO FÉRIAS + LOGIN) ---
+# --- 2. CSS ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
@@ -81,7 +81,7 @@ st.markdown("""
         border-radius: 10px;
     }
     
-    /* --- CARD DE FÉRIAS (RESTAURADO) --- */
+    /* --- CARD DE FÉRIAS --- */
     .vacation-card {
         background-color: #FFFFFF !important;
         border-left: 8px solid #00bcd4 !important;
@@ -221,6 +221,21 @@ def converter_hora_para_float(valor):
         return 0.0
     except:
         return 0.0
+
+# --- FORMATAÇÃO DE HORAS (Float -> String HH:MM) ---
+def formatar_saldo_decimal(valor_float):
+    try:
+        sinal = "+" if valor_float >= 0 else "-"
+        valor_abs = abs(valor_float)
+        horas = int(valor_abs)
+        minutos = int(round((valor_abs - horas) * 60))
+        # Ajuste caso o arredondamento de minutos dê 60
+        if minutos == 60:
+            horas += 1
+            minutos = 0
+        return f"{sinal}{horas:02d}:{minutos:02d}"
+    except:
+        return "00:00"
 
 def tentar_extrair_data_csv(df):
     colunas_possiveis = ['data', 'date', 'periodo', 'mês', 'mes', 'competencia', 'ref']
@@ -533,7 +548,10 @@ if not st.session_state['logado']:
     st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
     st.stop()
 
-# --- 5. SIDEBAR ---
+# --- 5. SISTEMA LOGADO ---
+# CSS já carrega o fundo claro
+
+# --- 6. SIDEBAR ---
 lista_periodos = listar_periodos_disponiveis()
 opcoes_periodo = lista_periodos if lista_periodos else ["Nenhum histórico disponível"]
 
@@ -597,7 +615,7 @@ if perfil == 'admin':
             c3.metric("🔴 Crítico", f"{qtd_vermelho}", delta="<80%", delta_color="inverse")
             st.markdown("---")
             
-            # --- GERADOR DE FEEDBACK ---
+            # --- NOVO: GERADOR DE FEEDBACK ---
             st.subheader("💬 Gerador de Feedback (1:1)")
             colab_feedback = st.selectbox("Selecione para análise:", sorted(df_dados['Colaborador'].unique()), key="sb_feedback")
             if colab_feedback:
@@ -617,7 +635,6 @@ if perfil == 'admin':
                     </div>""", unsafe_allow_html=True)
             st.markdown("---")
             
-            # --- GRÁFICO FAROL ---
             df_dados['Status_Farol'] = df_dados['% Atingimento'].apply(classificar_farol)
             fig_farol = px.bar(df_dados.groupby(['Indicador', 'Status_Farol']).size().reset_index(name='Qtd'), 
                                x='Indicador', y='Qtd', color='Status_Farol', text='Qtd',
@@ -789,7 +806,7 @@ if perfil == 'admin':
 
     with tabs[9]: # Banco de Horas
         st.markdown("### ⏰ Análise de Folha de Ponto")
-        st.info("Faça o upload do arquivo .xlsx ou .csv do Banco de Horas para visualizar quem está com saldo negativo (Crítico) ou positivo.")
+        st.info("Faça o upload do arquivo .xlsx ou .csv do Banco de Horas.")
         
         uploaded_ponto = st.file_uploader("Carregar Planilha de Ponto", type=['xlsx', 'csv'])
         
@@ -828,8 +845,8 @@ if perfil == 'admin':
                     
                     m1, m2, m3 = st.columns(3)
                     m1.metric("🔴 Pessoas Negativas", f"{qtd_neg}")
-                    m1.metric("📉 Total Horas Devidas", f"{total_neg:.2f}h")
-                    m3.metric("📈 Total Horas Crédito", f"{total_pos:.2f}h")
+                    m2.metric("📉 Total Horas Devidas", formatar_saldo_decimal(total_neg))
+                    m3.metric("📈 Total Horas Crédito", formatar_saldo_decimal(total_pos))
                     
                     st.markdown("---")
                     
@@ -1021,9 +1038,9 @@ else:
 
             st.markdown("---")
             
-            # --- RADAR CHART ---
+            # --- RADAR CHART (Com proteção e Correção do Erro KeyError) ---
             media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
-            # Renomeia para evitar colisão
+            # Renomeia para evitar colisão no merge (Correção do KeyError)
             media_equipe.rename(columns={'% Atingimento': 'Média Equipe'}, inplace=True)
             
             if not media_equipe.empty:
