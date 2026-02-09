@@ -18,12 +18,12 @@ USUARIOS_ADMIN = ['gestor', 'admin']
 # --- DICAS AUTOMÁTICAS (SMART COACH) ---
 DICAS_KPI = {
     "ADERENCIA": "Atenção aos horários de login/logoff e pausas. Cumpra a escala rigorosamente.",
-    "CONFORMIDADE": "Aqui é o tempo de fila, evite pausas desnecessárias!",
+    "CONFORMIDADE": "Revise o script e os processos obrigatórios. Acompanhe a monitoria.",
     "INTERACOES": "Seja mais proativo durante o atendimento. Evite silêncio excessivo.",
     "PONTUALIDADE": "Evite atrasos na primeira conexão do dia. Chegue 5 min antes.",
     "CSAT": "Aposte na empatia e na escuta ativa. Confirme a resolução com o cliente.",
     "IR": "Garanta que o serviço voltou a funcionar. Faça testes finais antes de encerrar.",
-    "TPC": "Aqui é no pulo do gato, da pra recuperar é só lembrar de tabuluar no momento certo!",
+    "TPC": "Otimize a tabulação: registre informações enquanto ainda fala com o cliente.",
     "TAM": "Assuma o comando da ligação. Seja objetivo e guie o cliente para a solução."
 }
 
@@ -565,14 +565,21 @@ with st.sidebar:
         df_hist_full = carregar_historico_completo()
         if df_hist_full is not None:
             df_raw = df_hist_full[df_hist_full['Periodo'] == periodo_selecionado].copy()
-        else: df_raw = None
+            
+            # --- FILTRO CRÍTICO (AQUI) ---
+            # Garante que o histórico também respeite a lista de usuários ativos
+            df_users_cadastrados = carregar_usuarios()
+            if df_raw is not None and not df_raw.empty:
+                df_raw = filtrar_por_usuarios_cadastrados(df_raw, df_users_cadastrados)
+        else: 
+            df_raw = None
         periodo_label = periodo_selecionado
     
+    # Recarrega usuários para usar no resto do app
     df_users_cadastrados = carregar_usuarios()
     if df_raw is not None and not df_raw.empty:
-        df_dados = filtrar_por_usuarios_cadastrados(df_raw, df_users_cadastrados)
-        if df_dados is not None and not df_dados.empty:
-            df_dados['Colaborador'] = df_dados['Colaborador'].str.title()
+        df_dados = df_raw.copy()
+        df_dados['Colaborador'] = df_dados['Colaborador'].str.title()
     else:
         df_dados = None
     
@@ -639,7 +646,7 @@ if perfil == 'admin':
             
             st.markdown("---")
 
-            # --- PERFORMANCE GLOBAL (VELOCÍMETRO) ---
+            # --- PERFORMANCE GLOBAL (VELOCÍMETRO) REINSERIDO ---
             st.markdown("### 🦁 Performance Global da Equipe")
             remove_pont = st.checkbox("Remover Pontualidade do Cálculo Global", value=False)
             total_dia_team = 0
@@ -692,22 +699,35 @@ if perfil == 'admin':
         st.markdown(f"### 🏆 Ranking Geral (Consolidado)")
         if df_dados is not None:
             if tem_tam: df_rank = df_dados[df_dados['Indicador'] == 'TAM'].copy()
-            else: df_rank = df_dados.groupby('Colaborador').agg({'Diamantes':'sum', 'Max. Diamantes':'sum'}).reset_index()
-            df_rank['%'] = df_rank.apply(lambda x: x['Diamantes']/x['Max. Diamantes'] if x['Max. Diamantes']>0 else 0, axis=1)
-            st.dataframe(df_rank.sort_values(by='%', ascending=False).style.format({'%': '{:.2%}'}), use_container_width=True)
+            else:
+                 df_rank = df_dados.groupby('Colaborador').agg({'Diamantes': 'sum', 'Max. Diamantes': 'sum'}).reset_index()
+                 df_rank['% Atingimento'] = df_rank.apply(lambda row: (row['Diamantes'] / row['Max. Diamantes']) if row['Max. Diamantes'] > 0 else 0, axis=1)
+            df_rank = df_rank.sort_values(by='% Atingimento', ascending=False)
+            cols_show = ['Colaborador', 'Diamantes', 'Max. Diamantes', '% Atingimento']
+            st.dataframe(df_rank[cols_show].style.format({'Diamantes': '{:.0f}', 'Max. Diamantes': '{:.0f}', '% Atingimento': '{:.2%}'}).background_gradient(subset=['% Atingimento'], cmap='RdYlGn'), use_container_width=True, height=600)
 
     with tabs[2]:
         st.markdown("### ⏳ Evolução Temporal")
+        # --- CORREÇÃO: Aplica filtro de usuários também no histórico ---
         df_hist = carregar_historico_completo()
         if df_hist is not None:
+            if df_users_cadastrados is not None:
+                df_hist = filtrar_por_usuarios_cadastrados(df_hist, df_users_cadastrados)
+                
             df_hist['Colaborador'] = df_hist['Colaborador'].str.title()
-            colab_sel = st.selectbox("Selecione o Colaborador:", sorted(df_hist['Colaborador'].unique()))
-            df_hist_user = df_hist[df_hist['Colaborador'] == colab_sel].copy()
-            if not df_hist_user.empty:
-                df_hist_user['Indicador'] = df_hist_user['Indicador'].apply(formatar_nome_visual)
-                fig_heat = px.density_heatmap(df_hist_user, x="Periodo", y="Indicador", z="% Atingimento", text_auto=False, title=f"Mapa de Calor: {colab_sel}", color_continuous_scale="RdYlGn", range_color=[0.6, 1.0])
-                fig_heat.update_traces(texttemplate="%{z:.1%}", textfont={"size":12})
-                st.plotly_chart(fig_heat, use_container_width=True)
+            # Ordena lista para não quebrar o selectbox
+            lista_colabs = sorted(df_hist['Colaborador'].unique())
+            if lista_colabs:
+                colab_sel = st.selectbox("Selecione o Colaborador:", lista_colabs)
+                df_hist_user = df_hist[df_hist['Colaborador'] == colab_sel].copy()
+                if not df_hist_user.empty:
+                    df_hist_user['Indicador'] = df_hist_user['Indicador'].apply(formatar_nome_visual)
+                    fig_heat = px.density_heatmap(df_hist_user, x="Periodo", y="Indicador", z="% Atingimento", text_auto=False, title=f"Mapa de Calor: {colab_sel}", color_continuous_scale="RdYlGn", range_color=[0.6, 1.0])
+                    fig_heat.update_traces(texttemplate="%{z:.1%}", textfont={"size":12})
+                    st.plotly_chart(fig_heat, use_container_width=True)
+                else: st.warning("Sem dados para este colaborador.")
+            else: st.warning("Nenhum colaborador encontrado no histórico.")
+        else: st.info("Histórico vazio.")
 
     with tabs[3]:
         if df_dados is not None:
@@ -717,8 +737,8 @@ if perfil == 'admin':
             for kpi in sorted(df_viz['Indicador'].unique()):
                 with st.expander(f"📊 Ranking: {kpi}"):
                     df_kpi = df_viz[df_viz['Indicador'] == kpi].sort_values(by='% Atingimento', ascending=True)
-                    fig_rank = px.bar(df_kpi, x='% Atingimento', y='Colaborador', orientation='h', text_auto='.1%', color='% Atingimento', color_continuous_scale=['#e74c3c', '#f1c40f', '#2ecc71'])
-                    fig_rank.add_vline(x=0.8, line_dash="dash", line_color="black")
+                    fig_rank = px.bar(df_kpi, x='% Atingimento', y='Colaborador', orientation='h', text_auto='.1%', title=f"Ranking - {kpi}", color='% Atingimento', color_continuous_scale=['#e74c3c', '#f1c40f', '#2ecc71'])
+                    fig_rank.add_vline(x=0.8, line_dash="dash", line_color="black", annotation_text="Meta 80%")
                     st.plotly_chart(fig_rank, use_container_width=True)
 
     with tabs[4]:
@@ -850,33 +870,76 @@ if perfil == 'admin':
         uploaded_ponto = st.file_uploader("Carregar Planilha de Ponto", type=['xlsx', 'csv'])
         if uploaded_ponto is not None:
             try:
-                if uploaded_ponto.name.endswith('.xlsx'): df_ponto = pd.read_excel(uploaded_ponto, skiprows=4)
-                else: df_ponto = pd.read_csv(uploaded_ponto, skiprows=4)
+                # Tenta ler como Excel primeiro (skiprows 4 conforme a estrutura enviada)
+                if uploaded_ponto.name.endswith('.xlsx'):
+                    df_ponto = pd.read_excel(uploaded_ponto, skiprows=4)
+                else:
+                    # Se for CSV
+                    df_ponto = pd.read_csv(uploaded_ponto, skiprows=4)
+                
+                # Procura colunas chave
                 col_nome = None
                 col_saldo = None
+                
                 for c in df_ponto.columns:
                     if "Nome" in str(c): col_nome = c
                     if "Total Banco" in str(c) or "Saldo Atual" in str(c): col_saldo = c
+                
                 if col_nome and col_saldo:
+                    # Processar os dados
                     df_ponto = df_ponto[[col_nome, col_saldo]].dropna()
                     df_ponto.rename(columns={col_nome: 'Colaborador', col_saldo: 'Saldo String'}, inplace=True)
+                    
+                    # --- CORREÇÃO: FILTRA POR USUÁRIOS ATIVOS (REMOVE DEMITIDOS) ---
+                    if df_users_cadastrados is not None:
+                        df_ponto['TEMP_NOME_NORM'] = df_ponto['Colaborador'].apply(normalizar_chave)
+                        lista_ativos = df_users_cadastrados['nome'].unique()
+                        df_ponto = df_ponto[df_ponto['TEMP_NOME_NORM'].isin(lista_ativos)]
+                        df_ponto.drop(columns=['TEMP_NOME_NORM'], inplace=True)
+                    # -------------------------------------------------------------
+
+                    # Converter horas string para float
                     df_ponto['Saldo (h)'] = df_ponto['Saldo String'].apply(converter_hora_para_float)
+                    
+                    # Classificação
                     df_ponto['Status'] = df_ponto['Saldo (h)'].apply(lambda x: '🔴 Crítico (Negativo)' if x < 0 else '🟢 Positivo')
+                    
+                    # Métricas
                     total_neg = df_ponto[df_ponto['Saldo (h)'] < 0]['Saldo (h)'].sum()
                     total_pos = df_ponto[df_ponto['Saldo (h)'] > 0]['Saldo (h)'].sum()
                     qtd_neg = len(df_ponto[df_ponto['Saldo (h)'] < 0])
+                    
                     m1, m2, m3 = st.columns(3)
                     m1.metric("🔴 Pessoas Negativas", f"{qtd_neg}")
                     m2.metric("📉 Total Horas Devidas", formatar_saldo_decimal(total_neg))
                     m3.metric("📈 Total Horas Crédito", formatar_saldo_decimal(total_pos))
+                    
                     st.markdown("---")
-                    fig_ponto = px.bar(df_ponto.sort_values(by='Saldo (h)'), x='Saldo (h)', y='Colaborador', orientation='h', color='Status', color_discrete_map={'🔴 Crítico (Negativo)': '#e74c3c', '🟢 Positivo': '#2ecc71'}, text='Saldo String')
+                    
+                    # Gráfico
+                    fig_ponto = px.bar(
+                        df_ponto.sort_values(by='Saldo (h)'), 
+                        x='Saldo (h)', 
+                        y='Colaborador', 
+                        orientation='h',
+                        color='Status',
+                        color_discrete_map={'🔴 Crítico (Negativo)': '#e74c3c', '🟢 Positivo': '#2ecc71'},
+                        text='Saldo String',
+                        title="Saldo de Banco de Horas por Colaborador"
+                    )
                     fig_ponto.update_layout(height=600)
                     st.plotly_chart(fig_ponto, use_container_width=True)
+                    
+                    # Tabela
                     st.markdown("#### Detalhamento")
                     st.dataframe(df_ponto.style.background_gradient(subset=['Saldo (h)'], cmap='RdYlGn'), use_container_width=True)
-                else: st.error("Não foi possível identificar colunas 'Nome' e 'Total Banco'.")
-            except Exception as e: st.error(f"Erro: {e}")
+                    
+                else:
+                    st.error("Não foi possível identificar as colunas 'Nome' e 'Total Banco' no arquivo.")
+                    st.write("Colunas encontradas:", df_ponto.columns.tolist())
+                    
+            except Exception as e:
+                st.error(f"Erro ao processar arquivo: {e}")
 
 # --- VISÃO OPERADOR ---
 else:
