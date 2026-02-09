@@ -18,12 +18,12 @@ USUARIOS_ADMIN = ['gestor', 'admin']
 # --- DICAS AUTOMÁTICAS (SMART COACH) ---
 DICAS_KPI = {
     "ADERENCIA": "Atenção aos horários de login/logoff e pausas. Cumpra a escala rigorosamente.",
-    "CONFORMIDADE": "Aqui é o tempo de fila, evite pausas desnecessárias!",
+    "CONFORMIDADE": "Revise o script e os processos obrigatórios. Acompanhe a monitoria.",
     "INTERACOES": "Seja mais proativo durante o atendimento. Evite silêncio excessivo.",
     "PONTUALIDADE": "Evite atrasos na primeira conexão do dia. Chegue 5 min antes.",
     "CSAT": "Aposte na empatia e na escuta ativa. Confirme a resolução com o cliente.",
     "IR": "Garanta que o serviço voltou a funcionar. Faça testes finais antes de encerrar.",
-    "TPC": "Aqui é no pulo do gato, da pra recuperar é só lembrar de tabuluar no momento certo!",
+    "TPC": "Otimize a tabulação: registre informações enquanto ainda fala com o cliente.",
     "TAM": "Assuma o comando da ligação. Seja objetivo e guie o cliente para a solução."
 }
 
@@ -33,7 +33,7 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
-# --- 2. CSS (DESIGN PREMIUM + BOTÃO SAIR VERMELHO) ---
+# --- 2. CSS (DESIGN PREMIUM + CORREÇÕES DE BOTÕES) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
@@ -179,7 +179,19 @@ st.markdown("""
         font-weight: bold; 
         border: none;
     }
+    div.stButton > button p { color: #FFFFFF !important; }
     
+    /* --- CORREÇÃO DO BOTÃO DE UPLOAD (Browse Files) --- */
+    /* Força o botão de upload a ter fundo azul e texto branco para ser legível */
+    [data-testid="stFileUploader"] button {
+        background-color: #003366 !important;
+        color: #FFFFFF !important;
+        border: none !important;
+    }
+    [data-testid="stFileUploader"] button:hover {
+        background-color: #F37021 !important;
+    }
+
     div.stMetric { border: 1px solid #e0e0e0; border-left: 5px solid #F37021; padding: 10px 15px !important; }
     div.stMetric label { color: #666 !important; font-size: 14px !important; }
     div.stMetric div[data-testid="stMetricValue"] { color: #003366 !important; font-size: 26px !important; font-weight: 700; }
@@ -515,37 +527,26 @@ if 'logado' not in st.session_state:
     st.session_state.update({'logado': False, 'usuario_nome': '', 'perfil': '', 'usuario_email': ''})
 
 if not st.session_state['logado']:
-    # Cria colunas para centralizar o card no meio da tela
     c1, c2, c3 = st.columns([1, 1.2, 1]) 
     
     with c2:
         st.markdown("<br><br>", unsafe_allow_html=True)
-        # O formulário agora está dentro de um container customizado via CSS .login-card
         with st.form("form_login"):
-            # Se tiver logo, mostra centralizada e pequena
             if os.path.exists(LOGO_FILE):
                 st.image(LOGO_FILE, width=100)
             
             st.markdown('<div class="login-title">Team Sofistas</div>', unsafe_allow_html=True)
             st.markdown('<div class="login-subtitle">Analytics & Performance</div>', unsafe_allow_html=True)
-            
             st.markdown("---")
-            
             email_input = st.text_input("E-mail ou Usuário", placeholder="ex: usuario@brisanet.com.br").strip().lower()
             senha_input = st.text_input("Senha", type="password", placeholder="Obrigatório para Gestores")
-            
             st.markdown("<br>", unsafe_allow_html=True)
-            
-            # Botão ocupa toda a largura e tem estilo novo via CSS
             submit_btn = st.form_submit_button("ACESSAR SISTEMA", use_container_width=True)
             
             if submit_btn:
-                # LOGIN GESTOR
                 if email_input in USUARIOS_ADMIN and senha_input == SENHA_ADMIN:
                     st.session_state.update({'logado': True, 'usuario_nome': 'Gestor', 'perfil': 'admin', 'usuario_email': 'admin'})
                     st.rerun()
-                
-                # LOGIN OPERADOR
                 else:
                     df_users = carregar_usuarios()
                     if df_users is not None:
@@ -580,7 +581,6 @@ with st.sidebar:
         df_hist_full = carregar_historico_completo()
         if df_hist_full is not None:
             df_raw = df_hist_full[df_hist_full['Periodo'] == periodo_selecionado].copy()
-            # Filtro de segurança: Remove demitidos do histórico
             df_users_cadastrados = carregar_usuarios()
             if df_raw is not None and not df_raw.empty:
                 df_raw = filtrar_por_usuarios_cadastrados(df_raw, df_users_cadastrados)
@@ -591,14 +591,16 @@ with st.sidebar:
     if df_raw is not None and not df_raw.empty:
         df_dados = df_raw.copy()
         df_dados['Colaborador'] = df_dados['Colaborador'].str.title()
-    else: df_dados = None
-    
-    # STATUS DOS USUÁRIOS
-    if df_users_cadastrados is not None:
-        qtd_ativos = len(df_users_cadastrados)
-        st.sidebar.caption(f"👥 Usuários Ativos: **{qtd_ativos}**")
     else:
-        st.sidebar.warning("⚠️ Usuários não carregados")
+        df_dados = None
+    
+    # STATUS DOS USUÁRIOS (APENAS PARA ADMIN)
+    if st.session_state['perfil'] == 'admin':
+        if df_users_cadastrados is not None:
+            qtd_ativos = len(df_users_cadastrados)
+            st.sidebar.caption(f"👥 Usuários Ativos: **{qtd_ativos}**")
+        else:
+            st.sidebar.warning("⚠️ Usuários não carregados")
 
     st.markdown("---")
     nome_logado = st.session_state['usuario_nome'].title() if st.session_state['usuario_nome'] != 'Gestor' else 'Gestor'
@@ -654,12 +656,12 @@ if perfil == 'admin':
                     </div>""", unsafe_allow_html=True)
             st.markdown("---")
             
-            # FAROL
             df_dados['Status_Farol'] = df_dados['% Atingimento'].apply(classificar_farol)
             fig_farol = px.bar(df_dados.groupby(['Indicador', 'Status_Farol']).size().reset_index(name='Qtd'), 
                                x='Indicador', y='Qtd', color='Status_Farol', text='Qtd',
                                color_discrete_map={'💎 Excelência': '#003366', '🟢 Meta Batida': '#2ecc71', '🔴 Crítico': '#e74c3c'})
             st.plotly_chart(fig_farol, use_container_width=True)
+            
             st.markdown("---")
 
             # VELOCÍMETRO
@@ -721,7 +723,6 @@ if perfil == 'admin':
 
     with tabs[2]:
         st.markdown("### ⏳ Evolução Temporal")
-        # --- FILTRO CRÍTICO ---
         df_hist = carregar_historico_completo()
         if df_hist is not None:
             if df_users_cadastrados is not None:
@@ -854,10 +855,13 @@ if perfil == 'admin':
                             else: lista_diag.append({"Arquivo": f.name, "Status": "❌ Erro", "Detalhe": msg})
                     except Exception as e: lista_diag.append({"Arquivo": f.name, "Status": "❌ Erro", "Detalhe": str(e)})
                 st.dataframe(pd.DataFrame(lista_diag))
-                if st.button("Salvar Tudo"):
+                if st.button("💾 Salvar e Atualizar Histórico"): 
+                    if not nova_data.strip():
+                        st.error("⚠️ O campo 'Mês/Ano' não pode estar vazio!")
+                        st.stop()
                     try:
                         faxina_arquivos_temporarios()
-                        salvar_arquivos_padronizados(up_k)
+                        salvos = salvar_arquivos_padronizados(up_k)
                         salvar_config(nova_data)
                         df_debug, log = carregar_dados_completo_debug() 
                         if df_debug is not None:
@@ -996,18 +1000,25 @@ else:
                     st.progress(resultado_global if resultado_global <= 1.0 else 1.0)
                     # --- BADGES (MEDALHAS) EXPANDIDAS ---
                     badges = []
+                    # 1. Guardião (Conformidade)
                     if not meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE'].iloc[0]['% Atingimento'] >= 1.0: badges.append("🛡️ Guardião")
+                    # 2. Amado (CSAT)
                     if not meus_dados[meus_dados['Indicador'] == 'CSAT'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'CSAT'].iloc[0]['% Atingimento'] >= 0.95: badges.append("❤️ Amado")
+                    # 3. Relógio Suíço (Aderência)
                     if not meus_dados[meus_dados['Indicador'] == 'ADERENCIA'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'ADERENCIA'].iloc[0]['% Atingimento'] >= 0.98: badges.append("⏰ Relógio Suíço")
+                    # 4. Sherlock (Resolução/IR)
                     if not meus_dados[meus_dados['Indicador'] == 'IR'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'IR'].iloc[0]['% Atingimento'] >= 0.90: badges.append("🧩 Sherlock")
+                    # 5. No Alvo (Pontualidade)
                     if not meus_dados[meus_dados['Indicador'] == 'PONTUALIDADE'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'PONTUALIDADE'].iloc[0]['% Atingimento'] >= 1.0: badges.append("🎯 No Alvo")
+                    # 6. The Flash (TPC)
                     if not meus_dados[meus_dados['Indicador'] == 'TPC'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'TPC'].iloc[0]['% Atingimento'] >= 1.0: badges.append("⚡ The Flash")
+                    # 7. Ciborgue (Interações)
                     if not meus_dados[meus_dados['Indicador'] == 'INTERACOES'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'INTERACOES'].iloc[0]['% Atingimento'] >= 1.0: badges.append("🤖 Ciborgue")
 
