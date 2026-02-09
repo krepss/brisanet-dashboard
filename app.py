@@ -33,26 +33,19 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
-# --- 2. CSS (DESIGN PREMIUM + CORREÇÕES) ---
+# --- 2. CSS (DESIGN PREMIUM) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
     html, body, [class*="css"] { font-family: 'Roboto', sans-serif; }
     .stApp { background-color: #F4F7F6 !important; }
     
-    /* --- SIDEBAR AZUL --- */
+    /* SIDEBAR */
     [data-testid="stSidebar"] {
         background-color: #002b55 !important;
         background-image: linear-gradient(180deg, #002b55 0%, #004e92 100%) !important;
     }
-    
-    /* Texto GERAL da Sidebar -> BRANCO */
-    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, 
-    [data-testid="stSidebar"] p, [data-testid="stSidebar"] label, [data-testid="stSidebar"] span {
-        color: #FFFFFF !important;
-    }
-
-    /* --- CORREÇÃO INPUTS SIDEBAR --- */
+    [data-testid="stSidebar"] * { color: #FFFFFF !important; }
     [data-testid="stSidebar"] div[data-baseweb="select"] > div,
     [data-testid="stSidebar"] input {
         background-color: #FFFFFF !important;
@@ -60,7 +53,6 @@ st.markdown("""
         -webkit-text-fill-color: #000000 !important;
     }
     [data-testid="stSidebar"] div[data-baseweb="select"] span,
-    [data-testid="stSidebar"] div[data-baseweb="select"] div,
     [data-testid="stSidebar"] div[data-baseweb="select"] svg {
         color: #000000 !important;
         fill: #000000 !important;
@@ -70,120 +62,46 @@ st.markdown("""
         background-color: #FFFFFF !important;
     }
     
-    /* --- DESIGN GERAL --- */
+    /* GERAL */
     h1, h2, h3, h4, h5, h6 { color: #003366 !important; font-family: 'Montserrat', sans-serif !important; }
-    p, li, div { color: #333333; }
     
-    /* Cards Padrão */
-    div.stMetric, .insight-box, .badge-card {
+    /* CARDS */
+    div.stMetric, .insight-box, .badge-card, .vacation-card {
         background-color: #FFFFFF !important;
         box-shadow: 0 4px 10px rgba(0,0,0,0.05);
         border-radius: 10px;
     }
+    div.stMetric { border: 1px solid #e0e0e0; border-left: 5px solid #F37021; padding: 10px 15px !important; }
+    div.stMetric label { color: #666 !important; font-size: 14px !important; }
+    div.stMetric div[data-testid="stMetricValue"] { color: #003366 !important; font-size: 26px !important; font-weight: 700; }
     
-    /* --- CARD DE FÉRIAS --- */
+    /* FÉRIAS */
     .vacation-card {
-        background-color: #FFFFFF !important;
         border-left: 8px solid #00bcd4 !important;
         padding: 30px !important;
-        border-radius: 12px !important;
         text-align: center !important;
-        box-shadow: 0 6px 15px rgba(0,0,0,0.08) !important;
         margin-top: 20px !important;
     }
-    .vacation-title { 
-        font-family: 'Montserrat', sans-serif !important;
-        font-size: 1.4em !important; 
-        font-weight: 600 !important; 
-        color: #555555 !important; 
-        margin-bottom: 10px !important;
-    }
-    .vacation-date { 
-        font-family: 'Roboto', sans-serif !important;
-        font-size: 3.5em !important; 
-        font-weight: 800 !important; 
-        color: #00838f !important; 
-        margin: 20px 0 !important; 
-        text-transform: uppercase !important; 
-    }
-    .vacation-note { 
-        font-size: 0.9em !important; 
-        color: #999999 !important; 
-        font-style: italic !important; 
-    }
+    .vacation-title { font-size: 1.4em !important; font-weight: 600 !important; color: #555 !important; }
+    .vacation-date { font-size: 3.5em !important; font-weight: 800 !important; color: #00838f !important; margin: 20px 0 !important; }
     
-    /* --- TELA DE LOGIN --- */
+    /* LOGIN */
     [data-testid="stForm"] {
         background-color: #FFFFFF !important;
         padding: 3rem 2rem !important;
         border-radius: 20px !important;
         box-shadow: 0 15px 35px rgba(0,0,0,0.1) !important;
-        border: none !important;
         border-top: 6px solid #F37021 !important;
     }
     .login-title {
-        font-family: 'Montserrat', sans-serif !important;
-        font-weight: 800 !important;
-        font-size: 2.2rem !important;
-        color: #003366 !important;
-        text-align: center;
-        margin-bottom: 0px;
+        font-family: 'Montserrat', sans-serif !important; font-weight: 800 !important; font-size: 2.2rem !important; color: #003366 !important; text-align: center;
     }
-    .login-subtitle {
-        font-family: 'Roboto', sans-serif !important;
-        font-size: 1.1rem !important;
-        color: #666 !important;
-        text-align: center;
-        margin-bottom: 25px;
+    [data-testid="stForm"] input { background-color: #f8f9fa !important; color: #333 !important; border-radius: 8px !important; }
+    [data-testid="stForm"] button {
+        width: 100% !important; background-image: linear-gradient(to right, #002b55, #004e92) !important; border: none !important; border-radius: 8px !important;
     }
-    [data-testid="stForm"] input {
-        background-color: #f8f9fa !important;
-        color: #333 !important;
-        border-radius: 8px !important;
-    }
-    [data-testid="stForm"] [data-testid="stBaseButton-secondary"] {
-        width: 100% !important;
-        background-image: linear-gradient(to right, #002b55, #004e92) !important;
-        border: none !important;
-        border-radius: 8px !important;
-        padding-top: 10px !important;
-        padding-bottom: 10px !important;
-    }
-    [data-testid="stForm"] [data-testid="stBaseButton-secondary"] p {
-        color: #FFFFFF !important;
-        font-weight: bold !important;
-        font-size: 1.1rem !important;
-    }
-    [data-testid="stForm"] [data-testid="stBaseButton-secondary"]:hover {
-        transform: scale(1.02) !important;
-        box-shadow: 0 5px 15px rgba(0, 78, 146, 0.3) !important;
-    }
-
-    /* --- OUTROS --- */
-    div.stMetric { border: 1px solid #e0e0e0; border-left: 5px solid #F37021; padding: 10px 15px !important; }
-    div.stMetric label { color: #666 !important; font-size: 14px !important; }
-    div.stMetric div[data-testid="stMetricValue"] { color: #003366 !important; font-size: 26px !important; font-weight: 700; }
-    div.stMetric div[data-testid="stMetricDelta"] { font-size: 13px !important; }
+    [data-testid="stForm"] button p { color: #FFFFFF !important; font-weight: bold !important; font-size: 1.1rem !important; }
     
-    div.stButton > button {
-        background-color: #003366 !important; color: #FFFFFF !important; border-radius: 8px; font-weight: bold; border: none;
-    }
-    div.stButton > button p { color: #FFFFFF !important; }
-    
-    .update-badge {
-        background-color: #e3f2fd; color: #0d47a1; padding: 5px 10px; 
-        border-radius: 15px; font-size: 0.85em; font-weight: bold; border: 1px solid #bbdefb;
-    }
-    
-    .insight-box {
-        background-color: #fff8e1 !important;
-        border-left: 5px solid #ffc107 !important;
-        padding: 15px;
-        margin-bottom: 20px;
-    }
-    .insight-title { font-weight: bold; color: #d35400; font-size: 1.1em; display: flex; align-items: center; gap: 8px; }
-    .insight-text { font-size: 0.95em; margin-top: 5px; color: #555; }
-
     .dev-footer { text-align: center; margin-top: 40px; font-size: 0.8em; color: #aaa !important; }
 </style>
 """, unsafe_allow_html=True)
@@ -202,7 +120,6 @@ def formatar_nome_visual(nome_cru):
     if "TAM" in nome: return "Resultado Geral (TAM)"
     return nome_cru 
 
-# --- CONVERSÃO DE HORAS (Para o Banco de Horas) ---
 def converter_hora_para_float(valor):
     try:
         val_str = str(valor).strip()
@@ -215,14 +132,10 @@ def converter_hora_para_float(valor):
             val_str = val_str[1:]
         parts = val_str.split(':')
         if len(parts) == 2:
-            horas = int(parts[0])
-            minutos = int(parts[1])
-            return sinal * (horas + (minutos / 60.0))
+            return sinal * (int(parts[0]) + (int(parts[1]) / 60.0))
         return 0.0
-    except:
-        return 0.0
+    except: return 0.0
 
-# --- FORMATAÇÃO DE HORAS (Float -> String HH:MM) ---
 def formatar_saldo_decimal(valor_float):
     try:
         sinal = "+" if valor_float >= 0 else "-"
@@ -233,8 +146,7 @@ def formatar_saldo_decimal(valor_float):
             horas += 1
             minutos = 0
         return f"{sinal}{horas:02d}:{minutos:02d}"
-    except:
-        return "00:00"
+    except: return "00:00"
 
 def tentar_extrair_data_csv(df):
     colunas_possiveis = ['data', 'date', 'periodo', 'mês', 'mes', 'competencia', 'ref']
@@ -251,8 +163,7 @@ def obter_data_hoje(): return datetime.now().strftime("%m/%Y")
 def obter_data_atualizacao():
     arquivo = 'historico_consolidado.csv'
     if os.path.exists(arquivo):
-        timestamp = os.path.getmtime(arquivo)
-        return datetime.fromtimestamp(timestamp).strftime("%d/%m/%Y às %H:%M")
+        return datetime.fromtimestamp(os.path.getmtime(arquivo)).strftime("%d/%m/%Y às %H:%M")
     return datetime.now().strftime("%d/%m/%Y")
 
 def salvar_config(data_texto):
@@ -324,7 +235,6 @@ def salvar_arquivos_padronizados(files):
         with open(f.name, "wb") as w: w.write(f.getbuffer())
     return True
 
-# --- CORREÇÃO DE PORCENTAGEM INTELIGENTE ---
 def processar_porcentagem_br(valor):
     if pd.isna(valor) or valor == '': return 0.0
     if isinstance(valor, str):
@@ -362,7 +272,6 @@ def normalizar_nome_indicador(nome_arquivo):
     if 'TAM' in nome: return 'TAM'
     return nome.split('.')[0].upper()
 
-# --- NOVO: NORMALIZAR NOMES (COM CORREÇÃO DE ACENTOS E ESPAÇOS) ---
 def normalizar_chave(texto):
     if pd.isna(texto): return ""
     texto = str(texto).strip().upper()
@@ -451,7 +360,6 @@ def carregar_dados_completo_debug():
                 if df_tratado is not None: lista_final.append(df_tratado)
             else: log_debug.append({"Arquivo": arquivo, "Status": "Erro", "Detalhe": "Não conseguiu ler CSV"})
         except Exception as e: log_debug.append({"Arquivo": arquivo, "Status": "Erro Crítico", "Detalhe": str(e)})
-            
     df_final = None
     if lista_final: 
         df_concat = pd.concat(lista_final, ignore_index=True)
@@ -495,42 +403,27 @@ def filtrar_por_usuarios_cadastrados(df_dados, df_users):
     df_filtrado.drop(columns=['TEMP_NOME_UPPER'], inplace=True)
     return df_filtrado
 
-# --- 4. LOGIN RENOVADO (DESIGN NOVO E ELEGANTE) ---
+# --- 4. LOGIN ---
 if 'logado' not in st.session_state:
     st.session_state.update({'logado': False, 'usuario_nome': '', 'perfil': '', 'usuario_email': ''})
 
 if not st.session_state['logado']:
-    # Cria colunas para centralizar o card no meio da tela
     c1, c2, c3 = st.columns([1, 1.2, 1]) 
-    
     with c2:
         st.markdown("<br><br>", unsafe_allow_html=True)
-        # O formulário agora está dentro de um container customizado via CSS .login-card
         with st.form("form_login"):
-            # Se tiver logo, mostra centralizada e pequena
-            if os.path.exists(LOGO_FILE):
-                st.image(LOGO_FILE, width=100)
-            
+            if os.path.exists(LOGO_FILE): st.image(LOGO_FILE, width=100)
             st.markdown('<div class="login-title">Team Sofistas</div>', unsafe_allow_html=True)
             st.markdown('<div class="login-subtitle">Analytics & Performance</div>', unsafe_allow_html=True)
-            
             st.markdown("---")
-            
-            email_input = st.text_input("E-mail ou Usuário", placeholder="ex: usuario@brisanet.com.br").strip().lower()
+            email_input = st.text_input("E-mail ou Usuário").strip().lower()
             senha_input = st.text_input("Senha", type="password", placeholder="Obrigatório para Gestores")
-            
             st.markdown("<br>", unsafe_allow_html=True)
-            
-            # Botão ocupa toda a largura e tem estilo novo via CSS
             submit_btn = st.form_submit_button("ACESSAR SISTEMA", use_container_width=True)
-            
             if submit_btn:
-                # LOGIN GESTOR
                 if email_input in USUARIOS_ADMIN and senha_input == SENHA_ADMIN:
                     st.session_state.update({'logado': True, 'usuario_nome': 'Gestor', 'perfil': 'admin', 'usuario_email': 'admin'})
                     st.rerun()
-                
-                # LOGIN OPERADOR
                 else:
                     df_users = carregar_usuarios()
                     if df_users is not None:
@@ -539,11 +432,8 @@ if not st.session_state['logado']:
                             nome_upper = user_row.iloc[0]['nome']
                             st.session_state.update({'logado': True, 'usuario_nome': nome_upper, 'perfil': 'user', 'usuario_email': email_input})
                             st.rerun()
-                        else:
-                            st.error("🚫 Usuário não encontrado.")
-                    else:
-                        st.error("⚠️ Base de usuários não carregada.")
-    
+                        else: st.error("🚫 Usuário não encontrado.")
+                    else: st.error("⚠️ Base de usuários não carregada.")
     st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
     st.stop()
 
@@ -565,24 +455,26 @@ with st.sidebar:
         df_hist_full = carregar_historico_completo()
         if df_hist_full is not None:
             df_raw = df_hist_full[df_hist_full['Periodo'] == periodo_selecionado].copy()
-            
-            # --- FILTRO CRÍTICO (AQUI) ---
-            # Garante que o histórico também respeite a lista de usuários ativos
+            # Filtra o histórico para garantir que demitidos sumam
             df_users_cadastrados = carregar_usuarios()
             if df_raw is not None and not df_raw.empty:
                 df_raw = filtrar_por_usuarios_cadastrados(df_raw, df_users_cadastrados)
-        else: 
-            df_raw = None
+        else: df_raw = None
         periodo_label = periodo_selecionado
     
-    # Recarrega usuários para usar no resto do app
     df_users_cadastrados = carregar_usuarios()
     if df_raw is not None and not df_raw.empty:
         df_dados = df_raw.copy()
         df_dados['Colaborador'] = df_dados['Colaborador'].str.title()
-    else:
-        df_dados = None
+    else: df_dados = None
     
+    # STATUS DOS USUÁRIOS
+    if df_users_cadastrados is not None:
+        qtd_ativos = len(df_users_cadastrados)
+        st.sidebar.caption(f"👥 Usuários Ativos: **{qtd_ativos}**")
+    else:
+        st.sidebar.warning("⚠️ Usuários não carregados")
+
     st.markdown("---")
     nome_logado = st.session_state['usuario_nome'].title() if st.session_state['usuario_nome'] != 'Gestor' else 'Gestor'
     st.markdown(f"### 👤 {nome_logado.split()[0]}")
@@ -618,8 +510,7 @@ if perfil == 'admin':
             c3.metric("🔴 Crítico", f"{qtd_vermelho}", delta="<80%", delta_color="inverse")
             st.markdown("---")
             
-            # --- NOVO: GERADOR DE FEEDBACK ---
-            st.subheader("💬 Gerador de Feedback (1:1)")
+            # FEEDBACK
             colab_feedback = st.selectbox("Selecione para análise:", sorted(df_dados['Colaborador'].unique()), key="sb_feedback")
             if colab_feedback:
                 user_kpis = df_dados[df_dados['Colaborador'] == colab_feedback].sort_values(by='% Atingimento', ascending=True)
@@ -643,10 +534,9 @@ if perfil == 'admin':
                                x='Indicador', y='Qtd', color='Status_Farol', text='Qtd',
                                color_discrete_map={'💎 Excelência': '#003366', '🟢 Meta Batida': '#2ecc71', '🔴 Crítico': '#e74c3c'})
             st.plotly_chart(fig_farol, use_container_width=True)
-            
             st.markdown("---")
 
-            # --- PERFORMANCE GLOBAL (VELOCÍMETRO) REINSERIDO ---
+            # VELOCÍMETRO
             st.markdown("### 🦁 Performance Global da Equipe")
             remove_pont = st.checkbox("Remover Pontualidade do Cálculo Global", value=False)
             total_dia_team = 0
@@ -680,42 +570,23 @@ if perfil == 'admin':
             fig_team.update_layout(height=250, margin=dict(l=20, r=20, t=30, b=20))
             st.plotly_chart(fig_team, use_container_width=True)
 
-            st.markdown("---")
-            st.subheader("📋 Atenção Prioritária")
-            df_atencao = df_media_pessoas[df_media_pessoas['% Atingimento'] < 0.80].sort_values(by='% Atingimento')
-            if not df_atencao.empty:
-                lista_detalhada = []
-                for colab in df_atencao['Colaborador']:
-                    dados_pessoa = df_dados[df_dados['Colaborador'] == colab]
-                    media_pessoa = dados_pessoa['% Atingimento'].mean()
-                    pior_kpi_row = dados_pessoa.loc[dados_pessoa['% Atingimento'].idxmin()]
-                    nome_kpi_bonito = formatar_nome_visual(pior_kpi_row['Indicador'])
-                    lista_detalhada.append({'Colaborador': colab, 'Média Geral': media_pessoa, 'Status': '🔴 Crítico', 'Pior KPI': f"{nome_kpi_bonito} ({pior_kpi_row['% Atingimento']:.2%})"})
-                df_final_atencao = pd.DataFrame(lista_detalhada)
-                st.dataframe(df_final_atencao.style.format({'Média Geral': '{:.2%}'}), use_container_width=True)
-            else: st.success("🎉 Equipe performando bem! Ninguém abaixo de 80%.")
-
     with tabs[1]:
-        st.markdown(f"### 🏆 Ranking Geral (Consolidado)")
+        st.markdown(f"### 🏆 Ranking Geral")
         if df_dados is not None:
             if tem_tam: df_rank = df_dados[df_dados['Indicador'] == 'TAM'].copy()
-            else:
-                 df_rank = df_dados.groupby('Colaborador').agg({'Diamantes': 'sum', 'Max. Diamantes': 'sum'}).reset_index()
-                 df_rank['% Atingimento'] = df_rank.apply(lambda row: (row['Diamantes'] / row['Max. Diamantes']) if row['Max. Diamantes'] > 0 else 0, axis=1)
-            df_rank = df_rank.sort_values(by='% Atingimento', ascending=False)
-            cols_show = ['Colaborador', 'Diamantes', 'Max. Diamantes', '% Atingimento']
-            st.dataframe(df_rank[cols_show].style.format({'Diamantes': '{:.0f}', 'Max. Diamantes': '{:.0f}', '% Atingimento': '{:.2%}'}).background_gradient(subset=['% Atingimento'], cmap='RdYlGn'), use_container_width=True, height=600)
+            else: df_rank = df_dados.groupby('Colaborador').agg({'Diamantes':'sum', 'Max. Diamantes':'sum'}).reset_index()
+            df_rank['%'] = df_rank.apply(lambda x: x['Diamantes']/x['Max. Diamantes'] if x['Max. Diamantes']>0 else 0, axis=1)
+            st.dataframe(df_rank.sort_values(by='%', ascending=False).style.format({'%': '{:.2%}'}), use_container_width=True)
 
     with tabs[2]:
         st.markdown("### ⏳ Evolução Temporal")
-        # --- CORREÇÃO: Aplica filtro de usuários também no histórico ---
         df_hist = carregar_historico_completo()
+        # FILTRO DE USUÁRIOS ATIVOS APLICADO NO HISTÓRICO
         if df_hist is not None:
             if df_users_cadastrados is not None:
                 df_hist = filtrar_por_usuarios_cadastrados(df_hist, df_users_cadastrados)
                 
             df_hist['Colaborador'] = df_hist['Colaborador'].str.title()
-            # Ordena lista para não quebrar o selectbox
             lista_colabs = sorted(df_hist['Colaborador'].unique())
             if lista_colabs:
                 colab_sel = st.selectbox("Selecione o Colaborador:", lista_colabs)
@@ -725,9 +596,8 @@ if perfil == 'admin':
                     fig_heat = px.density_heatmap(df_hist_user, x="Periodo", y="Indicador", z="% Atingimento", text_auto=False, title=f"Mapa de Calor: {colab_sel}", color_continuous_scale="RdYlGn", range_color=[0.6, 1.0])
                     fig_heat.update_traces(texttemplate="%{z:.1%}", textfont={"size":12})
                     st.plotly_chart(fig_heat, use_container_width=True)
-                else: st.warning("Sem dados para este colaborador.")
-            else: st.warning("Nenhum colaborador encontrado no histórico.")
-        else: st.info("Histórico vazio.")
+                else: st.warning("Sem dados.")
+            else: st.warning("Histórico vazio após filtro de ativos.")
 
     with tabs[3]:
         if df_dados is not None:
@@ -737,14 +607,13 @@ if perfil == 'admin':
             for kpi in sorted(df_viz['Indicador'].unique()):
                 with st.expander(f"📊 Ranking: {kpi}"):
                     df_kpi = df_viz[df_viz['Indicador'] == kpi].sort_values(by='% Atingimento', ascending=True)
-                    fig_rank = px.bar(df_kpi, x='% Atingimento', y='Colaborador', orientation='h', text_auto='.1%', title=f"Ranking - {kpi}", color='% Atingimento', color_continuous_scale=['#e74c3c', '#f1c40f', '#2ecc71'])
-                    fig_rank.add_vline(x=0.8, line_dash="dash", line_color="black", annotation_text="Meta 80%")
+                    fig_rank = px.bar(df_kpi, x='% Atingimento', y='Colaborador', orientation='h', text_auto='.1%', color='% Atingimento', color_continuous_scale=['#e74c3c', '#f1c40f', '#2ecc71'])
+                    fig_rank.add_vline(x=0.8, line_dash="dash", line_color="black")
                     st.plotly_chart(fig_rank, use_container_width=True)
 
     with tabs[4]:
         st.markdown(f"### 💰 Relatório de Comissões")
-        if df_dados is not None and not df_dados.empty:
-            st.info("ℹ️ Regra: R$ 0,50 por Diamante. **Trava:** Conformidade >= 92%.")
+        if df_dados is not None:
             lista_comissoes = []
             df_calc = df_dados.copy()
             df_calc['Colaborador_Key'] = df_calc['Colaborador'].str.upper()
@@ -753,16 +622,15 @@ if perfil == 'admin':
                 if tem_tam:
                     row_tam = df_user[df_user['Indicador'] == 'TAM']
                     total_diamantes = row_tam.iloc[0]['Diamantes'] if not row_tam.empty else 0
-                else:
-                    total_diamantes = df_user['Diamantes'].sum()
+                else: total_diamantes = df_user['Diamantes'].sum()
                 row_conf = df_user[df_user['Indicador'] == 'CONFORMIDADE']
                 conf_val = row_conf.iloc[0]['% Atingimento'] if not row_conf.empty else 0.0
                 desconto = 0
                 obs = "✅ Elegível"
                 if conf_val < 0.92:
                     row_pont = df_user[df_user['Indicador'] == 'PONTUALIDADE']
-                    if not row_pont.empty:
-                        desconto = row_pont.iloc[0]['Diamantes'] if 'Diamantes' in row_pont.columns else 0
+                    if not row_pont.empty: 
+                        desconto = row_pont.iloc[0]['Diamantes']
                         obs = "⚠️ Penalidade (Pontualidade)"
                     else: obs = "⚠️ Conformidade Baixa"
                 diamantes_validos = total_diamantes - desconto
@@ -803,7 +671,6 @@ if perfil == 'admin':
                 st.success("Usuarios OK!")
             up_k = st.file_uploader("Indicadores (CSVs)", accept_multiple_files=True, key="k")
             if up_k:
-                st.markdown("**🔎 Pré-visualização:**")
                 lista_diag = []
                 for f in up_k:
                     try:
@@ -816,49 +683,36 @@ if perfil == 'admin':
                             else: lista_diag.append({"Arquivo": f.name, "Status": "❌ Erro", "Detalhe": msg})
                     except Exception as e: lista_diag.append({"Arquivo": f.name, "Status": "❌ Erro", "Detalhe": str(e)})
                 st.dataframe(pd.DataFrame(lista_diag))
-                if st.button("💾 Salvar e Atualizar Histórico"): 
-                    if not nova_data.strip():
-                        st.error("⚠️ O campo 'Mês/Ano' não pode estar vazio!")
-                        st.stop()
-                    try:
-                        faxina_arquivos_temporarios()
-                        salvos = salvar_arquivos_padronizados(up_k)
-                        salvar_config(nova_data)
-                        df_debug, log = carregar_dados_completo_debug() 
-                        if df_debug is not None:
-                            atualizar_historico(df_debug, nova_data)
-                            st.success("✅ Atualizado com Sucesso!")
-                            time.sleep(1)
-                            st.rerun()
-                        else: st.error("Erro ao processar arquivos.")
-                    except Exception as e: st.error(f"Erro salvamento: {e}")
+                if st.button("Salvar Tudo"):
+                    faxina_arquivos_temporarios()
+                    salvar_arquivos_padronizados(up_k)
+                    salvar_config(nova_data)
+                    df_debug, log = carregar_dados_completo_debug() 
+                    if df_debug is not None:
+                        atualizar_historico(df_debug, nova_data)
+                        st.success("✅ Atualizado com Sucesso!")
+                        time.sleep(1)
+                        st.rerun()
         with st2:
-            st.markdown("#### 🗑️ Gerenciar Meses no Sistema")
+            st.markdown("#### 🗑️ Gerenciar Meses")
             df_atual_hist = carregar_historico_completo()
-            if df_atual_hist is not None and not df_atual_hist.empty:
+            if df_atual_hist is not None:
                 resumo = df_atual_hist.groupby('Periodo').size().reset_index(name='Registros')
                 for i, row in resumo.iterrows():
                     c1, c2, c3 = st.columns([2, 1, 1])
                     c1.write(f"📅 **{row['Periodo']}**")
                     c2.write(f"{row['Registros']} linhas")
                     if c3.button(f"Excluir {row['Periodo']}", key=f"del_{i}"):
-                        if excluir_periodo_historico(row['Periodo']):
-                            st.success(f"Mês {row['Periodo']} excluído!")
-                            time.sleep(1)
-                            st.rerun()
-            else: st.info("Histórico vazio.")
+                        excluir_periodo_historico(row['Periodo'])
+                        st.rerun()
             st.divider()
-            if st.button("🔥 Limpar TUDO (Reset Completo)", type="primary"):
+            if st.button("🔥 Limpar TUDO"):
                 limpar_base_dados_completa()
-                st.success("Base limpa!")
-                time.sleep(1)
                 st.rerun()
         with st3:
-            st.markdown("#### 💾 Backup de Segurança")
             if os.path.exists('historico_consolidado.csv'):
                 with open('historico_consolidado.csv', 'rb') as f:
-                    st.download_button(label="⬇️ Baixar Histórico Completo (CSV)", data=f, file_name="historico_consolidado_backup.csv", mime="text/csv")
-            else: st.warning("⚠️ Nenhum histórico consolidado encontrado para backup.")
+                    st.download_button("⬇️ Baixar Backup", f, "historico_consolidado.csv")
         with st4:
             if st.button("Rodar Diagnóstico"):
                 _, log_df = carregar_dados_completo_debug()
@@ -866,45 +720,31 @@ if perfil == 'admin':
 
     with tabs[8]: # Banco de Horas
         st.markdown("### ⏰ Análise de Folha de Ponto")
-        st.info("Faça o upload do arquivo .xlsx ou .csv do Banco de Horas.")
-        uploaded_ponto = st.file_uploader("Carregar Planilha de Ponto", type=['xlsx', 'csv'])
+        st.info("Faça o upload do arquivo .xlsx ou .csv.")
+        uploaded_ponto = st.file_uploader("Carregar Planilha", type=['xlsx', 'csv'])
         if uploaded_ponto is not None:
             try:
-                # Tenta ler como Excel primeiro (skiprows 4 conforme a estrutura enviada)
-                if uploaded_ponto.name.endswith('.xlsx'):
-                    df_ponto = pd.read_excel(uploaded_ponto, skiprows=4)
-                else:
-                    # Se for CSV
-                    df_ponto = pd.read_csv(uploaded_ponto, skiprows=4)
-                
-                # Procura colunas chave
-                col_nome = None
-                col_saldo = None
-                
-                for c in df_ponto.columns:
-                    if "Nome" in str(c): col_nome = c
-                    if "Total Banco" in str(c) or "Saldo Atual" in str(c): col_saldo = c
+                if uploaded_ponto.name.endswith('.xlsx'): df_ponto = pd.read_excel(uploaded_ponto, skiprows=4)
+                else: df_ponto = pd.read_csv(uploaded_ponto, skiprows=4)
+                col_nome = next((c for c in df_ponto.columns if "Nome" in str(c)), None)
+                col_saldo = next((c for c in df_ponto.columns if "Total Banco" in str(c) or "Saldo Atual" in str(c)), None)
                 
                 if col_nome and col_saldo:
-                    # Processar os dados
                     df_ponto = df_ponto[[col_nome, col_saldo]].dropna()
                     df_ponto.rename(columns={col_nome: 'Colaborador', col_saldo: 'Saldo String'}, inplace=True)
                     
-                    # --- CORREÇÃO: FILTRA POR USUÁRIOS ATIVOS (REMOVE DEMITIDOS) ---
+                    # FILTRO DE ATIVOS (CRÍTICO)
                     if df_users_cadastrados is not None:
                         df_ponto['TEMP_NOME_NORM'] = df_ponto['Colaborador'].apply(normalizar_chave)
                         lista_ativos = df_users_cadastrados['nome'].unique()
                         df_ponto = df_ponto[df_ponto['TEMP_NOME_NORM'].isin(lista_ativos)]
                         df_ponto.drop(columns=['TEMP_NOME_NORM'], inplace=True)
-                    # -------------------------------------------------------------
+                    else:
+                        st.warning("⚠️ Filtro de ativos não aplicado. Carregue o usuarios.csv no Admin.")
 
-                    # Converter horas string para float
                     df_ponto['Saldo (h)'] = df_ponto['Saldo String'].apply(converter_hora_para_float)
-                    
-                    # Classificação
                     df_ponto['Status'] = df_ponto['Saldo (h)'].apply(lambda x: '🔴 Crítico (Negativo)' if x < 0 else '🟢 Positivo')
                     
-                    # Métricas
                     total_neg = df_ponto[df_ponto['Saldo (h)'] < 0]['Saldo (h)'].sum()
                     total_pos = df_ponto[df_ponto['Saldo (h)'] > 0]['Saldo (h)'].sum()
                     qtd_neg = len(df_ponto[df_ponto['Saldo (h)'] < 0])
@@ -915,31 +755,11 @@ if perfil == 'admin':
                     m3.metric("📈 Total Horas Crédito", formatar_saldo_decimal(total_pos))
                     
                     st.markdown("---")
-                    
-                    # Gráfico
-                    fig_ponto = px.bar(
-                        df_ponto.sort_values(by='Saldo (h)'), 
-                        x='Saldo (h)', 
-                        y='Colaborador', 
-                        orientation='h',
-                        color='Status',
-                        color_discrete_map={'🔴 Crítico (Negativo)': '#e74c3c', '🟢 Positivo': '#2ecc71'},
-                        text='Saldo String',
-                        title="Saldo de Banco de Horas por Colaborador"
-                    )
-                    fig_ponto.update_layout(height=600)
+                    fig_ponto = px.bar(df_ponto.sort_values(by='Saldo (h)'), x='Saldo (h)', y='Colaborador', orientation='h', color='Status', color_discrete_map={'🔴 Crítico (Negativo)': '#e74c3c', '🟢 Positivo': '#2ecc71'}, text='Saldo String')
                     st.plotly_chart(fig_ponto, use_container_width=True)
-                    
-                    # Tabela
-                    st.markdown("#### Detalhamento")
                     st.dataframe(df_ponto.style.background_gradient(subset=['Saldo (h)'], cmap='RdYlGn'), use_container_width=True)
-                    
-                else:
-                    st.error("Não foi possível identificar as colunas 'Nome' e 'Total Banco' no arquivo.")
-                    st.write("Colunas encontradas:", df_ponto.columns.tolist())
-                    
-            except Exception as e:
-                st.error(f"Erro ao processar arquivo: {e}")
+                else: st.error("Colunas não identificadas.")
+            except Exception as e: st.error(f"Erro: {e}")
 
 # --- VISÃO OPERADOR ---
 else:
@@ -996,61 +816,33 @@ else:
                 with c_gamif:
                     st.markdown("##### 💎 Gamificação")
                     st.progress(resultado_global if resultado_global <= 1.0 else 1.0)
-                    # --- BADGES (MEDALHAS) EXPANDIDAS ---
                     badges = []
-                    # 1. Guardião (Conformidade)
                     if not meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE'].iloc[0]['% Atingimento'] >= 1.0: badges.append("🛡️ Guardião")
-                    # 2. Amado (CSAT)
                     if not meus_dados[meus_dados['Indicador'] == 'CSAT'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'CSAT'].iloc[0]['% Atingimento'] >= 0.95: badges.append("❤️ Amado")
-                    # 3. Relógio Suíço (Aderência)
                     if not meus_dados[meus_dados['Indicador'] == 'ADERENCIA'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'ADERENCIA'].iloc[0]['% Atingimento'] >= 0.98: badges.append("⏰ Relógio Suíço")
-                    # 4. Sherlock (Resolução/IR)
                     if not meus_dados[meus_dados['Indicador'] == 'IR'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'IR'].iloc[0]['% Atingimento'] >= 0.90: badges.append("🧩 Sherlock")
-                    # 5. No Alvo (Pontualidade)
                     if not meus_dados[meus_dados['Indicador'] == 'PONTUALIDADE'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'PONTUALIDADE'].iloc[0]['% Atingimento'] >= 1.0: badges.append("🎯 No Alvo")
-                    # 6. The Flash (TPC)
                     if not meus_dados[meus_dados['Indicador'] == 'TPC'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'TPC'].iloc[0]['% Atingimento'] >= 1.0: badges.append("⚡ The Flash")
-                    # 7. Ciborgue (Interações)
                     if not meus_dados[meus_dados['Indicador'] == 'INTERACOES'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'INTERACOES'].iloc[0]['% Atingimento'] >= 1.0: badges.append("🤖 Ciborgue")
 
                     st.write(f"**{int(total_dia_bruto)} / {int(total_max)}** Diamantes")
                     if badges: st.success(f"Conquistas: {' '.join(badges)}")
-
                     with st.expander("ℹ️ Legenda das Conquistas"):
-                        st.markdown("""
-                        * 🛡️ **Guardião:** 100% Conformidade.
-                        * ❤️ **Amado:** CSAT acima de 95%.
-                        * ⏰ **Relógio Suíço:** Aderência acima de 98%.
-                        * 🧩 **Sherlock:** Resolução (IR) acima de 90%.
-                        * 🎯 **No Alvo:** Pontualidade 100%.
-                        * ⚡ **The Flash:** TPC na Meta.
-                        * 🤖 **Ciborgue:** Interações na Meta.
-                        """)
+                        st.markdown("* 🛡️ **Guardião:** 100% Conformidade\n* ❤️ **Amado:** CSAT > 95%\n* ⏰ **Relógio Suíço:** Aderência > 98%\n* 🧩 **Sherlock:** Resolução > 90%\n* 🎯 **No Alvo:** Pontualidade 100%\n* ⚡ **The Flash:** TPC na Meta\n* 🤖 **Ciborgue:** Interações na Meta")
 
                 with c_gauge:
-                    fig_gauge = go.Figure(go.Indicator(
-                        mode = "gauge+number",
-                        value = resultado_global * 100,
-                        number = {'font': {'size': 24, 'color': '#003366'}}, 
-                        gauge = {
-                            'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': "#003366"},
-                            'bar': {'color': "#F37021"},
-                            'bgcolor': "white",
-                            'steps': [{'range': [0, 100], 'color': '#f4f7f6'}],
-                            'threshold': {'line': {'color': "green", 'width': 4}, 'thickness': 0.75, 'value': 100}
-                        }))
+                    fig_gauge = go.Figure(go.Indicator(mode = "gauge+number", value = resultado_global * 100, number = {'font': {'size': 24, 'color': '#003366'}}, gauge = {'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': "#003366"}, 'bar': {'color': "#F37021"}, 'bgcolor': "white", 'steps': [{'range': [0, 100], 'color': '#f4f7f6'}], 'threshold': {'line': {'color': "green", 'width': 4}, 'thickness': 0.75, 'value': 100}}))
                     fig_gauge.update_layout(height=140, margin=dict(l=10, r=10, t=30, b=10), paper_bgcolor='rgba(0,0,0,0)', font={'color': '#003366'})
                     st.plotly_chart(fig_gauge, use_container_width=True)
                 st.markdown("---")
                 
-                # --- SMART COACH ---
                 pior_row = meus_dados.sort_values(by='% Atingimento').iloc[0]
                 if pior_row['% Atingimento'] < 0.9:
                     dica = DICAS_KPI.get(pior_row['Indicador'], "Fale com seu gestor.")
@@ -1088,36 +880,27 @@ else:
             for i, (_, row) in enumerate(meus_dados.iterrows()):
                 val = row['% Atingimento']
                 label = formatar_nome_visual(row['Indicador'])
-                
-                # META DINÂMICA
                 meta = 0.92 if row['Indicador'] in ['CONFORMIDADE', 'ADERENCIA'] else 0.80
-                
                 if val >= meta:
                     delta_msg = "✅ Meta Batida"
                     color = "normal"
                 else:
                     delta_msg = f"🔻 Meta {meta:.0%}"
                     color = "inverse"
-                
                 with cols[i]:
                     st.metric(label, f"{val:.2%}", delta_msg, delta_color=color)
 
             st.markdown("---")
             
-            # --- RADAR CHART (Com proteção e Correção do Erro KeyError) ---
             media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
-            # Renomeia para evitar colisão no merge (Correção do KeyError)
             media_equipe.rename(columns={'% Atingimento': 'Média Equipe'}, inplace=True)
-            
             if not media_equipe.empty:
                 df_comp = pd.merge(meus_dados, media_equipe, on='Indicador')
                 if not df_comp.empty:
                     df_comp['Indicador'] = df_comp['Indicador'].apply(formatar_nome_visual)
-                    
                     categorias = df_comp['Indicador'].tolist()
                     valores_user = df_comp['% Atingimento'].tolist()
                     valores_media = df_comp['Média Equipe'].tolist()
-                    
                     if categorias:
                         categorias.append(categorias[0])
                         valores_user.append(valores_user[0])
@@ -1129,7 +912,6 @@ else:
                         st.markdown("##### 🕸️ Raio-X de Competências")
                         st.plotly_chart(fig, use_container_width=True)
 
-            # --- HISTÓRICO PESSOAL ---
             st.markdown("---")
             st.markdown("### 📈 Sua Evolução (Últimos Meses)")
             df_hist_full = carregar_historico_completo()
