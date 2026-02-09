@@ -33,7 +33,7 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
-# --- 2. CSS ---
+# --- 2. CSS (DESIGN PREMIUM + CORREÇÃO FÉRIAS + LOGIN) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
@@ -81,7 +81,7 @@ st.markdown("""
         border-radius: 10px;
     }
     
-    /* --- CARD DE FÉRIAS --- */
+    /* --- CARD DE FÉRIAS (RESTAURADO) --- */
     .vacation-card {
         background-color: #FFFFFF !important;
         border-left: 8px solid #00bcd4 !important;
@@ -229,7 +229,6 @@ def formatar_saldo_decimal(valor_float):
         valor_abs = abs(valor_float)
         horas = int(valor_abs)
         minutos = int(round((valor_abs - horas) * 60))
-        # Ajuste caso o arredondamento de minutos dê 60
         if minutos == 60:
             horas += 1
             minutos = 0
@@ -548,10 +547,7 @@ if not st.session_state['logado']:
     st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
     st.stop()
 
-# --- 5. SISTEMA LOGADO ---
-# CSS já carrega o fundo claro
-
-# --- 6. SIDEBAR ---
+# --- 5. SIDEBAR ---
 lista_periodos = listar_periodos_disponiveis()
 opcoes_periodo = lista_periodos if lista_periodos else ["Nenhum histórico disponível"]
 
@@ -806,7 +802,7 @@ if perfil == 'admin':
 
     with tabs[9]: # Banco de Horas
         st.markdown("### ⏰ Análise de Folha de Ponto")
-        st.info("Faça o upload do arquivo .xlsx ou .csv do Banco de Horas.")
+        st.info("Faça o upload do arquivo .xlsx ou .csv do Banco de Horas para visualizar quem está com saldo negativo (Crítico) ou positivo.")
         
         uploaded_ponto = st.file_uploader("Carregar Planilha de Ponto", type=['xlsx', 'csv'])
         
@@ -845,7 +841,7 @@ if perfil == 'admin':
                     
                     m1, m2, m3 = st.columns(3)
                     m1.metric("🔴 Pessoas Negativas", f"{qtd_neg}")
-                    m2.metric("📉 Total Horas Devidas", formatar_saldo_decimal(total_neg))
+                    m1.metric("📉 Total Horas Devidas", formatar_saldo_decimal(total_neg))
                     m3.metric("📈 Total Horas Crédito", formatar_saldo_decimal(total_pos))
                     
                     st.markdown("---")
@@ -956,7 +952,7 @@ else:
 
                     st.write(f"**{int(total_dia_bruto)} / {int(total_max)}** Diamantes")
                     if badges: st.success(f"Conquistas: {' '.join(badges)}")
-
+                    
                     with st.expander("ℹ️ Legenda das Conquistas"):
                         st.markdown("""
                         * 🛡️ **Guardião:** 100% Conformidade.
