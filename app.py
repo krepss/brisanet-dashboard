@@ -18,12 +18,12 @@ USUARIOS_ADMIN = ['gestor', 'admin']
 # --- DICAS AUTOMÁTICAS (SMART COACH) ---
 DICAS_KPI = {
     "ADERENCIA": "Atenção aos horários de login/logoff e pausas. Cumpra a escala rigorosamente.",
-    "CONFORMIDADE": "Aqui é o tempo de fila, evite pausas desnecessárias!",
+    "CONFORMIDADE": "Revise o script e os processos obrigatórios. Acompanhe a monitoria.",
     "INTERACOES": "Seja mais proativo durante o atendimento. Evite silêncio excessivo.",
     "PONTUALIDADE": "Evite atrasos na primeira conexão do dia. Chegue 5 min antes.",
     "CSAT": "Aposte na empatia e na escuta ativa. Confirme a resolução com o cliente.",
     "IR": "Garanta que o serviço voltou a funcionar. Faça testes finais antes de encerrar.",
-    "TPC": "Aqui é no pulo do gato, da pra recuperar é só lembrar de tabuluar no momento certo!",
+    "TPC": "Otimize a tabulação: registre informações enquanto ainda fala com o cliente.",
     "TAM": "Assuma o comando da ligação. Seja objetivo e guie o cliente para a solução."
 }
 
@@ -33,7 +33,7 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
-# --- 2. CSS (DESIGN PREMIUM + CORREÇÕES DE BOTÕES) ---
+# --- 2. CSS (DESIGN PREMIUM + CORREÇÕES) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
@@ -45,21 +45,11 @@ st.markdown("""
         background-color: #002b55 !important;
         background-image: linear-gradient(180deg, #002b55 0%, #004e92 100%) !important;
     }
+    
+    /* Texto GERAL da Sidebar -> BRANCO */
     [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, 
     [data-testid="stSidebar"] p, [data-testid="stSidebar"] label, [data-testid="stSidebar"] span {
         color: #FFFFFF !important;
-    }
-
-    /* --- BOTÃO SAIR (SIDEBAR) - VERMELHO --- */
-    [data-testid="stSidebar"] button {
-        background-color: #e74c3c !important;
-        color: white !important;
-        border: 1px solid #c0392b !important;
-        font-weight: bold !important;
-    }
-    [data-testid="stSidebar"] button:hover {
-        background-color: #c0392b !important;
-        border-color: #a93226 !important;
     }
 
     /* --- CORREÇÃO INPUTS SIDEBAR --- */
@@ -151,7 +141,6 @@ st.markdown("""
         color: #333 !important;
         border-radius: 8px !important;
     }
-    /* Botão de Login */
     [data-testid="stForm"] [data-testid="stBaseButton-secondary"] {
         width: 100% !important;
         background-image: linear-gradient(to right, #002b55, #004e92) !important;
@@ -170,32 +159,16 @@ st.markdown("""
         box-shadow: 0 5px 15px rgba(0, 78, 146, 0.3) !important;
     }
 
-    /* --- OUTROS (BOTÕES AZUIS DO SISTEMA) --- */
-    /* Garante que botões fora do sidebar e fora do login sejam azuis */
-    div.stButton > button {
-        background-color: #003366 !important; 
-        color: #FFFFFF !important; 
-        border-radius: 8px; 
-        font-weight: bold; 
-        border: none;
-    }
-    div.stButton > button p { color: #FFFFFF !important; }
-    
-    /* --- CORREÇÃO DO BOTÃO DE UPLOAD (Browse Files) --- */
-    /* Força o botão de upload a ter fundo azul e texto branco para ser legível */
-    [data-testid="stFileUploader"] button {
-        background-color: #003366 !important;
-        color: #FFFFFF !important;
-        border: none !important;
-    }
-    [data-testid="stFileUploader"] button:hover {
-        background-color: #F37021 !important;
-    }
-
+    /* --- OUTROS --- */
     div.stMetric { border: 1px solid #e0e0e0; border-left: 5px solid #F37021; padding: 10px 15px !important; }
     div.stMetric label { color: #666 !important; font-size: 14px !important; }
     div.stMetric div[data-testid="stMetricValue"] { color: #003366 !important; font-size: 26px !important; font-weight: 700; }
     div.stMetric div[data-testid="stMetricDelta"] { font-size: 13px !important; }
+    
+    div.stButton > button {
+        background-color: #003366 !important; color: #FFFFFF !important; border-radius: 8px; font-weight: bold; border: none;
+    }
+    div.stButton > button p { color: #FFFFFF !important; }
     
     .update-badge {
         background-color: #e3f2fd; color: #0d47a1; padding: 5px 10px; 
@@ -229,7 +202,6 @@ def formatar_nome_visual(nome_cru):
     if "TAM" in nome: return "Resultado Geral (TAM)"
     return nome_cru 
 
-# --- CONVERSÃO DE HORAS (Para o Banco de Horas) ---
 def converter_hora_para_float(valor):
     try:
         val_str = str(valor).strip()
@@ -249,7 +221,6 @@ def converter_hora_para_float(valor):
     except:
         return 0.0
 
-# --- FORMATAÇÃO DE HORAS (Float -> String HH:MM) ---
 def formatar_saldo_decimal(valor_float):
     try:
         sinal = "+" if valor_float >= 0 else "-"
@@ -295,7 +266,7 @@ def limpar_base_dados_completa():
     for f in arquivos: os.remove(f)
 def faxina_arquivos_temporarios():
     arquivos = [f for f in os.listdir('.') if f.endswith('.csv')]
-    protegidos = ['historico_consolidado.csv', 'usuarios.csv', 'config.json', LOGO_FILE]
+    protegidos = ['historico_consolidado.csv', 'usuarios.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv']
     for f in arquivos:
         if f not in protegidos:
             try: os.remove(f)
@@ -351,7 +322,6 @@ def salvar_arquivos_padronizados(files):
         with open(f.name, "wb") as w: w.write(f.getbuffer())
     return True
 
-# --- CORREÇÃO DE PORCENTAGEM INTELIGENTE ---
 def processar_porcentagem_br(valor):
     if pd.isna(valor) or valor == '': return 0.0
     if isinstance(valor, str):
@@ -389,7 +359,6 @@ def normalizar_nome_indicador(nome_arquivo):
     if 'TAM' in nome: return 'TAM'
     return nome.split('.')[0].upper()
 
-# --- NOVO: NORMALIZAR NOMES (COM CORREÇÃO DE ACENTOS E ESPAÇOS) ---
 def normalizar_chave(texto):
     if pd.isna(texto): return ""
     texto = str(texto).strip().upper()
@@ -467,7 +436,7 @@ def classificar_farol(val):
 def carregar_dados_completo_debug():
     lista_final = []
     log_debug = []
-    arquivos_ignorar = ['usuarios.csv', 'historico_consolidado.csv', 'config.json', LOGO_FILE]
+    arquivos_ignorar = ['usuarios.csv', 'historico_consolidado.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv']
     arquivos = [f for f in os.listdir('.') if f.endswith('.csv') and f.lower() not in arquivos_ignorar]
     for arquivo in arquivos:
         try:
@@ -522,19 +491,28 @@ def filtrar_por_usuarios_cadastrados(df_dados, df_users):
     df_filtrado.drop(columns=['TEMP_NOME_UPPER'], inplace=True)
     return df_filtrado
 
-# --- 4. LOGIN RENOVADO (DESIGN NOVO E ELEGANTE) ---
+# --- NOVA FUNÇÃO: SALVAR FEEDBACK GB ---
+def salvar_feedback_gb(dados_fb):
+    ARQUIVO_FB = 'feedbacks_gb.csv'
+    df_novo = pd.DataFrame([dados_fb])
+    if os.path.exists(ARQUIVO_FB):
+        try:
+            df_hist = pd.read_csv(ARQUIVO_FB)
+            df_final = pd.concat([df_hist, df_novo], ignore_index=True)
+        except: df_final = df_novo
+    else: df_final = df_novo
+    df_final.to_csv(ARQUIVO_FB, index=False)
+
+# --- 4. LOGIN RENOVADO ---
 if 'logado' not in st.session_state:
     st.session_state.update({'logado': False, 'usuario_nome': '', 'perfil': '', 'usuario_email': ''})
 
 if not st.session_state['logado']:
     c1, c2, c3 = st.columns([1, 1.2, 1]) 
-    
     with c2:
         st.markdown("<br><br>", unsafe_allow_html=True)
         with st.form("form_login"):
-            if os.path.exists(LOGO_FILE):
-                st.image(LOGO_FILE, width=100)
-            
+            if os.path.exists(LOGO_FILE): st.image(LOGO_FILE, width=100)
             st.markdown('<div class="login-title">Team Sofistas</div>', unsafe_allow_html=True)
             st.markdown('<div class="login-subtitle">Analytics & Performance</div>', unsafe_allow_html=True)
             st.markdown("---")
@@ -542,7 +520,6 @@ if not st.session_state['logado']:
             senha_input = st.text_input("Senha", type="password", placeholder="Obrigatório para Gestores")
             st.markdown("<br>", unsafe_allow_html=True)
             submit_btn = st.form_submit_button("ACESSAR SISTEMA", use_container_width=True)
-            
             if submit_btn:
                 if email_input in USUARIOS_ADMIN and senha_input == SENHA_ADMIN:
                     st.session_state.update({'logado': True, 'usuario_nome': 'Gestor', 'perfil': 'admin', 'usuario_email': 'admin'})
@@ -555,11 +532,8 @@ if not st.session_state['logado']:
                             nome_upper = user_row.iloc[0]['nome']
                             st.session_state.update({'logado': True, 'usuario_nome': nome_upper, 'perfil': 'user', 'usuario_email': email_input})
                             st.rerun()
-                        else:
-                            st.error("🚫 Usuário não encontrado.")
-                    else:
-                        st.error("⚠️ Base de usuários não carregada.")
-    
+                        else: st.error("🚫 Usuário não encontrado.")
+                    else: st.error("⚠️ Base de usuários não carregada.")
     st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
     st.stop()
 
@@ -591,16 +565,13 @@ with st.sidebar:
     if df_raw is not None and not df_raw.empty:
         df_dados = df_raw.copy()
         df_dados['Colaborador'] = df_dados['Colaborador'].str.title()
-    else:
-        df_dados = None
+    else: df_dados = None
     
-    # STATUS DOS USUÁRIOS (APENAS PARA ADMIN)
     if st.session_state['perfil'] == 'admin':
         if df_users_cadastrados is not None:
             qtd_ativos = len(df_users_cadastrados)
             st.sidebar.caption(f"👥 Usuários Ativos: **{qtd_ativos}**")
-        else:
-            st.sidebar.warning("⚠️ Usuários não carregados")
+        else: st.sidebar.warning("⚠️ Usuários não carregados")
 
     st.markdown("---")
     nome_logado = st.session_state['usuario_nome'].title() if st.session_state['usuario_nome'] != 'Gestor' else 'Gestor'
@@ -619,7 +590,8 @@ if df_dados is None and perfil == 'user':
 # --- GESTOR ---
 if perfil == 'admin':
     st.title(f"📊 Visão Gerencial")
-    tabs = st.tabs(["🚦 Semáforo", "🏆 Ranking Geral", "⏳ Evolução", "🔍 Indicadores", "💰 Comissões", "📋 Tabela Geral", "🏖️ Férias Equipe", "⚙️ Admin", "⏰ Banco de Horas"])
+    # --- ADICIONADA A NOVA ABA DE FEEDBACKS AQUI ---
+    tabs = st.tabs(["🚦 Semáforo", "🏆 Ranking Geral", "⏳ Evolução", "🔍 Indicadores", "💰 Comissões", "📋 Tabela Geral", "🏖️ Férias Equipe", "⚙️ Admin", "⏰ Banco de Horas", "📝 Feedbacks GB"])
     
     tem_tam = False
     if df_dados is not None: tem_tam = 'TAM' in df_dados['Indicador'].unique()
@@ -638,6 +610,7 @@ if perfil == 'admin':
             st.markdown("---")
             
             # FEEDBACK
+            st.subheader("💬 Gerador de Feedback Rápido (1:1)")
             colab_feedback = st.selectbox("Selecione para análise:", sorted(df_dados['Colaborador'].unique()), key="sb_feedback")
             if colab_feedback:
                 user_kpis = df_dados[df_dados['Colaborador'] == colab_feedback].sort_values(by='% Atingimento', ascending=True)
@@ -656,6 +629,7 @@ if perfil == 'admin':
                     </div>""", unsafe_allow_html=True)
             st.markdown("---")
             
+            # FAROL
             df_dados['Status_Farol'] = df_dados['% Atingimento'].apply(classificar_farol)
             fig_farol = px.bar(df_dados.groupby(['Indicador', 'Status_Farol']).size().reset_index(name='Qtd'), 
                                x='Indicador', y='Qtd', color='Status_Farol', text='Qtd',
@@ -765,14 +739,12 @@ if perfil == 'admin':
             for colab in df_calc['Colaborador_Key'].unique():
                 df_user = df_calc[df_calc['Colaborador_Key'] == colab]
                 
-                # Cálculo Diamantes
                 if tem_tam:
                     row_tam = df_user[df_user['Indicador'] == 'TAM']
                     total_diamantes = row_tam.iloc[0]['Diamantes'] if not row_tam.empty else 0
                 else:
                     total_diamantes = df_user['Diamantes'].sum()
                 
-                # Cálculo Descontos
                 row_conf = df_user[df_user['Indicador'] == 'CONFORMIDADE']
                 conf_val = row_conf.iloc[0]['% Atingimento'] if not row_conf.empty else 0.0
                 
@@ -893,8 +865,14 @@ if perfil == 'admin':
             st.markdown("#### 💾 Backup de Segurança")
             if os.path.exists('historico_consolidado.csv'):
                 with open('historico_consolidado.csv', 'rb') as f:
-                    st.download_button("⬇️ Baixar Backup", f, "historico_consolidado_backup.csv", "text/csv")
+                    st.download_button("⬇️ Baixar Backup Consolidado", f, "historico_consolidado_backup.csv", "text/csv")
             else: st.warning("Sem histórico para backup.")
+            
+            # Novo Backup para a base de Feedbacks
+            if os.path.exists('feedbacks_gb.csv'):
+                with open('feedbacks_gb.csv', 'rb') as f:
+                    st.download_button("⬇️ Baixar Banco de Feedbacks", f, "feedbacks_gb_backup.csv", "text/csv")
+
         with st4:
             if st.button("Rodar Diagnóstico"):
                 _, log_df = carregar_dados_completo_debug()
@@ -915,7 +893,6 @@ if perfil == 'admin':
                     df_ponto = df_ponto[[col_nome, col_saldo]].dropna()
                     df_ponto.rename(columns={col_nome: 'Colaborador', col_saldo: 'Saldo String'}, inplace=True)
                     
-                    # FILTRO DE ATIVOS
                     if df_users_cadastrados is not None:
                         df_ponto['TEMP_NOME_NORM'] = df_ponto['Colaborador'].apply(normalizar_chave)
                         lista_ativos = df_users_cadastrados['nome'].unique()
@@ -942,6 +919,107 @@ if perfil == 'admin':
                     st.dataframe(df_ponto.style.background_gradient(subset=['Saldo (h)'], cmap='RdYlGn'), use_container_width=True)
                 else: st.error("Colunas não identificadas.")
             except Exception as e: st.error(f"Erro: {e}")
+
+    # --- NOVA ABA: FEEDBACKS GB ---
+    with tabs[9]:
+        st.markdown("### 📝 Controle de Feedbacks (GB)")
+        st.info("💡 **Objetivo:** Registrar feedback orientado a valor para todos os operadores que fecharam o mês abaixo da meta de 70% no Resultado Geral (TAM). Realize isso preferencialmente na 1ª semana do mês.")
+        
+        if df_dados is not None and tem_tam:
+            df_tam = df_dados[df_dados['Indicador'] == 'TAM'].copy()
+            df_criticos = df_tam[df_tam['% Atingimento'] < 0.70]
+            
+            if not df_criticos.empty:
+                qtd_criticos = len(df_criticos)
+                st.warning(f"⚠️ Atenção! Você tem **{qtd_criticos}** colaborador(es) com TAM abaixo de 70% neste período.")
+                
+                colab_fb = st.selectbox("Selecione o Colaborador para registrar o Feedback:", sorted(df_criticos['Colaborador'].unique()), key="sel_colab_fb")
+                
+                if colab_fb:
+                    # Coletar dados específicos do operador
+                    df_user_fb = df_dados[df_dados['Colaborador'] == colab_fb]
+                    
+                    def get_kpi_val(ind):
+                        r = df_user_fb[df_user_fb['Indicador'] == ind]
+                        return r.iloc[0]['% Atingimento'] if not r.empty else 0.0
+
+                    tam_v = get_kpi_val('TAM')
+                    ir_v = get_kpi_val('IR')
+                    csat_v = get_kpi_val('CSAT')
+                    int_v = get_kpi_val('INTERACOES')
+                    conf_v = get_kpi_val('CONFORMIDADE')
+                    
+                    st.markdown(f"#### 📊 Raio-X: {colab_fb}")
+                    c1, c2, c3, c4, c5 = st.columns(5)
+                    c1.metric("TAM", f"{tam_v:.1%}")
+                    c2.metric("Resolução (IR)", f"{ir_v:.1%}")
+                    c3.metric("CSAT", f"{csat_v:.1%}")
+                    c4.metric("Interações", f"{int_v:.1%}")
+                    c5.metric("Conformidade", f"{conf_v:.1%}")
+                    
+                    st.markdown("---")
+                    
+                    with st.form("form_registro_fb"):
+                        st.markdown("#### ✍️ Registro Estratégico")
+                        motivo_txt = st.text_area("1. Motivo(s) pelo qual não atingiu o TAM:", placeholder="Ex: Teve baixo IR devido a falha na identificação do equipamento...")
+                        fb_valor_txt = st.text_area("2. Feedback Orientado a Valor:", placeholder="Ex: Ressaltei a facilidade de comunicação dele e mostrei como aliar isso à técnica de sondagem...")
+                        acao_txt = st.text_area("3. Plano de Ação (Apresentação GB):", placeholder="Ex: Monitoria lado a lado semanal e rodada de simulação.")
+                        
+                        btn_salvar_fb = st.form_submit_button("💾 Salvar Registro e Gerar E-mail")
+                        
+                        if btn_salvar_fb:
+                            if not motivo_txt or not fb_valor_txt or not acacao_txt:
+                                st.error("⚠️ Preencha todos os campos para registrar o feedback.")
+                            else:
+                                # Salva no banco de dados CSV
+                                dados_novo_fb = {
+                                    "Data_Registro": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                                    "Periodo_Ref": periodo_label,
+                                    "Colaborador": colab_fb,
+                                    "TAM": f"{tam_v:.1%}",
+                                    "Motivo": motivo_txt,
+                                    "Acao_GB": acao_txt,
+                                    "Feedback_Valor": fb_valor_txt
+                                }
+                                salvar_feedback_gb(dados_novo_fb)
+                                st.success("✅ Feedback registrado com sucesso no banco de dados!")
+                                
+                                # GERA O E-MAIL (TEMPLATE)
+                                st.markdown("### 📧 E-mail Gerado (Copie e cole):")
+                                email_template = f"""
+**Assunto:** Feedback Mensal - Resultado TAM - {periodo_label}
+
+Olá, **{colab_fb}**. Tudo bem?
+
+Gostaria de repassar os pontos referentes ao seu desempenho operacional referente a **{periodo_label}**.
+O seu Resultado Geral (TAM) fechou em **{tam_v:.1%}**, ficando abaixo da nossa meta de Excelência (70%).
+
+Aqui está o detalhamento dos seus indicadores de suporte:
+* **Resolução (IR):** {ir_v:.1%}
+* **CSAT:** {csat_v:.1%}
+* **Interações:** {int_v:.1%}
+* **Conformidade:** {conf_v:.1%}
+
+**Pontos Mapeados:**
+{motivo_txt}
+
+**Nosso Plano de Ação:**
+{acao_txt}
+
+**Feedback:**
+{fb_valor_txt}
+
+Conto com sua dedicação para revertermos esse quadro no próximo ciclo. Qualquer dúvida, estou à disposição!
+
+Atenciosamente,
+Sua Liderança.
+"""
+                                st.code(email_template, language='markdown')
+
+            else:
+                st.success("🎉 Ótima notícia! Nenhum operador da sua equipe ficou abaixo de 70% no TAM neste mês de referência.")
+        else:
+            st.info("⚠️ Aguardando dados de TAM ou arquivo de indicadores para habilitar os feedbacks.")
 
 # --- VISÃO OPERADOR ---
 else:
@@ -998,61 +1076,33 @@ else:
                 with c_gamif:
                     st.markdown("##### 💎 Gamificação")
                     st.progress(resultado_global if resultado_global <= 1.0 else 1.0)
-                    # --- BADGES (MEDALHAS) EXPANDIDAS ---
                     badges = []
-                    # 1. Guardião (Conformidade)
                     if not meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE'].iloc[0]['% Atingimento'] >= 1.0: badges.append("🛡️ Guardião")
-                    # 2. Amado (CSAT)
                     if not meus_dados[meus_dados['Indicador'] == 'CSAT'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'CSAT'].iloc[0]['% Atingimento'] >= 0.95: badges.append("❤️ Amado")
-                    # 3. Relógio Suíço (Aderência)
                     if not meus_dados[meus_dados['Indicador'] == 'ADERENCIA'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'ADERENCIA'].iloc[0]['% Atingimento'] >= 0.98: badges.append("⏰ Relógio Suíço")
-                    # 4. Sherlock (Resolução/IR)
                     if not meus_dados[meus_dados['Indicador'] == 'IR'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'IR'].iloc[0]['% Atingimento'] >= 0.90: badges.append("🧩 Sherlock")
-                    # 5. No Alvo (Pontualidade)
                     if not meus_dados[meus_dados['Indicador'] == 'PONTUALIDADE'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'PONTUALIDADE'].iloc[0]['% Atingimento'] >= 1.0: badges.append("🎯 No Alvo")
-                    # 6. The Flash (TPC)
                     if not meus_dados[meus_dados['Indicador'] == 'TPC'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'TPC'].iloc[0]['% Atingimento'] >= 1.0: badges.append("⚡ The Flash")
-                    # 7. Ciborgue (Interações)
                     if not meus_dados[meus_dados['Indicador'] == 'INTERACOES'].empty:
                         if meus_dados[meus_dados['Indicador'] == 'INTERACOES'].iloc[0]['% Atingimento'] >= 1.0: badges.append("🤖 Ciborgue")
 
                     st.write(f"**{int(total_dia_bruto)} / {int(total_max)}** Diamantes")
                     if badges: st.success(f"Conquistas: {' '.join(badges)}")
-
                     with st.expander("ℹ️ Legenda das Conquistas"):
-                        st.markdown("""
-                        * 🛡️ **Guardião:** 100% Conformidade.
-                        * ❤️ **Amado:** CSAT acima de 95%.
-                        * ⏰ **Relógio Suíço:** Aderência acima de 98%.
-                        * 🧩 **Sherlock:** Resolução (IR) acima de 90%.
-                        * 🎯 **No Alvo:** Pontualidade 100%.
-                        * ⚡ **The Flash:** TPC na Meta.
-                        * 🤖 **Ciborgue:** Interações na Meta.
-                        """)
+                        st.markdown("* 🛡️ **Guardião:** 100% Conformidade\n* ❤️ **Amado:** CSAT > 95%\n* ⏰ **Relógio Suíço:** Aderência > 98%\n* 🧩 **Sherlock:** Resolução > 90%\n* 🎯 **No Alvo:** Pontualidade 100%\n* ⚡ **The Flash:** TPC na Meta\n* 🤖 **Ciborgue:** Interações na Meta")
 
                 with c_gauge:
-                    fig_gauge = go.Figure(go.Indicator(
-                        mode = "gauge+number",
-                        value = resultado_global * 100,
-                        number = {'font': {'size': 24, 'color': '#003366'}}, 
-                        gauge = {
-                            'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': "#003366"},
-                            'bar': {'color': "#F37021"},
-                            'bgcolor': "white",
-                            'steps': [{'range': [0, 100], 'color': '#f4f7f6'}],
-                            'threshold': {'line': {'color': "green", 'width': 4}, 'thickness': 0.75, 'value': 100}
-                        }))
+                    fig_gauge = go.Figure(go.Indicator(mode = "gauge+number", value = resultado_global * 100, number = {'font': {'size': 24, 'color': '#003366'}}, gauge = {'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': "#003366"}, 'bar': {'color': "#F37021"}, 'bgcolor': "white", 'steps': [{'range': [0, 100], 'color': '#f4f7f6'}], 'threshold': {'line': {'color': "green", 'width': 4}, 'thickness': 0.75, 'value': 100}}))
                     fig_gauge.update_layout(height=140, margin=dict(l=10, r=10, t=30, b=10), paper_bgcolor='rgba(0,0,0,0)', font={'color': '#003366'})
                     st.plotly_chart(fig_gauge, use_container_width=True)
                 st.markdown("---")
                 
-                # --- SMART COACH ---
                 pior_row = meus_dados.sort_values(by='% Atingimento').iloc[0]
                 if pior_row['% Atingimento'] < 0.9:
                     dica = DICAS_KPI.get(pior_row['Indicador'], "Fale com seu gestor.")
@@ -1102,20 +1152,15 @@ else:
 
             st.markdown("---")
             
-            # --- RADAR CHART (Com proteção e Correção do Erro KeyError) ---
             media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
-            # Renomeia para evitar colisão no merge (Correção do KeyError)
             media_equipe.rename(columns={'% Atingimento': 'Média Equipe'}, inplace=True)
-            
             if not media_equipe.empty:
                 df_comp = pd.merge(meus_dados, media_equipe, on='Indicador')
                 if not df_comp.empty:
                     df_comp['Indicador'] = df_comp['Indicador'].apply(formatar_nome_visual)
-                    
                     categorias = df_comp['Indicador'].tolist()
                     valores_user = df_comp['% Atingimento'].tolist()
                     valores_media = df_comp['Média Equipe'].tolist()
-                    
                     if categorias:
                         categorias.append(categorias[0])
                         valores_user.append(valores_user[0])
@@ -1127,7 +1172,6 @@ else:
                         st.markdown("##### 🕸️ Raio-X de Competências")
                         st.plotly_chart(fig, use_container_width=True)
 
-            # --- HISTÓRICO PESSOAL ---
             st.markdown("---")
             st.markdown("### 📈 Sua Evolução (Últimos Meses)")
             df_hist_full = carregar_historico_completo()
