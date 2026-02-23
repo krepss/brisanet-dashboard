@@ -527,6 +527,13 @@ def salvar_feedback_gb(dados_fb):
     else: df_final = df_novo
     df_final.to_csv(ARQUIVO_FB, index=False)
 
+def carregar_feedbacks_gb():
+    if os.path.exists('feedbacks_gb.csv'):
+        try:
+            return pd.read_csv('feedbacks_gb.csv')
+        except: return None
+    return None
+
 # --- 4. LOGIN RENOVADO ---
 if 'logado' not in st.session_state:
     st.session_state.update({'logado': False, 'usuario_nome': '', 'perfil': '', 'usuario_email': ''})
@@ -942,7 +949,6 @@ if perfil == 'admin':
                 else: st.error("Colunas não identificadas.")
             except Exception as e: st.error(f"Erro: {e}")
 
-    # --- ABA: FEEDBACKS GB (TODAS AS FAIXAS + CARDS DINÂMICOS + SMART COACH) ---
     with tabs[9]:
         st.markdown("### 📝 Controle de Feedbacks (GB)")
         st.info("💡 **Objetivo:** Registrar feedback orientado a valor para **todos os operadores**, divididos por faixas de desempenho. Realize isso preferencialmente na 1ª semana do mês para engajar e corrigir rotas.")
@@ -975,13 +981,10 @@ if perfil == 'admin':
                 
                 if colab_fb:
                     df_user_fb = df_dados[df_dados['Colaborador'] == colab_fb].sort_values(by='% Atingimento', ascending=False)
-                    
-                    # Para a lógica do e-mail
                     tam_v = df_user_fb[df_user_fb['Indicador'] == 'TAM'].iloc[0]['% Atingimento'] if not df_user_fb[df_user_fb['Indicador'] == 'TAM'].empty else 0.0
                     
                     st.markdown(f"#### 📊 Raio-X Completo: {colab_fb}")
                     
-                    # Cria cards dinamicamente para TODOS os indicadores daquele mês
                     cols_per_row = 4
                     for i in range(0, len(df_user_fb), cols_per_row):
                         cols = st.columns(cols_per_row)
@@ -991,21 +994,18 @@ if perfil == 'admin':
                                 val = row['% Atingimento']
                                 ind_nome = formatar_nome_visual(row['Indicador'])
                                 meta = 0.92 if row['Indicador'] in ['CONFORMIDADE', 'ADERENCIA'] else 0.80
-                                
                                 status_msg = "✅ Meta" if val >= meta else "🔻 Abaixo"
                                 color = "normal" if val >= meta else "inverse"
                                 cols[j].metric(ind_nome, f"{val:.1%}", status_msg, delta_color=color)
                     
                     st.markdown("---")
                     
-                    # --- SMART COACH: Dicas Automáticas baseadas nos piores KPIs ---
                     df_user_fb_piores = df_user_fb[df_user_fb['Indicador'] != 'TAM'].sort_values(by='% Atingimento', ascending=True)
-                    piores_kpis = df_user_fb_piores[df_user_fb_piores['% Atingimento'] < 0.85] # Considera atencao tudo abaixo de 85
+                    piores_kpis = df_user_fb_piores[df_user_fb_piores['% Atingimento'] < 0.85] 
                     
                     if not piores_kpis.empty:
                         st.markdown("##### 💡 Sugestões de Abordagem (Smart Coach)")
                         st.caption("Baseado nos resultados deste mês, aqui estão pontos chaves sugeridos para o seu 1:1:")
-                        
                         for _, row in piores_kpis.iterrows():
                             ind = row['Indicador']
                             val = row['% Atingimento']
@@ -1041,7 +1041,6 @@ if perfil == 'admin':
                                 salvar_feedback_gb(dados_novo_fb)
                                 st.success("✅ Feedback registrado com sucesso no banco de dados!")
                                 
-                                # GERA A LISTA DE INDICADORES PRO EMAIL DE FORMA DINÂMICA
                                 lista_kpis_email = "\n".join([f"* **{formatar_nome_visual(row['Indicador'])}:** {row['% Atingimento']:.1%}" for _, row in df_user_fb.iterrows()])
 
                                 if tam_v < 0.70:
@@ -1099,7 +1098,8 @@ else:
             if not user_info.empty: minhas_ferias = user_info.iloc[0]['ferias']
         except: pass
 
-    tab_results, tab_ferias = st.tabs(["📊 Meus Resultados", "🏖️ Minhas Férias"])
+    # --- ADICIONADA A NOVA ABA "Meus Feedbacks" AQUI ---
+    tab_results, tab_ferias, tab_feedbacks = st.tabs(["📊 Meus Resultados", "🏖️ Minhas Férias", "📝 Meus Feedbacks"])
 
     with tab_results:
         ranking_msg = "Não classificado"
@@ -1267,3 +1267,31 @@ else:
                 <p class="vacation-note">*Sujeito a alteração conforme necessidade da operação.</p>
             </div>
             """, unsafe_allow_html=True)
+
+    # --- NOVA LÓGICA DA ABA DE FEEDBACKS DO OPERADOR ---
+    with tab_feedbacks:
+        st.markdown("### 📝 Histórico de Feedbacks")
+        st.write("Acompanhe aqui os alinhamentos, reconhecimentos e planos de ação traçados com sua liderança.")
+        
+        df_fbs = carregar_feedbacks_gb()
+        
+        if df_fbs is not None and not df_fbs.empty:
+            # Filtra pelos feedbacks exclusivos da pessoa logada
+            df_fbs['Colaborador_Norm'] = df_fbs['Colaborador'].apply(normalizar_chave)
+            meus_fbs = df_fbs[df_fbs['Colaborador_Norm'] == normalizar_chave(nome_logado)].copy()
+            
+            if not meus_fbs.empty:
+                # Inverte para mostrar o mais recente primeiro
+                for _, row in meus_fbs.iloc[::-1].iterrows():
+                    faixa = str(row.get('Faixa', ''))
+                    
+                    with st.expander(f"📅 {row['Periodo_Ref']} | 🎯 Resultado TAM: {row['TAM']} {faixa}"):
+                        st.caption(f"**Registrado no sistema em:** {row['Data_Registro']}")
+                        
+                        st.markdown(f"**🎯 Pontos Mapeados (Motivos):**\n> {row['Motivo']}")
+                        st.markdown(f"**🚀 Nosso Plano de Ação:**\n> {row['Acao_GB']}")
+                        st.markdown(f"**💡 Feedback da Liderança:**\n> {row['Feedback_Valor']}")
+            else:
+                st.info("Você ainda não possui registros de feedback no sistema.")
+        else:
+            st.info("Nenhum feedback registrado no sistema até o momento.")
