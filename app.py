@@ -18,12 +18,12 @@ USUARIOS_ADMIN = ['gestor', 'admin']
 # --- DICAS AUTOMÁTICAS (SMART COACH) ---
 DICAS_KPI = {
     "ADERENCIA": "Atenção aos horários de login/logoff e pausas. Cumpra a escala rigorosamente.",
-    "CONFORMIDADE": "Revise o script e os processos obrigatórios. Acompanhe a monitoria.",
+    "CONFORMIDADE": "Aqui é o tempo de fila, evite pausas desnecessárias!",
     "INTERACOES": "Seja mais proativo durante o atendimento. Evite silêncio excessivo.",
     "PONTUALIDADE": "Evite atrasos na primeira conexão do dia. Chegue 5 min antes.",
     "CSAT": "Aposte na empatia e na escuta ativa. Confirme a resolução com o cliente.",
     "IR": "Garanta que o serviço voltou a funcionar. Faça testes finais antes de encerrar.",
-    "TPC": "Otimize a tabulação: registre informações enquanto ainda fala com o cliente.",
+    "TPC": "Aqui é no pulo do gato, da pra recuperar é só lembrar de tabuluar no momento certo!",
     "TAM": "Assuma o comando da ligação. Seja objetivo e guie o cliente para a solução."
 }
 
@@ -33,7 +33,7 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
-# --- 2. CSS (DESIGN PREMIUM + CORREÇÕES) ---
+# --- 2. CSS (DESIGN PREMIUM + CORREÇÕES DE BOTÕES) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
@@ -45,11 +45,21 @@ st.markdown("""
         background-color: #002b55 !important;
         background-image: linear-gradient(180deg, #002b55 0%, #004e92 100%) !important;
     }
-    
-    /* Texto GERAL da Sidebar -> BRANCO */
     [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, 
     [data-testid="stSidebar"] p, [data-testid="stSidebar"] label, [data-testid="stSidebar"] span {
         color: #FFFFFF !important;
+    }
+
+    /* --- BOTÃO SAIR (SIDEBAR) - VERMELHO --- */
+    [data-testid="stSidebar"] button {
+        background-color: #e74c3c !important;
+        color: white !important;
+        border: 1px solid #c0392b !important;
+        font-weight: bold !important;
+    }
+    [data-testid="stSidebar"] button:hover {
+        background-color: #c0392b !important;
+        border-color: #a93226 !important;
     }
 
     /* --- CORREÇÃO INPUTS SIDEBAR --- */
@@ -141,6 +151,7 @@ st.markdown("""
         color: #333 !important;
         border-radius: 8px !important;
     }
+    /* Botão de Login */
     [data-testid="stForm"] [data-testid="stBaseButton-secondary"] {
         width: 100% !important;
         background-image: linear-gradient(to right, #002b55, #004e92) !important;
@@ -159,16 +170,30 @@ st.markdown("""
         box-shadow: 0 5px 15px rgba(0, 78, 146, 0.3) !important;
     }
 
-    /* --- OUTROS --- */
+    /* --- OUTROS (BOTÕES AZUIS DO SISTEMA) --- */
+    div.stButton > button {
+        background-color: #003366 !important; 
+        color: #FFFFFF !important; 
+        border-radius: 8px; 
+        font-weight: bold; 
+        border: none;
+    }
+    div.stButton > button p { color: #FFFFFF !important; }
+    
+    /* --- CORREÇÃO DO BOTÃO DE UPLOAD (Browse Files) --- */
+    [data-testid="stFileUploader"] button {
+        background-color: #003366 !important;
+        color: #FFFFFF !important;
+        border: none !important;
+    }
+    [data-testid="stFileUploader"] button:hover {
+        background-color: #F37021 !important;
+    }
+
     div.stMetric { border: 1px solid #e0e0e0; border-left: 5px solid #F37021; padding: 10px 15px !important; }
     div.stMetric label { color: #666 !important; font-size: 14px !important; }
     div.stMetric div[data-testid="stMetricValue"] { color: #003366 !important; font-size: 26px !important; font-weight: 700; }
     div.stMetric div[data-testid="stMetricDelta"] { font-size: 13px !important; }
-    
-    div.stButton > button {
-        background-color: #003366 !important; color: #FFFFFF !important; border-radius: 8px; font-weight: bold; border: none;
-    }
-    div.stButton > button p { color: #FFFFFF !important; }
     
     .update-badge {
         background-color: #e3f2fd; color: #0d47a1; padding: 5px 10px; 
@@ -737,14 +762,12 @@ if perfil == 'admin':
             for colab in df_calc['Colaborador_Key'].unique():
                 df_user = df_calc[df_calc['Colaborador_Key'] == colab]
                 
-                # Cálculo Diamantes
                 if tem_tam:
                     row_tam = df_user[df_user['Indicador'] == 'TAM']
                     total_diamantes = row_tam.iloc[0]['Diamantes'] if not row_tam.empty else 0
                 else:
                     total_diamantes = df_user['Diamantes'].sum()
                 
-                # Cálculo Descontos
                 row_conf = df_user[df_user['Indicador'] == 'CONFORMIDADE']
                 conf_val = row_conf.iloc[0]['% Atingimento'] if not row_conf.empty else 0.0
                 
@@ -868,7 +891,6 @@ if perfil == 'admin':
                     st.download_button("⬇️ Baixar Backup Consolidado", f, "historico_consolidado_backup.csv", "text/csv")
             else: st.warning("Sem histórico para backup.")
             
-            # Novo Backup para a base de Feedbacks
             if os.path.exists('feedbacks_gb.csv'):
                 with open('feedbacks_gb.csv', 'rb') as f:
                     st.download_button("⬇️ Baixar Banco de Feedbacks", f, "feedbacks_gb_backup.csv", "text/csv")
@@ -893,7 +915,6 @@ if perfil == 'admin':
                     df_ponto = df_ponto[[col_nome, col_saldo]].dropna()
                     df_ponto.rename(columns={col_nome: 'Colaborador', col_saldo: 'Saldo String'}, inplace=True)
                     
-                    # FILTRO DE ATIVOS
                     if df_users_cadastrados is not None:
                         df_ponto['TEMP_NOME_NORM'] = df_ponto['Colaborador'].apply(normalizar_chave)
                         lista_ativos = df_users_cadastrados['nome'].unique()
@@ -921,7 +942,7 @@ if perfil == 'admin':
                 else: st.error("Colunas não identificadas.")
             except Exception as e: st.error(f"Erro: {e}")
 
-    # --- ABA: FEEDBACKS GB (TODAS AS FAIXAS DE DESEMPENHO) ---
+    # --- ABA: FEEDBACKS GB (TODAS AS FAIXAS + CARDS DINÂMICOS + SMART COACH) ---
     with tabs[9]:
         st.markdown("### 📝 Controle de Feedbacks (GB)")
         st.info("💡 **Objetivo:** Registrar feedback orientado a valor para **todos os operadores**, divididos por faixas de desempenho. Realize isso preferencialmente na 1ª semana do mês para engajar e corrigir rotas.")
@@ -929,16 +950,14 @@ if perfil == 'admin':
         if df_dados is not None and tem_tam:
             df_tam = df_dados[df_dados['Indicador'] == 'TAM'].copy()
             
-            # 1. Filtro de Faixa de Desempenho
             faixa_sel = st.selectbox(
-                "🎯 Selecione a Faixa de Desempenho:",
+                "🎯 Selecione a Faixa de Desempenho (Baseado no TAM):",
                 ["🔴 Abaixo de 70% (Crítico)", 
                  "🟠 Entre 70% e 80% (Atenção)", 
                  "🟡 Entre 80% e 90% (Meta Batida)", 
                  "🟢 Acima de 90% (Excelência)"]
             )
             
-            # 2. Aplicar o Filtro
             if "Abaixo de 70%" in faixa_sel:
                 df_filtrado = df_tam[df_tam['% Atingimento'] < 0.70]
             elif "Entre 70% e 80%" in faixa_sel:
@@ -955,29 +974,48 @@ if perfil == 'admin':
                 colab_fb = st.selectbox("Selecione o Colaborador para registrar o Feedback:", sorted(df_filtrado['Colaborador'].unique()), key="sel_colab_fb")
                 
                 if colab_fb:
-                    # Coletar dados específicos do operador
-                    df_user_fb = df_dados[df_dados['Colaborador'] == colab_fb]
+                    df_user_fb = df_dados[df_dados['Colaborador'] == colab_fb].sort_values(by='% Atingimento', ascending=False)
                     
-                    def get_kpi_val(ind):
-                        r = df_user_fb[df_user_fb['Indicador'] == ind]
-                        return r.iloc[0]['% Atingimento'] if not r.empty else 0.0
-
-                    tam_v = get_kpi_val('TAM')
-                    ir_v = get_kpi_val('IR')
-                    csat_v = get_kpi_val('CSAT')
-                    int_v = get_kpi_val('INTERACOES')
-                    conf_v = get_kpi_val('CONFORMIDADE')
+                    # Para a lógica do e-mail
+                    tam_v = df_user_fb[df_user_fb['Indicador'] == 'TAM'].iloc[0]['% Atingimento'] if not df_user_fb[df_user_fb['Indicador'] == 'TAM'].empty else 0.0
                     
-                    st.markdown(f"#### 📊 Raio-X: {colab_fb}")
-                    c1, c2, c3, c4, c5 = st.columns(5)
-                    c1.metric("TAM", f"{tam_v:.1%}")
-                    c2.metric("Resolução (IR)", f"{ir_v:.1%}")
-                    c3.metric("CSAT", f"{csat_v:.1%}")
-                    c4.metric("Interações", f"{int_v:.1%}")
-                    c5.metric("Conformidade", f"{conf_v:.1%}")
+                    st.markdown(f"#### 📊 Raio-X Completo: {colab_fb}")
+                    
+                    # Cria cards dinamicamente para TODOS os indicadores daquele mês
+                    cols_per_row = 4
+                    for i in range(0, len(df_user_fb), cols_per_row):
+                        cols = st.columns(cols_per_row)
+                        for j in range(cols_per_row):
+                            if i + j < len(df_user_fb):
+                                row = df_user_fb.iloc[i + j]
+                                val = row['% Atingimento']
+                                ind_nome = formatar_nome_visual(row['Indicador'])
+                                meta = 0.92 if row['Indicador'] in ['CONFORMIDADE', 'ADERENCIA'] else 0.80
+                                
+                                status_msg = "✅ Meta" if val >= meta else "🔻 Abaixo"
+                                color = "normal" if val >= meta else "inverse"
+                                cols[j].metric(ind_nome, f"{val:.1%}", status_msg, delta_color=color)
                     
                     st.markdown("---")
                     
+                    # --- SMART COACH: Dicas Automáticas baseadas nos piores KPIs ---
+                    df_user_fb_piores = df_user_fb[df_user_fb['Indicador'] != 'TAM'].sort_values(by='% Atingimento', ascending=True)
+                    piores_kpis = df_user_fb_piores[df_user_fb_piores['% Atingimento'] < 0.85] # Considera atencao tudo abaixo de 85
+                    
+                    if not piores_kpis.empty:
+                        st.markdown("##### 💡 Sugestões de Abordagem (Smart Coach)")
+                        st.caption("Baseado nos resultados deste mês, aqui estão pontos chaves sugeridos para o seu 1:1:")
+                        
+                        for _, row in piores_kpis.iterrows():
+                            ind = row['Indicador']
+                            val = row['% Atingimento']
+                            dica = DICAS_KPI.get(ind, "Mapeie em conjunto onde estão os gargalos da operação diária.")
+                            st.markdown(f"⚠️ **{formatar_nome_visual(ind)} ({val:.1%}):** {dica}")
+                    else:
+                        st.success("🌟 O colaborador não possui indicadores secundários em estado crítico! Foco no reforço positivo.")
+                        
+                    st.markdown("---")
+
                     with st.form("form_registro_fb"):
                         st.markdown("#### ✍️ Registro Estratégico")
                         motivo_txt = st.text_area("1. Motivo(s) do resultado:", placeholder="Ex: Teve baixo IR devido a falha na identificação do equipamento... ou Mandou muito bem na tratativa...")
@@ -990,12 +1028,11 @@ if perfil == 'admin':
                             if not motivo_txt or not fb_valor_txt or not acao_txt:
                                 st.error("⚠️ Preencha todos os campos para registrar o feedback.")
                             else:
-                                # Salva no banco de dados CSV
                                 dados_novo_fb = {
                                     "Data_Registro": datetime.now().strftime("%d/%m/%Y %H:%M"),
                                     "Periodo_Ref": periodo_label,
                                     "Colaborador": colab_fb,
-                                    "Faixa": faixa_sel.split(" ")[0], # Salva o Emoji
+                                    "Faixa": faixa_sel.split(" ")[0],
                                     "TAM": f"{tam_v:.1%}",
                                     "Motivo": motivo_txt,
                                     "Acao_GB": acao_txt,
@@ -1004,10 +1041,9 @@ if perfil == 'admin':
                                 salvar_feedback_gb(dados_novo_fb)
                                 st.success("✅ Feedback registrado com sucesso no banco de dados!")
                                 
-                                # GERA O E-MAIL DINÂMICO
-                                st.markdown("### 📧 E-mail Gerado (Copie e cole):")
-                                
-                                # Adapta a abertura do e-mail de acordo com a nota
+                                # GERA A LISTA DE INDICADORES PRO EMAIL DE FORMA DINÂMICA
+                                lista_kpis_email = "\n".join([f"* **{formatar_nome_visual(row['Indicador'])}:** {row['% Atingimento']:.1%}" for _, row in df_user_fb.iterrows()])
+
                                 if tam_v < 0.70:
                                     abertura = f"O seu Resultado Geral (TAM) fechou em **{tam_v:.1%}**, ficando abaixo da nossa meta. Precisamos focar na recuperação e eu estou aqui para te apoiar nisso."
                                 elif tam_v < 0.80:
@@ -1026,10 +1062,7 @@ Gostaria de repassar os pontos referentes ao seu desempenho referente a **{perio
 {abertura}
 
 Aqui está o detalhamento dos seus indicadores de suporte:
-* **Resolução (IR):** {ir_v:.1%}
-* **CSAT:** {csat_v:.1%}
-* **Interações:** {int_v:.1%}
-* **Conformidade:** {conf_v:.1%}
+{lista_kpis_email}
 
 **Pontos Mapeados:**
 {motivo_txt}
@@ -1045,6 +1078,7 @@ Conto com seu engajamento para o próximo ciclo. Qualquer dúvida, estou sempre 
 Atenciosamente,
 Sua Liderança.
 """
+                                st.markdown("### 📧 E-mail Gerado (Copie e cole):")
                                 st.code(email_template, language='markdown')
 
             else:
