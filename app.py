@@ -282,13 +282,16 @@ def salvar_config(data_texto):
     try:
         with open('config.json', 'w') as f: json.dump({'periodo': data_texto}, f)
     except: pass
+
 def ler_config():
     if os.path.exists('config.json'):
         with open('config.json', 'r') as f: return json.load(f).get('periodo', 'Não informado')
     return "Aguardando atualização"
+
 def limpar_base_dados_completa():
     arquivos = [f for f in os.listdir('.') if f.endswith('.csv')]
     for f in arquivos: os.remove(f)
+
 def faxina_arquivos_temporarios():
     arquivos = [f for f in os.listdir('.') if f.endswith('.csv')]
     protegidos = ['historico_consolidado.csv', 'usuarios.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv']
@@ -296,6 +299,7 @@ def faxina_arquivos_temporarios():
         if f not in protegidos:
             try: os.remove(f)
             except: pass
+
 def atualizar_historico(df_atual, periodo):
     ARQUIVO_HIST = 'historico_consolidado.csv'
     df_save = df_atual.copy()
@@ -315,6 +319,7 @@ def atualizar_historico(df_atual, periodo):
     existing_cols = [c for c in cols_order if c in df_final.columns]
     df_final = df_final[existing_cols]
     df_final.to_csv(ARQUIVO_HIST, index=False)
+
 def excluir_periodo_historico(periodo_alvo):
     ARQUIVO_HIST = 'historico_consolidado.csv'
     if os.path.exists(ARQUIVO_HIST):
@@ -326,6 +331,7 @@ def excluir_periodo_historico(periodo_alvo):
             return True
         except: return False
     return False
+
 def carregar_historico_completo():
     if os.path.exists('historico_consolidado.csv'):
         try: 
@@ -334,6 +340,7 @@ def carregar_historico_completo():
             return df
         except: return None
     return None
+
 def listar_periodos_disponiveis():
     df = carregar_historico_completo()
     if df is not None and 'Periodo' in df.columns:
@@ -342,6 +349,7 @@ def listar_periodos_disponiveis():
         except: periodos.sort(reverse=True)
         return periodos
     return []
+
 def salvar_arquivos_padronizados(files):
     for f in files:
         with open(f.name, "wb") as w: w.write(f.getbuffer())
@@ -372,6 +380,7 @@ def ler_csv_inteligente(arquivo_ou_caminho):
                 if len(df.columns) > 1: return df
             except: continue
     return None
+
 def normalizar_nome_indicador(nome_arquivo):
     nome = nome_arquivo.upper()
     if 'ADER' in nome: return 'ADERENCIA'
@@ -453,6 +462,7 @@ def tratar_arquivo_especial(df, nome_arquivo):
     if 'Diamantes' in df.columns: cols_to_keep.append('Diamantes')
     if 'Max. Diamantes' in df.columns: cols_to_keep.append('Max. Diamantes')
     return df[cols_to_keep], "OK"
+
 def classificar_farol(val):
     if val >= 0.90: return '💎 Excelência' 
     elif val >= 0.80: return '🟢 Meta Batida'
@@ -544,14 +554,20 @@ if not st.session_state['logado']:
         st.markdown("<br><br>", unsafe_allow_html=True)
         with st.form("form_login"):
             
-            # --- AJUSTE: LOGO CENTRALIZADA ---
+            # --- IMAGEM CENTRALIZADA ---
             if os.path.exists(LOGO_FILE):
                 col_espaco1, col_logo, col_espaco2 = st.columns([1, 0.6, 1])
                 with col_logo:
                     st.image(LOGO_FILE, use_column_width=True)
-            # ---------------------------------
+            # ---------------------------
             
             st.markdown('<div class="login-title">Team Sofistas</div>', unsafe_allow_html=True)
+            st.markdown('<div class="login-subtitle">Analytics & Performance</div>', unsafe_allow_html=True)
+            st.markdown("---")
+            email_input = st.text_input("E-mail ou Usuário", placeholder="ex: usuario@brisanet.com.br").strip().lower()
+            senha_input = st.text_input("Senha", type="password", placeholder="Obrigatório para Gestores")
+            st.markdown("<br>", unsafe_allow_html=True)
+            submit_btn = st.form_submit_button("ACESSAR SISTEMA", use_container_width=True)
             if submit_btn:
                 if email_input in USUARIOS_ADMIN and senha_input == SENHA_ADMIN:
                     st.session_state.update({'logado': True, 'usuario_nome': 'Gestor', 'perfil': 'admin', 'usuario_email': 'admin'})
@@ -1099,7 +1115,6 @@ else:
             if not user_info.empty: minhas_ferias = user_info.iloc[0]['ferias']
         except: pass
 
-    # --- ADICIONADA A NOVA ABA "Meus Feedbacks" AQUI ---
     tab_results, tab_ferias, tab_feedbacks = st.tabs(["📊 Meus Resultados", "🏖️ Minhas Férias", "📝 Meus Feedbacks"])
 
     with tab_results:
@@ -1269,7 +1284,6 @@ else:
             </div>
             """, unsafe_allow_html=True)
 
-    # --- NOVA LÓGICA DA ABA DE FEEDBACKS DO OPERADOR ---
     with tab_feedbacks:
         st.markdown("### 📝 Histórico de Feedbacks")
         st.write("Acompanhe aqui os alinhamentos, reconhecimentos e planos de ação traçados com sua liderança.")
@@ -1277,12 +1291,10 @@ else:
         df_fbs = carregar_feedbacks_gb()
         
         if df_fbs is not None and not df_fbs.empty:
-            # Filtra pelos feedbacks exclusivos da pessoa logada
             df_fbs['Colaborador_Norm'] = df_fbs['Colaborador'].apply(normalizar_chave)
             meus_fbs = df_fbs[df_fbs['Colaborador_Norm'] == normalizar_chave(nome_logado)].copy()
             
             if not meus_fbs.empty:
-                # Inverte para mostrar o mais recente primeiro
                 for _, row in meus_fbs.iloc[::-1].iterrows():
                     faixa = str(row.get('Faixa', ''))
                     
