@@ -543,14 +543,15 @@ if not st.session_state['logado']:
     with c2:
         st.markdown("<br><br>", unsafe_allow_html=True)
         with st.form("form_login"):
-            if os.path.exists(LOGO_FILE): st.image(LOGO_FILE, width=100)
+            
+            # --- AJUSTE: LOGO CENTRALIZADA ---
+            if os.path.exists(LOGO_FILE):
+                col_espaco1, col_logo, col_espaco2 = st.columns([1, 0.6, 1])
+                with col_logo:
+                    st.image(LOGO_FILE, use_column_width=True)
+            # ---------------------------------
+            
             st.markdown('<div class="login-title">Team Sofistas</div>', unsafe_allow_html=True)
-            st.markdown('<div class="login-subtitle">Analytics & Performance</div>', unsafe_allow_html=True)
-            st.markdown("---")
-            email_input = st.text_input("E-mail ou Usuário", placeholder="ex: usuario@brisanet.com.br").strip().lower()
-            senha_input = st.text_input("Senha", type="password", placeholder="Obrigatório para Gestores")
-            st.markdown("<br>", unsafe_allow_html=True)
-            submit_btn = st.form_submit_button("ACESSAR SISTEMA", use_container_width=True)
             if submit_btn:
                 if email_input in USUARIOS_ADMIN and senha_input == SENHA_ADMIN:
                     st.session_state.update({'logado': True, 'usuario_nome': 'Gestor', 'perfil': 'admin', 'usuario_email': 'admin'})
