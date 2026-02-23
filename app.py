@@ -9,7 +9,7 @@ from datetime import datetime
 import unicodedata
 
 # --- CONFIGURAÇÃO DA LOGO ---
-LOGO_FILE = "logo.ico"
+LOGO_FILE = "logo.png"
 
 # --- SENHA DO GESTOR ---
 SENHA_ADMIN = "admin123"
@@ -491,7 +491,6 @@ def filtrar_por_usuarios_cadastrados(df_dados, df_users):
     df_filtrado.drop(columns=['TEMP_NOME_UPPER'], inplace=True)
     return df_filtrado
 
-# --- NOVA FUNÇÃO: SALVAR FEEDBACK GB ---
 def salvar_feedback_gb(dados_fb):
     ARQUIVO_FB = 'feedbacks_gb.csv'
     df_novo = pd.DataFrame([dados_fb])
@@ -590,7 +589,6 @@ if df_dados is None and perfil == 'user':
 # --- GESTOR ---
 if perfil == 'admin':
     st.title(f"📊 Visão Gerencial")
-    # --- ADICIONADA A NOVA ABA DE FEEDBACKS AQUI ---
     tabs = st.tabs(["🚦 Semáforo", "🏆 Ranking Geral", "⏳ Evolução", "🔍 Indicadores", "💰 Comissões", "📋 Tabela Geral", "🏖️ Férias Equipe", "⚙️ Admin", "⏰ Banco de Horas", "📝 Feedbacks GB"])
     
     tem_tam = False
@@ -609,7 +607,7 @@ if perfil == 'admin':
             c3.metric("🔴 Crítico", f"{qtd_vermelho}", delta="<80%", delta_color="inverse")
             st.markdown("---")
             
-            # FEEDBACK
+            # FEEDBACK RÁPIDO
             st.subheader("💬 Gerador de Feedback Rápido (1:1)")
             colab_feedback = st.selectbox("Selecione para análise:", sorted(df_dados['Colaborador'].unique()), key="sb_feedback")
             if colab_feedback:
@@ -739,12 +737,14 @@ if perfil == 'admin':
             for colab in df_calc['Colaborador_Key'].unique():
                 df_user = df_calc[df_calc['Colaborador_Key'] == colab]
                 
+                # Cálculo Diamantes
                 if tem_tam:
                     row_tam = df_user[df_user['Indicador'] == 'TAM']
                     total_diamantes = row_tam.iloc[0]['Diamantes'] if not row_tam.empty else 0
                 else:
                     total_diamantes = df_user['Diamantes'].sum()
                 
+                # Cálculo Descontos
                 row_conf = df_user[df_user['Indicador'] == 'CONFORMIDADE']
                 conf_val = row_conf.iloc[0]['% Atingimento'] if not row_conf.empty else 0.0
                 
@@ -893,6 +893,7 @@ if perfil == 'admin':
                     df_ponto = df_ponto[[col_nome, col_saldo]].dropna()
                     df_ponto.rename(columns={col_nome: 'Colaborador', col_saldo: 'Saldo String'}, inplace=True)
                     
+                    # FILTRO DE ATIVOS
                     if df_users_cadastrados is not None:
                         df_ponto['TEMP_NOME_NORM'] = df_ponto['Colaborador'].apply(normalizar_chave)
                         lista_ativos = df_users_cadastrados['nome'].unique()
@@ -920,20 +921,38 @@ if perfil == 'admin':
                 else: st.error("Colunas não identificadas.")
             except Exception as e: st.error(f"Erro: {e}")
 
-    # --- NOVA ABA: FEEDBACKS GB ---
+    # --- ABA: FEEDBACKS GB (TODAS AS FAIXAS DE DESEMPENHO) ---
     with tabs[9]:
         st.markdown("### 📝 Controle de Feedbacks (GB)")
-        st.info("💡 **Objetivo:** Registrar feedback orientado a valor para todos os operadores que fecharam o mês abaixo da meta de 70% no Resultado Geral (TAM). Realize isso preferencialmente na 1ª semana do mês.")
+        st.info("💡 **Objetivo:** Registrar feedback orientado a valor para **todos os operadores**, divididos por faixas de desempenho. Realize isso preferencialmente na 1ª semana do mês para engajar e corrigir rotas.")
         
         if df_dados is not None and tem_tam:
             df_tam = df_dados[df_dados['Indicador'] == 'TAM'].copy()
-            df_criticos = df_tam[df_tam['% Atingimento'] < 0.70]
             
-            if not df_criticos.empty:
-                qtd_criticos = len(df_criticos)
-                st.warning(f"⚠️ Atenção! Você tem **{qtd_criticos}** colaborador(es) com TAM abaixo de 70% neste período.")
+            # 1. Filtro de Faixa de Desempenho
+            faixa_sel = st.selectbox(
+                "🎯 Selecione a Faixa de Desempenho:",
+                ["🔴 Abaixo de 70% (Crítico)", 
+                 "🟠 Entre 70% e 80% (Atenção)", 
+                 "🟡 Entre 80% e 90% (Meta Batida)", 
+                 "🟢 Acima de 90% (Excelência)"]
+            )
+            
+            # 2. Aplicar o Filtro
+            if "Abaixo de 70%" in faixa_sel:
+                df_filtrado = df_tam[df_tam['% Atingimento'] < 0.70]
+            elif "Entre 70% e 80%" in faixa_sel:
+                df_filtrado = df_tam[(df_tam['% Atingimento'] >= 0.70) & (df_tam['% Atingimento'] < 0.80)]
+            elif "Entre 80% e 90%" in faixa_sel:
+                df_filtrado = df_tam[(df_tam['% Atingimento'] >= 0.80) & (df_tam['% Atingimento'] < 0.90)]
+            else:
+                df_filtrado = df_tam[df_tam['% Atingimento'] >= 0.90]
+            
+            if not df_filtrado.empty:
+                qtd_colabs = len(df_filtrado)
+                st.write(f"Encontramos **{qtd_colabs}** colaborador(es) nesta faixa.")
                 
-                colab_fb = st.selectbox("Selecione o Colaborador para registrar o Feedback:", sorted(df_criticos['Colaborador'].unique()), key="sel_colab_fb")
+                colab_fb = st.selectbox("Selecione o Colaborador para registrar o Feedback:", sorted(df_filtrado['Colaborador'].unique()), key="sel_colab_fb")
                 
                 if colab_fb:
                     # Coletar dados específicos do operador
@@ -961,14 +980,14 @@ if perfil == 'admin':
                     
                     with st.form("form_registro_fb"):
                         st.markdown("#### ✍️ Registro Estratégico")
-                        motivo_txt = st.text_area("1. Motivo(s) pelo qual não atingiu o TAM:", placeholder="Ex: Teve baixo IR devido a falha na identificação do equipamento...")
-                        fb_valor_txt = st.text_area("2. Feedback Orientado a Valor:", placeholder="Ex: Ressaltei a facilidade de comunicação dele e mostrei como aliar isso à técnica de sondagem...")
-                        acao_txt = st.text_area("3. Plano de Ação (Apresentação GB):", placeholder="Ex: Monitoria lado a lado semanal e rodada de simulação.")
+                        motivo_txt = st.text_area("1. Motivo(s) do resultado:", placeholder="Ex: Teve baixo IR devido a falha na identificação do equipamento... ou Mandou muito bem na tratativa...")
+                        fb_valor_txt = st.text_area("2. Feedback Orientado a Valor:", placeholder="Ex: Ressaltei a facilidade de comunicação e mostrei como aliar isso à técnica de sondagem...")
+                        acao_txt = st.text_area("3. Plano de Ação (Apresentação GB):", placeholder="Ex: Monitoria lado a lado semanal. Ou, se a nota for alta: Manter engajamento e auxiliar os colegas.")
                         
                         btn_salvar_fb = st.form_submit_button("💾 Salvar Registro e Gerar E-mail")
                         
                         if btn_salvar_fb:
-                            if not motivo_txt or not fb_valor_txt or not acacao_txt:
+                            if not motivo_txt or not fb_valor_txt or not acao_txt:
                                 st.error("⚠️ Preencha todos os campos para registrar o feedback.")
                             else:
                                 # Salva no banco de dados CSV
@@ -976,6 +995,7 @@ if perfil == 'admin':
                                     "Data_Registro": datetime.now().strftime("%d/%m/%Y %H:%M"),
                                     "Periodo_Ref": periodo_label,
                                     "Colaborador": colab_fb,
+                                    "Faixa": faixa_sel.split(" ")[0], # Salva o Emoji
                                     "TAM": f"{tam_v:.1%}",
                                     "Motivo": motivo_txt,
                                     "Acao_GB": acao_txt,
@@ -984,15 +1004,26 @@ if perfil == 'admin':
                                 salvar_feedback_gb(dados_novo_fb)
                                 st.success("✅ Feedback registrado com sucesso no banco de dados!")
                                 
-                                # GERA O E-MAIL (TEMPLATE)
+                                # GERA O E-MAIL DINÂMICO
                                 st.markdown("### 📧 E-mail Gerado (Copie e cole):")
+                                
+                                # Adapta a abertura do e-mail de acordo com a nota
+                                if tam_v < 0.70:
+                                    abertura = f"O seu Resultado Geral (TAM) fechou em **{tam_v:.1%}**, ficando abaixo da nossa meta. Precisamos focar na recuperação e eu estou aqui para te apoiar nisso."
+                                elif tam_v < 0.80:
+                                    abertura = f"O seu Resultado Geral (TAM) fechou em **{tam_v:.1%}**. Estamos perto da meta! Vamos alinhar alguns pontos para alcançarmos a excelência juntos."
+                                elif tam_v < 0.90:
+                                    abertura = f"Parabéns! O seu Resultado Geral (TAM) fechou em **{tam_v:.1%}**, batendo a nossa meta. Excelente trabalho!"
+                                else:
+                                    abertura = f"Uau! O seu Resultado Geral (TAM) fechou em **{tam_v:.1%}**, um resultado de extrema Excelência! Parabéns pela dedicação e alto nível de entrega."
+                                
                                 email_template = f"""
-**Assunto:** Feedback Mensal - Resultado TAM - {periodo_label}
+**Assunto:** Feedback Mensal - Resultado Operacional - {periodo_label}
 
 Olá, **{colab_fb}**. Tudo bem?
 
-Gostaria de repassar os pontos referentes ao seu desempenho operacional referente a **{periodo_label}**.
-O seu Resultado Geral (TAM) fechou em **{tam_v:.1%}**, ficando abaixo da nossa meta de Excelência (70%).
+Gostaria de repassar os pontos referentes ao seu desempenho referente a **{periodo_label}**.
+{abertura}
 
 Aqui está o detalhamento dos seus indicadores de suporte:
 * **Resolução (IR):** {ir_v:.1%}
@@ -1003,13 +1034,13 @@ Aqui está o detalhamento dos seus indicadores de suporte:
 **Pontos Mapeados:**
 {motivo_txt}
 
-**Nosso Plano de Ação:**
+**Nosso Plano de Ação / Próximos Passos:**
 {acao_txt}
 
-**Feedback:**
+**Feedback Estratégico:**
 {fb_valor_txt}
 
-Conto com sua dedicação para revertermos esse quadro no próximo ciclo. Qualquer dúvida, estou à disposição!
+Conto com seu engajamento para o próximo ciclo. Qualquer dúvida, estou sempre à disposição!
 
 Atenciosamente,
 Sua Liderança.
@@ -1017,7 +1048,7 @@ Sua Liderança.
                                 st.code(email_template, language='markdown')
 
             else:
-                st.success("🎉 Ótima notícia! Nenhum operador da sua equipe ficou abaixo de 70% no TAM neste mês de referência.")
+                st.success(f"Nenhum colaborador encontrado na faixa: {faixa_sel}")
         else:
             st.info("⚠️ Aguardando dados de TAM ou arquivo de indicadores para habilitar os feedbacks.")
 
