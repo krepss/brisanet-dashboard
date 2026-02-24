@@ -34,7 +34,7 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁", initial_sidebar_state="collapsed")
 
-# --- 2. CSS (DESIGN PREMIUM + REMOÇÃO DA SIDEBAR) ---
+# --- 2. CSS (DESIGN PREMIUM + REMOÇÃO DA SIDEBAR + CORREÇÃO TEXTO BARRA) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
@@ -45,6 +45,36 @@ st.markdown("""
     /* --- REMOVER SIDEBAR TOTALMENTE --- */
     [data-testid="collapsedControl"] { display: none !important; }
     [data-testid="stSidebar"] { display: none !important; }
+
+    /* --- ESTILO EXCLUSIVO DA BARRA SUPERIOR (NAVBAR) --- */
+    .top-banner {
+        background: linear-gradient(135deg, #002b55 0%, #004e92 100%); 
+        padding: 20px 30px; 
+        border-radius: 15px; 
+        box-shadow: 0 8px 20px rgba(0,0,0,0.15); 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        margin-bottom: 25px;
+    }
+    /* Força a cor branca nos títulos dentro do banner */
+    .top-banner h2, .top-banner h4 {
+        color: #FFFFFF !important; 
+        margin: 0 !important; 
+        padding: 0 !important;
+        font-family: 'Montserrat', sans-serif !important;
+    }
+    .top-banner h2 { font-weight: 800 !important; letter-spacing: 1px !important; font-size: 28px !important; }
+    .top-banner h4 { font-weight: 600 !important; font-size: 20px !important; }
+    
+    /* Força a cor azul clara nos subtítulos dentro do banner */
+    .top-banner .sub-text {
+        color: #cce0ff !important; 
+        margin: 0 !important; 
+        padding: 0 !important;
+        font-size: 14px !important; 
+        font-weight: 400 !important;
+    }
 
     /* --- BOTÕES PRIMÁRIOS (VERMELHOS) --- */
     button[kind="primary"] {
@@ -68,9 +98,9 @@ st.markdown("""
     }
     button[kind="secondary"] p { color: #FFFFFF !important; }
     
-    /* --- DESIGN GERAL --- */
+    /* --- DESIGN GERAL DOS TEXTOS --- */
     h1, h2, h3, h4, h5, h6 { color: #003366 !important; font-family: 'Montserrat', sans-serif !important; }
-    p, li, div { color: #333333; }
+    p, li { color: #333333; }
     
     /* Cards Padrão */
     div.stMetric, .insight-box, .badge-card {
@@ -509,7 +539,7 @@ if not st.session_state['logado']:
 
 
 # ==========================================
-# --- 5. BARRA SUPERIOR (NAVBAR PREMIUM) ---
+# --- 5. BARRA SUPERIOR (NAVBAR PREMIUM PROTEGIDA) ---
 # ==========================================
 
 lista_periodos = listar_periodos_disponiveis()
@@ -518,12 +548,12 @@ opcoes_periodo = lista_periodos if lista_periodos else ["Nenhum histórico dispo
 df_users_cadastrados = carregar_usuarios()
 nome_logado = st.session_state['usuario_nome'].title() if st.session_state['usuario_nome'] != 'Gestor' else 'Gestor'
 
-# 1. Monta o texto de usuários ativos
+# Monta o texto de usuários ativos
 ativos_texto = ""
 if st.session_state['perfil'] == 'admin' and df_users_cadastrados is not None:
     ativos_texto = f"👥 Usuários Ativos: {len(df_users_cadastrados)}"
 
-# 2. Converte a logo para Base64 para usar dentro do HTML do Banner
+# Converte a logo para Base64 para usar dentro do HTML do Banner
 logo_html = "<h1 style='margin:0; padding:0; font-size:40px;'>🦁</h1>"
 if os.path.exists(LOGO_FILE):
     try:
@@ -532,19 +562,19 @@ if os.path.exists(LOGO_FILE):
         logo_html = f'<img src="data:image/png;base64,{encoded_string}" style="height: 60px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">'
     except: pass
 
-# 3. Desenha o Banner (Navbar) com Gradiente e Sombras
+# --- HTML DO BANNER ---
 st.markdown(f"""
-<div style="background: linear-gradient(135deg, #002b55 0%, #004e92 100%); padding: 20px 30px; border-radius: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+<div class="top-banner">
     <div style="display: flex; align-items: center; gap: 20px;">
         {logo_html}
         <div>
-            <h2 style="color: #FFFFFF !important; margin: 0; padding: 0; font-family: 'Montserrat', sans-serif; font-weight: 800; letter-spacing: 1px;">TEAM SOFISTAS</h2>
-            <p style="color: #cce0ff !important; margin: 0; padding: 0; font-size: 14px; font-weight: 300;">Analytics & Performance</p>
+            <h2>TEAM SOFISTAS</h2>
+            <p class="sub-text">Analytics & Performance</p>
         </div>
     </div>
     <div style="text-align: right;">
-        <h4 style="color: #FFFFFF !important; margin: 0; padding: 0; font-family: 'Montserrat', sans-serif;">Olá, {nome_logado.split()[0]}! 👋</h4>
-        <p style="color: #cce0ff !important; margin: 0; padding: 0; font-size: 13px; font-weight: bold;">{ativos_texto}</p>
+        <h4>Olá, {nome_logado.split()[0]}! 👋</h4>
+        <p class="sub-text" style="font-weight: bold !important;">{ativos_texto}</p>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -690,7 +720,7 @@ if perfil == 'admin':
             st.markdown("---")
             
             # --- ÂNCORA ALVO (ATENÇÃO PRIORITÁRIA) ---
-            st.markdown('<div id="atencao-prioritaria" style="padding-top: 20px;"></div>', unsafe_allow_html=True)
+            st.markdown('<div id="aten-o-priorit-ria" style="padding-top: 20px;"></div>', unsafe_allow_html=True)
             st.subheader("📋 Atenção Prioritária")
             
             df_atencao = df_media_pessoas[df_media_pessoas['% Atingimento'] < 0.80].sort_values(by='% Atingimento')
@@ -1087,6 +1117,7 @@ Sua Liderança.
 # --- 7. VISÃO DO OPERADOR ---
 # ==========================================
 else:
+    # ... A VISÃO DO OPERADOR CONTINUA INTACTA AQUI ...
     st.markdown(f"## 🚀 Olá, **{nome_logado.split()[0]}**!")
     data_atualizacao = obter_data_atualizacao()
     st.markdown(f"<div style='display: flex; align-items: center; margin-bottom: 20px; color: #666;'><span style='margin-right: 15px;'>📅 Referência: <b>{periodo_label}</b></span><span class='update-badge'>🕒 Atualizado em: {data_atualizacao}</span></div>", unsafe_allow_html=True)
