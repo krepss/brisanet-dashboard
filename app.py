@@ -34,7 +34,7 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁", initial_sidebar_state="collapsed")
 
-# --- 2. CSS (DESIGN PREMIUM + REMOÇÃO DA SIDEBAR E CARDS CLICÁVEIS) ---
+# --- 2. CSS (DESIGN PREMIUM + REMOÇÃO DA SIDEBAR E CORREÇÃO TEXTO BARRA) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
@@ -62,20 +62,21 @@ st.markdown("""
     }
     .top-banner h2 { font-weight: 800 !important; letter-spacing: 1px !important; font-size: 28px !important; }
     .top-banner h4 { font-weight: 600 !important; font-size: 20px !important; }
+    
     .top-banner .sub-text {
         color: #cce0ff !important; margin: 0 !important; padding: 0 !important; font-size: 14px !important; font-weight: 400 !important;
     }
 
-    /* --- BOTÕES PRIMÁRIOS E SECUNDÁRIOS --- */
+    /* --- BOTÕES PRIMÁRIOS (VERMELHOS) --- */
     button[kind="primary"] {
         background-color: #e74c3c !important; border: 1px solid #c0392b !important; border-radius: 8px !important;
     }
-    /* FORÇA O TEXTO DO BOTÃO SAIR A FICAR BRANCO */
     button[kind="primary"] p, button[kind="primary"] span, button[kind="primary"] div {
         color: #FFFFFF !important; font-weight: bold !important;
     }
     button[kind="primary"]:hover { background-color: #c0392b !important; border-color: #a93226 !important; }
 
+    /* --- BOTÕES SECUNDÁRIOS (AZUIS) --- */
     button[kind="secondary"] {
         background-color: #003366 !important; color: #FFFFFF !important; border-radius: 8px !important; font-weight: bold !important; border: none !important;
     }
@@ -83,16 +84,17 @@ st.markdown("""
         color: #FFFFFF !important; 
     }
     
+    /* --- DESIGN GERAL DOS TEXTOS --- */
     h1, h2, h3, h4, h5, h6 { color: #003366 !important; font-family: 'Montserrat', sans-serif !important; }
-    p, li, div { color: #333333; }
+    p, li { color: #333333; }
     
+    /* Cards Padrão */
     div.stMetric, .insight-box, .badge-card {
         background-color: #FFFFFF !important; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-radius: 10px;
     }
     
-    /* --- CARDS PERSONALIZADOS CLICÁVEIS --- */
+    /* --- CARD PERSONALIZADO (CRÍTICOS CLICÁVEIS) --- */
     .card-link { text-decoration: none !important; display: block; }
-    
     .card-excelencia, .card-meta, .card-critico {
         background-color: #FFFFFF;
         box-shadow: 0 4px 10px rgba(0,0,0,0.05);
@@ -102,13 +104,10 @@ st.markdown("""
         cursor: pointer;
         transition: all 0.3s ease;
     }
-    
     .card-excelencia { border-left: 5px solid #003366; }
     .card-excelencia:hover { transform: scale(1.03); box-shadow: 0 6px 15px rgba(0, 51, 102, 0.2); }
-    
     .card-meta { border-left: 5px solid #2ecc71; }
     .card-meta:hover { transform: scale(1.03); box-shadow: 0 6px 15px rgba(46, 204, 113, 0.2); }
-    
     .card-critico { border-left: 5px solid #e74c3c; }
     .card-critico:hover { transform: scale(1.03); box-shadow: 0 6px 15px rgba(231, 76, 60, 0.2); }
     
@@ -129,6 +128,7 @@ st.markdown("""
     .login-title { font-family: 'Montserrat', sans-serif !important; font-weight: 800 !important; font-size: 2.2rem !important; color: #003366 !important; text-align: center; margin-bottom: 0px; }
     .login-subtitle { font-family: 'Roboto', sans-serif !important; font-size: 1.1rem !important; color: #666 !important; text-align: center; margin-bottom: 25px; }
     [data-testid="stForm"] input { background-color: #f8f9fa !important; color: #333 !important; border-radius: 8px !important; }
+    
     [data-testid="stFileUploader"] button { background-color: #003366 !important; color: #FFFFFF !important; border: none !important; }
     [data-testid="stFileUploader"] button:hover { background-color: #F37021 !important; }
 
@@ -138,9 +138,11 @@ st.markdown("""
     div.stMetric div[data-testid="stMetricDelta"] { font-size: 13px !important; }
     
     .update-badge { background-color: #e3f2fd; color: #0d47a1; padding: 5px 10px; border-radius: 15px; font-size: 0.85em; font-weight: bold; border: 1px solid #bbdefb; }
+    
     .insight-box { background-color: #fff8e1 !important; border-left: 5px solid #ffc107 !important; padding: 15px; margin-bottom: 20px; }
     .insight-title { font-weight: bold; color: #d35400; font-size: 1.1em; display: flex; align-items: center; gap: 8px; }
     .insight-text { font-size: 0.95em; margin-top: 5px; color: #555; }
+
     .dev-footer { text-align: center; margin-top: 40px; font-size: 0.8em; color: #aaa !important; }
 </style>
 """, unsafe_allow_html=True)
@@ -200,10 +202,12 @@ def tentar_extrair_data_csv(df):
     return None
 
 def obter_data_hoje(): return datetime.now().strftime("%m/%Y")
+
 def obter_data_atualizacao():
     arquivo = 'historico_consolidado.csv'
     if os.path.exists(arquivo):
-        return datetime.fromtimestamp(os.path.getmtime(arquivo)).strftime("%d/%m/%Y às %H:%M")
+        timestamp = os.path.getmtime(arquivo)
+        return datetime.fromtimestamp(timestamp).strftime("%d/%m/%Y às %H:%M")
     return datetime.now().strftime("%d/%m/%Y")
 
 def salvar_config(data_texto):
@@ -546,7 +550,7 @@ with c_periodo:
     
 with c_sair:
     st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-    if st.button("🚪 Sair", type="primary", use_container_width=True):
+    if st.button("🚪 Sair do Sistema", type="primary", use_container_width=True):
         st.session_state.update({'logado': False})
         st.rerun()
 
@@ -587,7 +591,14 @@ if perfil == 'admin':
     with tabs[0]: 
         if df_dados is not None and not df_dados.empty:
             st.markdown(f"### Resumo de Saúde: **{periodo_label}**")
-            df_media_pessoas = df_dados.groupby('Colaborador')['% Atingimento'].mean().reset_index()
+            
+            # --- CORREÇÃO DA REGRA MESTRA (USAR NOTA DO TAM OFICIAL) ---
+            if tem_tam:
+                df_media_pessoas = df_dados[df_dados['Indicador'] == 'TAM'][['Colaborador', '% Atingimento']].copy()
+            else:
+                df_media_pessoas = df_dados.groupby('Colaborador').agg({'Diamantes': 'sum', 'Max. Diamantes': 'sum'}).reset_index()
+                df_media_pessoas['% Atingimento'] = df_media_pessoas.apply(lambda row: row['Diamantes'] / row['Max. Diamantes'] if row['Max. Diamantes'] > 0 else 0, axis=1)
+
             qtd_verde = len(df_media_pessoas[df_media_pessoas['% Atingimento'] >= 0.90]) 
             qtd_amarelo = len(df_media_pessoas[(df_media_pessoas['% Atingimento'] >= 0.80) & (df_media_pessoas['% Atingimento'] < 0.90)]) 
             qtd_vermelho = len(df_media_pessoas[df_media_pessoas['% Atingimento'] < 0.80]) 
@@ -653,8 +664,9 @@ if perfil == 'admin':
             st.markdown("---")
             
             # FAROL
-            df_dados['Status_Farol'] = df_dados['% Atingimento'].apply(classificar_farol)
-            fig_farol = px.bar(df_dados.groupby(['Indicador', 'Status_Farol']).size().reset_index(name='Qtd'), 
+            df_dados_farol = df_dados.copy()
+            df_dados_farol['Status_Farol'] = df_dados_farol['% Atingimento'].apply(classificar_farol)
+            fig_farol = px.bar(df_dados_farol.groupby(['Indicador', 'Status_Farol']).size().reset_index(name='Qtd'), 
                                x='Indicador', y='Qtd', color='Status_Farol', text='Qtd',
                                color_discrete_map={'💎 Excelência': '#003366', '🟢 Meta Batida': '#2ecc71', '🔴 Crítico': '#e74c3c'})
             st.plotly_chart(fig_farol, use_container_width=True)
@@ -704,8 +716,9 @@ if perfil == 'admin':
             st.subheader("💎 Destaques de Excelência (>= 90%)")
             df_exc = df_media_pessoas[df_media_pessoas['% Atingimento'] >= 0.90].sort_values(by='% Atingimento', ascending=False)
             if not df_exc.empty:
-                df_exc.columns = ['Colaborador', 'Média Geral']
-                st.dataframe(df_exc.style.format({'Média Geral': '{:.2%}'}), use_container_width=True)
+                df_exc_show = df_exc[['Colaborador', '% Atingimento']].copy()
+                df_exc_show.columns = ['Colaborador', 'Média Geral (TAM)']
+                st.dataframe(df_exc_show.style.format({'Média Geral (TAM)': '{:.2%}'}), use_container_width=True)
             else: st.info("Nenhum colaborador nesta faixa.")
 
             st.markdown("<br>", unsafe_allow_html=True)
@@ -715,13 +728,14 @@ if perfil == 'admin':
             st.subheader("🟢 Atingiram a Meta (80% - 89%)")
             df_meta = df_media_pessoas[(df_media_pessoas['% Atingimento'] >= 0.80) & (df_media_pessoas['% Atingimento'] < 0.90)].sort_values(by='% Atingimento', ascending=False)
             if not df_meta.empty:
-                df_meta.columns = ['Colaborador', 'Média Geral']
-                st.dataframe(df_meta.style.format({'Média Geral': '{:.2%}'}), use_container_width=True)
+                df_meta_show = df_meta[['Colaborador', '% Atingimento']].copy()
+                df_meta_show.columns = ['Colaborador', 'Média Geral (TAM)']
+                st.dataframe(df_meta_show.style.format({'Média Geral (TAM)': '{:.2%}'}), use_container_width=True)
             else: st.info("Nenhum colaborador nesta faixa.")
 
             st.markdown("<br>", unsafe_allow_html=True)
 
-            # 3. CRÍTICOS (ATENÇÃO PRIORITÁRIA)
+            # 3. CRÍTICOS (ATENÇÃO PRIORITÁRIA) - IGNORA O TAM COMO PIOR INDICADOR
             st.markdown('<div id="atencao-prioritaria" style="padding-top: 20px;"></div>', unsafe_allow_html=True)
             st.subheader("📋 Atenção Prioritária (< 80%)")
             df_atencao = df_media_pessoas[df_media_pessoas['% Atingimento'] < 0.80].sort_values(by='% Atingimento')
@@ -729,21 +743,38 @@ if perfil == 'admin':
                 lista_detalhada = []
                 for colab in df_atencao['Colaborador']:
                     dados_pessoa = df_dados[df_dados['Colaborador'] == colab]
-                    media_pessoa = dados_pessoa['% Atingimento'].mean()
-                    pior_kpi_row = dados_pessoa.loc[dados_pessoa['% Atingimento'].idxmin()]
-                    nome_kpi_bonito = formatar_nome_visual(pior_kpi_row['Indicador'])
-                    lista_detalhada.append({'Colaborador': colab, 'Média Geral': media_pessoa, 'Status': '🔴 Crítico', 'Pior KPI': f"{nome_kpi_bonito} ({pior_kpi_row['% Atingimento']:.2%})"})
+                    
+                    # Puxa o resultado do TAM (Oficial)
+                    media_pessoa = df_media_pessoas[df_media_pessoas['Colaborador'] == colab].iloc[0]['% Atingimento']
+                    
+                    # Procura o pior indicador excluindo a métrica global (TAM)
+                    df_kpis_only = dados_pessoa[dados_pessoa['Indicador'] != 'TAM'] if tem_tam else dados_pessoa
+                    
+                    if not df_kpis_only.empty:
+                        pior_kpi_row = df_kpis_only.loc[df_kpis_only['% Atingimento'].idxmin()]
+                        nome_kpi_bonito = formatar_nome_visual(pior_kpi_row['Indicador'])
+                        texto_pior = f"{nome_kpi_bonito} ({pior_kpi_row['% Atingimento']:.2%})"
+                    else:
+                        texto_pior = "N/A"
+                        
+                    lista_detalhada.append({'Colaborador': colab, 'Média Geral (TAM)': media_pessoa, 'Status': '🔴 Crítico', 'Pior KPI p/ Focar': texto_pior})
                 df_final_atencao = pd.DataFrame(lista_detalhada)
-                st.dataframe(df_final_atencao.style.format({'Média Geral': '{:.2%}'}), use_container_width=True)
+                st.dataframe(df_final_atencao.style.format({'Média Geral (TAM)': '{:.2%}'}), use_container_width=True)
             else: st.success("🎉 Equipe performando bem! Ninguém abaixo de 80%.")
 
     with tabs[1]:
         st.markdown(f"### 🏆 Ranking Geral (Consolidado)")
         if df_dados is not None:
-            if tem_tam: df_rank = df_dados[df_dados['Indicador'] == 'TAM'].copy()
-            else: df_rank = df_dados.groupby('Colaborador').agg({'Diamantes':'sum', 'Max. Diamantes':'sum'}).reset_index()
-            df_rank['%'] = df_rank.apply(lambda x: x['Diamantes']/x['Max. Diamantes'] if x['Max. Diamantes']>0 else 0, axis=1)
-            st.dataframe(df_rank.sort_values(by='%', ascending=False).style.format({'%': '{:.2%}'}), use_container_width=True)
+            # --- CORREÇÃO DO RANKING (USAR NOTA DO TAM OFICIAL SE EXISTIR) ---
+            if tem_tam: 
+                df_rank = df_dados[df_dados['Indicador'] == 'TAM'].copy()
+                df_rank['%'] = df_rank['% Atingimento']
+            else: 
+                df_rank = df_dados.groupby('Colaborador').agg({'Diamantes':'sum', 'Max. Diamantes':'sum'}).reset_index()
+                df_rank['%'] = df_rank.apply(lambda x: x['Diamantes']/x['Max. Diamantes'] if x['Max. Diamantes']>0 else 0, axis=1)
+            
+            df_show_rank = df_rank[['Colaborador', '%']].sort_values(by='%', ascending=False)
+            st.dataframe(df_show_rank.style.format({'%': '{:.2%}'}), use_container_width=True)
 
     with tabs[2]:
         st.markdown("### ⏳ Evolução Temporal")
