@@ -282,16 +282,13 @@ def salvar_config(data_texto):
     try:
         with open('config.json', 'w') as f: json.dump({'periodo': data_texto}, f)
     except: pass
-
 def ler_config():
     if os.path.exists('config.json'):
         with open('config.json', 'r') as f: return json.load(f).get('periodo', 'Não informado')
     return "Aguardando atualização"
-
 def limpar_base_dados_completa():
     arquivos = [f for f in os.listdir('.') if f.endswith('.csv')]
     for f in arquivos: os.remove(f)
-
 def faxina_arquivos_temporarios():
     arquivos = [f for f in os.listdir('.') if f.endswith('.csv')]
     protegidos = ['historico_consolidado.csv', 'usuarios.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv']
@@ -299,7 +296,6 @@ def faxina_arquivos_temporarios():
         if f not in protegidos:
             try: os.remove(f)
             except: pass
-
 def atualizar_historico(df_atual, periodo):
     ARQUIVO_HIST = 'historico_consolidado.csv'
     df_save = df_atual.copy()
@@ -319,7 +315,6 @@ def atualizar_historico(df_atual, periodo):
     existing_cols = [c for c in cols_order if c in df_final.columns]
     df_final = df_final[existing_cols]
     df_final.to_csv(ARQUIVO_HIST, index=False)
-
 def excluir_periodo_historico(periodo_alvo):
     ARQUIVO_HIST = 'historico_consolidado.csv'
     if os.path.exists(ARQUIVO_HIST):
@@ -331,7 +326,6 @@ def excluir_periodo_historico(periodo_alvo):
             return True
         except: return False
     return False
-
 def carregar_historico_completo():
     if os.path.exists('historico_consolidado.csv'):
         try: 
@@ -340,7 +334,6 @@ def carregar_historico_completo():
             return df
         except: return None
     return None
-
 def listar_periodos_disponiveis():
     df = carregar_historico_completo()
     if df is not None and 'Periodo' in df.columns:
@@ -349,7 +342,6 @@ def listar_periodos_disponiveis():
         except: periodos.sort(reverse=True)
         return periodos
     return []
-
 def salvar_arquivos_padronizados(files):
     for f in files:
         with open(f.name, "wb") as w: w.write(f.getbuffer())
@@ -380,7 +372,6 @@ def ler_csv_inteligente(arquivo_ou_caminho):
                 if len(df.columns) > 1: return df
             except: continue
     return None
-
 def normalizar_nome_indicador(nome_arquivo):
     nome = nome_arquivo.upper()
     if 'ADER' in nome: return 'ADERENCIA'
@@ -786,12 +777,14 @@ if perfil == 'admin':
             for colab in df_calc['Colaborador_Key'].unique():
                 df_user = df_calc[df_calc['Colaborador_Key'] == colab]
                 
+                # Cálculo Diamantes
                 if tem_tam:
                     row_tam = df_user[df_user['Indicador'] == 'TAM']
                     total_diamantes = row_tam.iloc[0]['Diamantes'] if not row_tam.empty else 0
                 else:
                     total_diamantes = df_user['Diamantes'].sum()
                 
+                # Cálculo Descontos
                 row_conf = df_user[df_user['Indicador'] == 'CONFORMIDADE']
                 conf_val = row_conf.iloc[0]['% Atingimento'] if not row_conf.empty else 0.0
                 
@@ -1101,6 +1094,16 @@ Sua Liderança.
                 st.success(f"Nenhum colaborador encontrado na faixa: {faixa_sel}")
         else:
             st.info("⚠️ Aguardando dados de TAM ou arquivo de indicadores para habilitar os feedbacks.")
+
+        # --- NOVO: HISTÓRICO GERAL PARA O GESTOR ---
+        st.markdown("---")
+        st.markdown("### 📚 Base Geral de Feedbacks Aplicados")
+        df_fbs_hist = carregar_feedbacks_gb()
+        if df_fbs_hist is not None and not df_fbs_hist.empty:
+            # Exibe invertido (mais recente primeiro)
+            st.dataframe(df_fbs_hist.iloc[::-1], use_container_width=True, hide_index=True)
+        else:
+            st.info("Nenhum feedback registrado no sistema até o momento.")
 
 # --- VISÃO OPERADOR ---
 else:
