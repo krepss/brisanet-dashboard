@@ -34,7 +34,7 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁", initial_sidebar_state="collapsed")
 
-# --- 2. CSS (DESIGN PREMIUM + REMOÇÃO DA SIDEBAR + CORREÇÃO TEXTO BARRA) ---
+# --- 2. CSS (DESIGN PREMIUM + REMOÇÃO DA SIDEBAR E CARDS CLICÁVEIS) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
@@ -57,85 +57,59 @@ st.markdown("""
         align-items: center; 
         margin-bottom: 25px;
     }
-    /* Força a cor branca nos títulos dentro do banner */
     .top-banner h2, .top-banner h4 {
-        color: #FFFFFF !important; 
-        margin: 0 !important; 
-        padding: 0 !important;
-        font-family: 'Montserrat', sans-serif !important;
+        color: #FFFFFF !important; margin: 0 !important; padding: 0 !important; font-family: 'Montserrat', sans-serif !important;
     }
     .top-banner h2 { font-weight: 800 !important; letter-spacing: 1px !important; font-size: 28px !important; }
     .top-banner h4 { font-weight: 600 !important; font-size: 20px !important; }
-    
-    /* Força a cor azul clara nos subtítulos dentro do banner */
     .top-banner .sub-text {
-        color: #cce0ff !important; 
-        margin: 0 !important; 
-        padding: 0 !important;
-        font-size: 14px !important; 
-        font-weight: 400 !important;
+        color: #cce0ff !important; margin: 0 !important; padding: 0 !important; font-size: 14px !important; font-weight: 400 !important;
     }
 
-    /* --- BOTÕES PRIMÁRIOS (VERMELHOS) --- */
+    /* --- BOTÕES PRIMÁRIOS E SECUNDÁRIOS --- */
     button[kind="primary"] {
-        background-color: #e74c3c !important;
-        color: white !important;
-        border: 1px solid #c0392b !important;
-        font-weight: bold !important;
+        background-color: #e74c3c !important; color: white !important; border: 1px solid #c0392b !important; font-weight: bold !important;
     }
-    button[kind="primary"]:hover {
-        background-color: #c0392b !important;
-        border-color: #a93226 !important;
-    }
+    button[kind="primary"]:hover { background-color: #c0392b !important; border-color: #a93226 !important; }
 
-    /* --- BOTÕES SECUNDÁRIOS (AZUIS) --- */
     button[kind="secondary"] {
-        background-color: #003366 !important; 
-        color: #FFFFFF !important; 
-        border-radius: 8px; 
-        font-weight: bold; 
-        border: none;
+        background-color: #003366 !important; color: #FFFFFF !important; border-radius: 8px; font-weight: bold; border: none;
     }
     button[kind="secondary"] p { color: #FFFFFF !important; }
     
-    /* --- DESIGN GERAL DOS TEXTOS --- */
     h1, h2, h3, h4, h5, h6 { color: #003366 !important; font-family: 'Montserrat', sans-serif !important; }
-    p, li { color: #333333; }
+    p, li, div { color: #333333; }
     
-    /* Cards Padrão */
     div.stMetric, .insight-box, .badge-card {
-        background-color: #FFFFFF !important;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-        border-radius: 10px;
+        background-color: #FFFFFF !important; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-radius: 10px;
     }
     
-    /* --- CARD PERSONALIZADO (CRÍTICOS CLICÁVEIS) --- */
+    /* --- CARDS PERSONALIZADOS CLICÁVEIS --- */
     .card-link { text-decoration: none !important; display: block; }
-    .card-critico {
+    
+    .card-excelencia, .card-meta, .card-critico {
         background-color: #FFFFFF;
         box-shadow: 0 4px 10px rgba(0,0,0,0.05);
         border-radius: 10px;
         border: 1px solid #e0e0e0;
-        border-left: 5px solid #F37021;
         padding: 10px 15px;
         cursor: pointer;
         transition: all 0.3s ease;
     }
-    .card-critico:hover {
-        transform: scale(1.03);
-        box-shadow: 0 6px 15px rgba(231, 76, 60, 0.2);
-        border-left: 5px solid #e74c3c;
-    }
+    
+    .card-excelencia { border-left: 5px solid #003366; }
+    .card-excelencia:hover { transform: scale(1.03); box-shadow: 0 6px 15px rgba(0, 51, 102, 0.2); }
+    
+    .card-meta { border-left: 5px solid #2ecc71; }
+    .card-meta:hover { transform: scale(1.03); box-shadow: 0 6px 15px rgba(46, 204, 113, 0.2); }
+    
+    .card-critico { border-left: 5px solid #e74c3c; }
+    .card-critico:hover { transform: scale(1.03); box-shadow: 0 6px 15px rgba(231, 76, 60, 0.2); }
     
     /* --- CARD DE FÉRIAS --- */
     .vacation-card {
-        background-color: #FFFFFF !important;
-        border-left: 8px solid #00bcd4 !important;
-        padding: 30px !important;
-        border-radius: 12px !important;
-        text-align: center !important;
-        box-shadow: 0 6px 15px rgba(0,0,0,0.08) !important;
-        margin-top: 20px !important;
+        background-color: #FFFFFF !important; border-left: 8px solid #00bcd4 !important; padding: 30px !important;
+        border-radius: 12px !important; text-align: center !important; box-shadow: 0 6px 15px rgba(0,0,0,0.08) !important; margin-top: 20px !important;
     }
     .vacation-title { font-family: 'Montserrat', sans-serif !important; font-size: 1.4em !important; font-weight: 600 !important; color: #555555 !important; margin-bottom: 10px !important; }
     .vacation-date { font-family: 'Roboto', sans-serif !important; font-size: 3.5em !important; font-weight: 800 !important; color: #00838f !important; margin: 20px 0 !important; text-transform: uppercase !important; }
@@ -143,18 +117,12 @@ st.markdown("""
     
     /* --- TELA DE LOGIN --- */
     [data-testid="stForm"] {
-        background-color: #FFFFFF !important;
-        padding: 3rem 2rem !important;
-        border-radius: 20px !important;
-        box-shadow: 0 15px 35px rgba(0,0,0,0.1) !important;
-        border: none !important;
-        border-top: 6px solid #F37021 !important;
+        background-color: #FFFFFF !important; padding: 3rem 2rem !important; border-radius: 20px !important;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.1) !important; border: none !important; border-top: 6px solid #F37021 !important;
     }
     .login-title { font-family: 'Montserrat', sans-serif !important; font-weight: 800 !important; font-size: 2.2rem !important; color: #003366 !important; text-align: center; margin-bottom: 0px; }
     .login-subtitle { font-family: 'Roboto', sans-serif !important; font-size: 1.1rem !important; color: #666 !important; text-align: center; margin-bottom: 25px; }
     [data-testid="stForm"] input { background-color: #f8f9fa !important; color: #333 !important; border-radius: 8px !important; }
-    
-    /* --- CORREÇÃO DO BOTÃO DE UPLOAD (Browse Files) --- */
     [data-testid="stFileUploader"] button { background-color: #003366 !important; color: #FFFFFF !important; border: none !important; }
     [data-testid="stFileUploader"] button:hover { background-color: #F37021 !important; }
 
@@ -164,11 +132,9 @@ st.markdown("""
     div.stMetric div[data-testid="stMetricDelta"] { font-size: 13px !important; }
     
     .update-badge { background-color: #e3f2fd; color: #0d47a1; padding: 5px 10px; border-radius: 15px; font-size: 0.85em; font-weight: bold; border: 1px solid #bbdefb; }
-    
     .insight-box { background-color: #fff8e1 !important; border-left: 5px solid #ffc107 !important; padding: 15px; margin-bottom: 20px; }
     .insight-title { font-weight: bold; color: #d35400; font-size: 1.1em; display: flex; align-items: center; gap: 8px; }
     .insight-text { font-size: 0.95em; margin-top: 5px; color: #555; }
-
     .dev-footer { text-align: center; margin-top: 40px; font-size: 0.8em; color: #aaa !important; }
 </style>
 """, unsafe_allow_html=True)
@@ -203,8 +169,7 @@ def converter_hora_para_float(valor):
             minutos = int(parts[1])
             return sinal * (horas + (minutos / 60.0))
         return 0.0
-    except:
-        return 0.0
+    except: return 0.0
 
 def formatar_saldo_decimal(valor_float):
     try:
@@ -216,8 +181,7 @@ def formatar_saldo_decimal(valor_float):
             horas += 1
             minutos = 0
         return f"{sinal}{horas:02d}:{minutos:02d}"
-    except:
-        return "00:00"
+    except: return "00:00"
 
 def tentar_extrair_data_csv(df):
     colunas_possiveis = ['data', 'date', 'periodo', 'mês', 'mes', 'competencia', 'ref']
@@ -230,12 +194,10 @@ def tentar_extrair_data_csv(df):
     return None
 
 def obter_data_hoje(): return datetime.now().strftime("%m/%Y")
-
 def obter_data_atualizacao():
     arquivo = 'historico_consolidado.csv'
     if os.path.exists(arquivo):
-        timestamp = os.path.getmtime(arquivo)
-        return datetime.fromtimestamp(timestamp).strftime("%d/%m/%Y às %H:%M")
+        return datetime.fromtimestamp(os.path.getmtime(arquivo)).strftime("%d/%m/%Y às %H:%M")
     return datetime.now().strftime("%d/%m/%Y")
 
 def salvar_config(data_texto):
@@ -247,13 +209,12 @@ def ler_config():
         with open('config.json', 'r') as f: return json.load(f).get('periodo', 'Não informado')
     return "Aguardando atualização"
 def limpar_base_dados_completa():
-    arquivos = [f for f in os.listdir('.') if f.endswith('.csv')]
-    for f in arquivos: os.remove(f)
+    for f in os.listdir('.'): 
+        if f.endswith('.csv'): os.remove(f)
 def faxina_arquivos_temporarios():
-    arquivos = [f for f in os.listdir('.') if f.endswith('.csv')]
     protegidos = ['historico_consolidado.csv', 'usuarios.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv']
-    for f in arquivos:
-        if f not in protegidos:
+    for f in os.listdir('.'):
+        if f.endswith('.csv') and f not in protegidos:
             try: os.remove(f)
             except: pass
 def atualizar_historico(df_atual, periodo):
@@ -505,13 +466,10 @@ if not st.session_state['logado']:
     with c2:
         st.markdown("<br><br>", unsafe_allow_html=True)
         with st.form("form_login"):
-            
-            # --- IMAGEM CENTRALIZADA ---
             if os.path.exists(LOGO_FILE):
                 col_espaco1, col_logo, col_espaco2 = st.columns([1, 0.6, 1])
                 with col_logo:
                     st.image(LOGO_FILE, use_column_width=True)
-            # ---------------------------
             
             st.markdown('<div class="login-title">Team Sofistas</div>', unsafe_allow_html=True)
             st.markdown('<div class="login-subtitle">Analytics & Performance</div>', unsafe_allow_html=True)
@@ -541,19 +499,16 @@ if not st.session_state['logado']:
 # ==========================================
 # --- 5. BARRA SUPERIOR (NAVBAR PREMIUM PROTEGIDA) ---
 # ==========================================
-
 lista_periodos = listar_periodos_disponiveis()
 opcoes_periodo = lista_periodos if lista_periodos else ["Nenhum histórico disponível"]
 
 df_users_cadastrados = carregar_usuarios()
 nome_logado = st.session_state['usuario_nome'].title() if st.session_state['usuario_nome'] != 'Gestor' else 'Gestor'
 
-# Monta o texto de usuários ativos
 ativos_texto = ""
 if st.session_state['perfil'] == 'admin' and df_users_cadastrados is not None:
     ativos_texto = f"👥 Usuários Ativos: {len(df_users_cadastrados)}"
 
-# Converte a logo para Base64 para usar dentro do HTML do Banner
 logo_html = "<h1 style='margin:0; padding:0; font-size:40px;'>🦁</h1>"
 if os.path.exists(LOGO_FILE):
     try:
@@ -562,7 +517,6 @@ if os.path.exists(LOGO_FILE):
         logo_html = f'<img src="data:image/png;base64,{encoded_string}" style="height: 60px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">'
     except: pass
 
-# --- HTML DO BANNER ---
 st.markdown(f"""
 <div class="top-banner">
     <div style="display: flex; align-items: center; gap: 20px;">
@@ -579,7 +533,6 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# 4. Controles (Seleção de Mês e Botão Sair)
 c_periodo, c_vazio, c_sair = st.columns([3, 6, 1.5])
 
 with c_periodo:
@@ -593,8 +546,6 @@ with c_sair:
 
 st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px;'>", unsafe_allow_html=True)
 
-
-# Lógica de Carregamento baseada no Mês da Barra Superior
 if periodo_selecionado == "Nenhum histórico disponível":
     df_raw = None
     periodo_label = "Aguardando Upload"
@@ -636,12 +587,34 @@ if perfil == 'admin':
             qtd_vermelho = len(df_media_pessoas[df_media_pessoas['% Atingimento'] < 0.80]) 
             
             c1, c2, c3 = st.columns(3)
-            c1.metric("💎 Excelência", f"{qtd_verde}", delta=">=90%")
-            c2.metric("🟢 Meta Batida", f"{qtd_amarelo}", delta="80-90%", delta_color="off")
             
-            # --- CARD DE CRÍTICOS COMO ÂNCORA ---
+            # --- CARD 1: EXCELÊNCIA ---
+            html_card_excelencia = f"""
+            <a href="#excelencia" class="card-link">
+                <div class="card-excelencia">
+                    <div style="color: #666; font-size: 14px;">💎 Excelência <span style="font-size:11px; color:#003366;">(Ver detalhes ⬇)</span></div>
+                    <div style="color: #003366; font-size: 26px; font-weight: 700; margin-top: -2px;">{qtd_verde}</div>
+                    <div style="color: #003366; font-size: 13px; font-weight: bold; margin-top: 5px;">↑ &gt;=90%</div>
+                </div>
+            </a>
+            """
+            c1.markdown(html_card_excelencia, unsafe_allow_html=True)
+            
+            # --- CARD 2: META BATIDA ---
+            html_card_meta = f"""
+            <a href="#meta-batida" class="card-link">
+                <div class="card-meta">
+                    <div style="color: #666; font-size: 14px;">🟢 Meta Batida <span style="font-size:11px; color:#2ecc71;">(Ver detalhes ⬇)</span></div>
+                    <div style="color: #003366; font-size: 26px; font-weight: 700; margin-top: -2px;">{qtd_amarelo}</div>
+                    <div style="color: #2ecc71; font-size: 13px; font-weight: bold; margin-top: 5px;">~ 80-89%</div>
+                </div>
+            </a>
+            """
+            c2.markdown(html_card_meta, unsafe_allow_html=True)
+            
+            # --- CARD 3: CRÍTICOS ---
             html_card_critico = f"""
-            <a href="#aten-o-priorit-ria" class="card-link">
+            <a href="#atencao-prioritaria" class="card-link">
                 <div class="card-critico">
                     <div style="color: #666; font-size: 14px;">🔴 Crítico <span style="font-size:11px; color:#e74c3c;">(Ver detalhes ⬇)</span></div>
                     <div style="color: #003366; font-size: 26px; font-weight: 700; margin-top: -2px;">{qtd_vermelho}</div>
@@ -650,7 +623,6 @@ if perfil == 'admin':
             </a>
             """
             c3.markdown(html_card_critico, unsafe_allow_html=True)
-            # ------------------------------------
 
             st.markdown("---")
             
@@ -719,10 +691,33 @@ if perfil == 'admin':
 
             st.markdown("---")
             
-            # --- ÂNCORA ALVO (ATENÇÃO PRIORITÁRIA) ---
-            st.markdown('<div id="aten-o-priorit-ria" style="padding-top: 20px;"></div>', unsafe_allow_html=True)
-            st.subheader("📋 Atenção Prioritária")
+            # --- DESTINOS DAS ÂNCORAS ---
             
+            # 1. EXCELÊNCIA
+            st.markdown('<div id="excelencia" style="padding-top: 20px;"></div>', unsafe_allow_html=True)
+            st.subheader("💎 Destaques de Excelência (>= 90%)")
+            df_exc = df_media_pessoas[df_media_pessoas['% Atingimento'] >= 0.90].sort_values(by='% Atingimento', ascending=False)
+            if not df_exc.empty:
+                df_exc.columns = ['Colaborador', 'Média Geral']
+                st.dataframe(df_exc.style.format({'Média Geral': '{:.2%}'}), use_container_width=True)
+            else: st.info("Nenhum colaborador nesta faixa.")
+
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            # 2. META BATIDA
+            st.markdown('<div id="meta-batida" style="padding-top: 20px;"></div>', unsafe_allow_html=True)
+            st.subheader("🟢 Atingiram a Meta (80% - 89%)")
+            df_meta = df_media_pessoas[(df_media_pessoas['% Atingimento'] >= 0.80) & (df_media_pessoas['% Atingimento'] < 0.90)].sort_values(by='% Atingimento', ascending=False)
+            if not df_meta.empty:
+                df_meta.columns = ['Colaborador', 'Média Geral']
+                st.dataframe(df_meta.style.format({'Média Geral': '{:.2%}'}), use_container_width=True)
+            else: st.info("Nenhum colaborador nesta faixa.")
+
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            # 3. CRÍTICOS (ATENÇÃO PRIORITÁRIA)
+            st.markdown('<div id="atencao-prioritaria" style="padding-top: 20px;"></div>', unsafe_allow_html=True)
+            st.subheader("📋 Atenção Prioritária (< 80%)")
             df_atencao = df_media_pessoas[df_media_pessoas['% Atingimento'] < 0.80].sort_values(by='% Atingimento')
             if not df_atencao.empty:
                 lista_detalhada = []
@@ -1117,7 +1112,6 @@ Sua Liderança.
 # --- 7. VISÃO DO OPERADOR ---
 # ==========================================
 else:
-    # ... A VISÃO DO OPERADOR CONTINUA INTACTA AQUI ...
     st.markdown(f"## 🚀 Olá, **{nome_logado.split()[0]}**!")
     data_atualizacao = obter_data_atualizacao()
     st.markdown(f"<div style='display: flex; align-items: center; margin-bottom: 20px; color: #666;'><span style='margin-right: 15px;'>📅 Referência: <b>{periodo_label}</b></span><span class='update-badge'>🕒 Atualizado em: {data_atualizacao}</span></div>", unsafe_allow_html=True)
