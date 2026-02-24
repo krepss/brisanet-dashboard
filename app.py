@@ -68,14 +68,20 @@ st.markdown("""
 
     /* --- BOTÕES PRIMÁRIOS E SECUNDÁRIOS --- */
     button[kind="primary"] {
-        background-color: #e74c3c !important; color: white !important; border: 1px solid #c0392b !important; font-weight: bold !important;
+        background-color: #e74c3c !important; border: 1px solid #c0392b !important; border-radius: 8px !important;
+    }
+    /* FORÇA O TEXTO DO BOTÃO SAIR A FICAR BRANCO */
+    button[kind="primary"] p, button[kind="primary"] span, button[kind="primary"] div {
+        color: #FFFFFF !important; font-weight: bold !important;
     }
     button[kind="primary"]:hover { background-color: #c0392b !important; border-color: #a93226 !important; }
 
     button[kind="secondary"] {
-        background-color: #003366 !important; color: #FFFFFF !important; border-radius: 8px; font-weight: bold; border: none;
+        background-color: #003366 !important; color: #FFFFFF !important; border-radius: 8px !important; font-weight: bold !important; border: none !important;
     }
-    button[kind="secondary"] p { color: #FFFFFF !important; }
+    button[kind="secondary"] p, button[kind="secondary"] span, button[kind="secondary"] div { 
+        color: #FFFFFF !important; 
+    }
     
     h1, h2, h3, h4, h5, h6 { color: #003366 !important; font-family: 'Montserrat', sans-serif !important; }
     p, li, div { color: #333333; }
@@ -540,7 +546,7 @@ with c_periodo:
     
 with c_sair:
     st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-    if st.button("🚪 Sair do Sistema", type="primary", use_container_width=True):
+    if st.button("🚪 Sair", type="primary", use_container_width=True):
         st.session_state.update({'logado': False})
         st.rerun()
 
