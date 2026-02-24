@@ -29,58 +29,45 @@ DICAS_KPI = {
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
 try:
-    st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon=LOGO_FILE)
+    # A barra lateral é inicializada fechada para não piscar na tela
+    st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon=LOGO_FILE, initial_sidebar_state="collapsed")
 except:
-    st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
+    st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁", initial_sidebar_state="collapsed")
 
-# --- 2. CSS (DESIGN PREMIUM + ROLAGEM SUAVE + CARD CLICÁVEL) ---
+# --- 2. CSS (DESIGN PREMIUM + REMOÇÃO DA SIDEBAR) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
     
-    /* Rolagem Suave para a Âncora */
     html, body { scroll-behavior: smooth !important; font-family: 'Roboto', sans-serif; }
     .stApp { background-color: #F4F7F6 !important; }
     
-    /* --- SIDEBAR AZUL --- */
-    [data-testid="stSidebar"] {
-        background-color: #002b55 !important;
-        background-image: linear-gradient(180deg, #002b55 0%, #004e92 100%) !important;
-    }
-    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, 
-    [data-testid="stSidebar"] p, [data-testid="stSidebar"] label, [data-testid="stSidebar"] span {
-        color: #FFFFFF !important;
-    }
+    /* --- REMOVER SIDEBAR TOTALMENTE --- */
+    [data-testid="collapsedControl"] { display: none !important; }
+    [data-testid="stSidebar"] { display: none !important; }
 
-    /* --- BOTÃO SAIR (SIDEBAR) - VERMELHO --- */
-    [data-testid="stSidebar"] button {
+    /* --- BOTÕES PRIMÁRIOS (VERMELHOS) --- */
+    /* Agora o botão 'Sair' e de 'Limpar Dados' ficam vermelhos */
+    button[kind="primary"] {
         background-color: #e74c3c !important;
         color: white !important;
         border: 1px solid #c0392b !important;
         font-weight: bold !important;
     }
-    [data-testid="stSidebar"] button:hover {
+    button[kind="primary"]:hover {
         background-color: #c0392b !important;
         border-color: #a93226 !important;
     }
 
-    /* --- CORREÇÃO INPUTS SIDEBAR --- */
-    [data-testid="stSidebar"] div[data-baseweb="select"] > div,
-    [data-testid="stSidebar"] input {
-        background-color: #FFFFFF !important;
-        color: #000000 !important;
-        -webkit-text-fill-color: #000000 !important;
+    /* --- BOTÕES SECUNDÁRIOS (AZUIS - PADRÃO DO SISTEMA) --- */
+    button[kind="secondary"] {
+        background-color: #003366 !important; 
+        color: #FFFFFF !important; 
+        border-radius: 8px; 
+        font-weight: bold; 
+        border: none;
     }
-    [data-testid="stSidebar"] div[data-baseweb="select"] span,
-    [data-testid="stSidebar"] div[data-baseweb="select"] div,
-    [data-testid="stSidebar"] div[data-baseweb="select"] svg {
-        color: #000000 !important;
-        fill: #000000 !important;
-    }
-    ul[data-testid="stSelectboxVirtualDropdown"] li {
-        color: #000000 !important;
-        background-color: #FFFFFF !important;
-    }
+    button[kind="secondary"] p { color: #FFFFFF !important; }
     
     /* --- DESIGN GERAL --- */
     h1, h2, h3, h4, h5, h6 { color: #003366 !important; font-family: 'Montserrat', sans-serif !important; }
@@ -94,10 +81,7 @@ st.markdown("""
     }
     
     /* --- CARD PERSONALIZADO (CRÍTICOS CLICÁVEIS) --- */
-    .card-link {
-        text-decoration: none !important;
-        display: block;
-    }
+    .card-link { text-decoration: none !important; display: block; }
     .card-critico {
         background-color: #FFFFFF;
         box-shadow: 0 4px 10px rgba(0,0,0,0.05);
@@ -124,26 +108,9 @@ st.markdown("""
         box-shadow: 0 6px 15px rgba(0,0,0,0.08) !important;
         margin-top: 20px !important;
     }
-    .vacation-title { 
-        font-family: 'Montserrat', sans-serif !important;
-        font-size: 1.4em !important; 
-        font-weight: 600 !important; 
-        color: #555555 !important; 
-        margin-bottom: 10px !important;
-    }
-    .vacation-date { 
-        font-family: 'Roboto', sans-serif !important;
-        font-size: 3.5em !important; 
-        font-weight: 800 !important; 
-        color: #00838f !important; 
-        margin: 20px 0 !important; 
-        text-transform: uppercase !important; 
-    }
-    .vacation-note { 
-        font-size: 0.9em !important; 
-        color: #999999 !important; 
-        font-style: italic !important; 
-    }
+    .vacation-title { font-family: 'Montserrat', sans-serif !important; font-size: 1.4em !important; font-weight: 600 !important; color: #555555 !important; margin-bottom: 10px !important; }
+    .vacation-date { font-family: 'Roboto', sans-serif !important; font-size: 3.5em !important; font-weight: 800 !important; color: #00838f !important; margin: 20px 0 !important; text-transform: uppercase !important; }
+    .vacation-note { font-size: 0.9em !important; color: #999999 !important; font-style: italic !important; }
     
     /* --- TELA DE LOGIN --- */
     [data-testid="stForm"] {
@@ -154,81 +121,22 @@ st.markdown("""
         border: none !important;
         border-top: 6px solid #F37021 !important;
     }
-    .login-title {
-        font-family: 'Montserrat', sans-serif !important;
-        font-weight: 800 !important;
-        font-size: 2.2rem !important;
-        color: #003366 !important;
-        text-align: center;
-        margin-bottom: 0px;
-    }
-    .login-subtitle {
-        font-family: 'Roboto', sans-serif !important;
-        font-size: 1.1rem !important;
-        color: #666 !important;
-        text-align: center;
-        margin-bottom: 25px;
-    }
-    [data-testid="stForm"] input {
-        background-color: #f8f9fa !important;
-        color: #333 !important;
-        border-radius: 8px !important;
-    }
-    /* Botão de Login */
-    [data-testid="stForm"] [data-testid="stBaseButton-secondary"] {
-        width: 100% !important;
-        background-image: linear-gradient(to right, #002b55, #004e92) !important;
-        border: none !important;
-        border-radius: 8px !important;
-        padding-top: 10px !important;
-        padding-bottom: 10px !important;
-    }
-    [data-testid="stForm"] [data-testid="stBaseButton-secondary"] p {
-        color: #FFFFFF !important;
-        font-weight: bold !important;
-        font-size: 1.1rem !important;
-    }
-    [data-testid="stForm"] [data-testid="stBaseButton-secondary"]:hover {
-        transform: scale(1.02) !important;
-        box-shadow: 0 5px 15px rgba(0, 78, 146, 0.3) !important;
-    }
-
-    /* --- OUTROS (BOTÕES AZUIS DO SISTEMA) --- */
-    div.stButton > button {
-        background-color: #003366 !important; 
-        color: #FFFFFF !important; 
-        border-radius: 8px; 
-        font-weight: bold; 
-        border: none;
-    }
-    div.stButton > button p { color: #FFFFFF !important; }
+    .login-title { font-family: 'Montserrat', sans-serif !important; font-weight: 800 !important; font-size: 2.2rem !important; color: #003366 !important; text-align: center; margin-bottom: 0px; }
+    .login-subtitle { font-family: 'Roboto', sans-serif !important; font-size: 1.1rem !important; color: #666 !important; text-align: center; margin-bottom: 25px; }
+    [data-testid="stForm"] input { background-color: #f8f9fa !important; color: #333 !important; border-radius: 8px !important; }
     
     /* --- CORREÇÃO DO BOTÃO DE UPLOAD (Browse Files) --- */
-    [data-testid="stFileUploader"] button {
-        background-color: #003366 !important;
-        color: #FFFFFF !important;
-        border: none !important;
-    }
-    [data-testid="stFileUploader"] button:hover {
-        background-color: #F37021 !important;
-    }
+    [data-testid="stFileUploader"] button { background-color: #003366 !important; color: #FFFFFF !important; border: none !important; }
+    [data-testid="stFileUploader"] button:hover { background-color: #F37021 !important; }
 
     div.stMetric { border: 1px solid #e0e0e0; border-left: 5px solid #F37021; padding: 10px 15px !important; }
     div.stMetric label { color: #666 !important; font-size: 14px !important; }
     div.stMetric div[data-testid="stMetricValue"] { color: #003366 !important; font-size: 26px !important; font-weight: 700; }
     div.stMetric div[data-testid="stMetricDelta"] { font-size: 13px !important; }
     
-    .update-badge {
-        background-color: #e3f2fd; color: #0d47a1; padding: 5px 10px; 
-        border-radius: 15px; font-size: 0.85em; font-weight: bold; border: 1px solid #bbdefb;
-    }
+    .update-badge { background-color: #e3f2fd; color: #0d47a1; padding: 5px 10px; border-radius: 15px; font-size: 0.85em; font-weight: bold; border: 1px solid #bbdefb; }
     
-    .insight-box {
-        background-color: #fff8e1 !important;
-        border-left: 5px solid #ffc107 !important;
-        padding: 15px;
-        margin-bottom: 20px;
-    }
+    .insight-box { background-color: #fff8e1 !important; border-left: 5px solid #ffc107 !important; padding: 15px; margin-bottom: 20px; }
     .insight-title { font-weight: bold; color: #d35400; font-size: 1.1em; display: flex; align-items: center; gap: 8px; }
     .insight-text { font-size: 0.95em; margin-top: 5px; color: #555; }
 
@@ -599,57 +507,72 @@ if not st.session_state['logado']:
     st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
     st.stop()
 
-# --- 5. SIDEBAR ---
+
+# ==========================================
+# --- 5. BARRA SUPERIOR (SUBSTITUI A SIDEBAR) ---
+# ==========================================
+
 lista_periodos = listar_periodos_disponiveis()
 opcoes_periodo = lista_periodos if lista_periodos else ["Nenhum histórico disponível"]
 
-with st.sidebar:
-    if os.path.exists(LOGO_FILE): st.image(LOGO_FILE, use_column_width=True)
-    else: st.title("🦁 Team Sofistas")
-    st.caption("Performance Analytics")
-    st.markdown("---")
+df_users_cadastrados = carregar_usuarios()
+nome_logado = st.session_state['usuario_nome'].title() if st.session_state['usuario_nome'] != 'Gestor' else 'Gestor'
+
+# Criação das colunas da Barra Superior
+c_logo, c_periodo, c_user, c_sair = st.columns([1, 3, 2, 1])
+
+with c_logo:
+    st.markdown("<br>", unsafe_allow_html=True)
+    if os.path.exists(LOGO_FILE): 
+        st.image(LOGO_FILE, width=60)
+    else: 
+        st.markdown("#### 🦁 Sofistas")
+        
+with c_periodo:
     periodo_selecionado = st.selectbox("📅 Mês de Referência:", opcoes_periodo)
     
-    if periodo_selecionado == "Nenhum histórico disponível":
-        df_raw = None
-        periodo_label = "Aguardando Upload"
-    else:
-        df_hist_full = carregar_historico_completo()
-        if df_hist_full is not None:
-            df_raw = df_hist_full[df_hist_full['Periodo'] == periodo_selecionado].copy()
-            df_users_cadastrados = carregar_usuarios()
-            if df_raw is not None and not df_raw.empty:
-                df_raw = filtrar_por_usuarios_cadastrados(df_raw, df_users_cadastrados)
-        else: df_raw = None
-        periodo_label = periodo_selecionado
-    
-    df_users_cadastrados = carregar_usuarios()
-    if df_raw is not None and not df_raw.empty:
-        df_dados = df_raw.copy()
-        df_dados['Colaborador'] = df_dados['Colaborador'].str.title()
-    else: df_dados = None
-    
-    if st.session_state['perfil'] == 'admin':
-        if df_users_cadastrados is not None:
-            qtd_ativos = len(df_users_cadastrados)
-            st.sidebar.caption(f"👥 Usuários Ativos: **{qtd_ativos}**")
-        else: st.sidebar.warning("⚠️ Usuários não carregados")
+with c_user:
+    st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
+    st.markdown(f"**👤 Olá, {nome_logado.split()[0]}**")
+    # Mostra os ativos só se for gestor
+    if st.session_state['perfil'] == 'admin' and df_users_cadastrados is not None:
+        st.caption(f"👥 Usuários Ativos: **{len(df_users_cadastrados)}**")
 
-    st.markdown("---")
-    nome_logado = st.session_state['usuario_nome'].title() if st.session_state['usuario_nome'] != 'Gestor' else 'Gestor'
-    st.markdown(f"### 👤 {nome_logado.split()[0]}")
-    if st.button("Sair"):
+with c_sair:
+    st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
+    # Botão com type="primary" vai pegar a cor vermelha no CSS
+    if st.button("🚪 Sair", type="primary", use_container_width=True):
         st.session_state.update({'logado': False})
         st.rerun()
-    st.markdown("---")
-    st.caption("Desenvolvido por:\n**Klebson Davi**\nSupervisor de Suporte Técnico")
+
+st.markdown("---")
+
+# Lógica de Carregamento baseada no Mês da Barra Superior
+if periodo_selecionado == "Nenhum histórico disponível":
+    df_raw = None
+    periodo_label = "Aguardando Upload"
+else:
+    df_hist_full = carregar_historico_completo()
+    if df_hist_full is not None:
+        df_raw = df_hist_full[df_hist_full['Periodo'] == periodo_selecionado].copy()
+        if df_raw is not None and not df_raw.empty:
+            df_raw = filtrar_por_usuarios_cadastrados(df_raw, df_users_cadastrados)
+    else: df_raw = None
+    periodo_label = periodo_selecionado
+
+if df_raw is not None and not df_raw.empty:
+    df_dados = df_raw.copy()
+    df_dados['Colaborador'] = df_dados['Colaborador'].str.title()
+else: df_dados = None
 
 perfil = st.session_state['perfil']
 if df_dados is None and perfil == 'user':
     st.info(f"👋 Olá, **{nome_logado}**! Dados de **{periodo_label}** indisponíveis.")
     st.stop()
 
-# --- GESTOR ---
+# ==========================================
+# --- 6. GESTOR ---
+# ==========================================
 if perfil == 'admin':
     st.title(f"📊 Visão Gerencial")
     tabs = st.tabs(["🚦 Semáforo", "🏆 Ranking Geral", "⏳ Evolução", "🔍 Indicadores", "💰 Comissões", "📋 Tabela Geral", "🏖️ Férias Equipe", "⚙️ Admin", "⏰ Banco de Horas", "📝 Feedbacks GB"])
@@ -680,8 +603,7 @@ if perfil == 'admin':
             </a>
             """
             c3.markdown(html_card_critico, unsafe_allow_html=True)
-            # ------------------------------------
-
+            
             st.markdown("---")
             
             # FEEDBACK RÁPIDO
@@ -818,14 +740,12 @@ if perfil == 'admin':
             for colab in df_calc['Colaborador_Key'].unique():
                 df_user = df_calc[df_calc['Colaborador_Key'] == colab]
                 
-                # Cálculo Diamantes
                 if tem_tam:
                     row_tam = df_user[df_user['Indicador'] == 'TAM']
                     total_diamantes = row_tam.iloc[0]['Diamantes'] if not row_tam.empty else 0
                 else:
                     total_diamantes = df_user['Diamantes'].sum()
                 
-                # Cálculo Descontos
                 row_conf = df_user[df_user['Indicador'] == 'CONFORMIDADE']
                 conf_val = row_conf.iloc[0]['% Atingimento'] if not row_conf.empty else 0.0
                 
@@ -937,6 +857,7 @@ if perfil == 'admin':
                         excluir_periodo_historico(row['Periodo'])
                         st.rerun()
             st.divider()
+            # Botão primário para ficar vermelho no CSS
             if st.button("🔥 Limpar TUDO (Reset Completo)", type="primary"):
                 limpar_base_dados_completa()
                 st.success("Limpo!")
@@ -1136,7 +1057,7 @@ Sua Liderança.
         else:
             st.info("⚠️ Aguardando dados de TAM ou arquivo de indicadores para habilitar os feedbacks.")
 
-        # --- NOVO: HISTÓRICO GERAL PARA O GESTOR ---
+        # HISTÓRICO GERAL PARA O GESTOR
         st.markdown("---")
         st.markdown("### 📚 Base Geral de Feedbacks Aplicados")
         df_fbs_hist = carregar_feedbacks_gb()
@@ -1147,6 +1068,7 @@ Sua Liderança.
 
 # --- VISÃO OPERADOR ---
 else:
+    # ... A VISÃO DO OPERADOR CONTINUA INTACTA AQUI ...
     st.markdown(f"## 🚀 Olá, **{nome_logado.split()[0]}**!")
     data_atualizacao = obter_data_atualizacao()
     st.markdown(f"<div style='display: flex; align-items: center; margin-bottom: 20px; color: #666;'><span style='margin-right: 15px;'>📅 Referência: <b>{periodo_label}</b></span><span class='update-badge'>🕒 Atualizado em: {data_atualizacao}</span></div>", unsafe_allow_html=True)
@@ -1351,3 +1273,5 @@ else:
                 st.info("Você ainda não possui registros de feedback no sistema.")
         else:
             st.info("Nenhum feedback registrado no sistema até o momento.")
+st.markdown("---")
+st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
