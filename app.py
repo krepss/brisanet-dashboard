@@ -507,7 +507,7 @@ if not st.session_state['logado']:
 
 
 # ==========================================
-# --- 5. BARRA SUPERIOR (NAVBAR PREMIUM PROTEGIDA) ---
+# --- 5. BARRA SUPERIOR (NAVBAR PREMIUM) ---
 # ==========================================
 lista_periodos = listar_periodos_disponiveis()
 opcoes_periodo = lista_periodos if lista_periodos else ["Nenhum histórico disponível"]
@@ -592,7 +592,6 @@ if perfil == 'admin':
         if df_dados is not None and not df_dados.empty:
             st.markdown(f"### Resumo de Saúde: **{periodo_label}**")
             
-            # --- CORREÇÃO DA REGRA MESTRA (USAR NOTA DO TAM OFICIAL) ---
             if tem_tam:
                 df_media_pessoas = df_dados[df_dados['Indicador'] == 'TAM'][['Colaborador', '% Atingimento']].copy()
             else:
@@ -605,7 +604,6 @@ if perfil == 'admin':
             
             c1, c2, c3 = st.columns(3)
             
-            # --- CARD 1: EXCELÊNCIA ---
             html_card_excelencia = f"""
             <a href="#excelencia" class="card-link">
                 <div class="card-excelencia">
@@ -617,7 +615,6 @@ if perfil == 'admin':
             """
             c1.markdown(html_card_excelencia, unsafe_allow_html=True)
             
-            # --- CARD 2: META BATIDA ---
             html_card_meta = f"""
             <a href="#meta-batida" class="card-link">
                 <div class="card-meta">
@@ -629,7 +626,6 @@ if perfil == 'admin':
             """
             c2.markdown(html_card_meta, unsafe_allow_html=True)
             
-            # --- CARD 3: CRÍTICOS ---
             html_card_critico = f"""
             <a href="#atencao-prioritaria" class="card-link">
                 <div class="card-critico">
@@ -643,7 +639,6 @@ if perfil == 'admin':
 
             st.markdown("---")
             
-            # FEEDBACK RÁPIDO
             st.subheader("💬 Gerador de Feedback Rápido (1:1)")
             colab_feedback = st.selectbox("Selecione para análise:", sorted(df_dados['Colaborador'].unique()), key="sb_feedback")
             if colab_feedback:
@@ -663,7 +658,6 @@ if perfil == 'admin':
                     </div>""", unsafe_allow_html=True)
             st.markdown("---")
             
-            # FAROL
             df_dados_farol = df_dados.copy()
             df_dados_farol['Status_Farol'] = df_dados_farol['% Atingimento'].apply(classificar_farol)
             fig_farol = px.bar(df_dados_farol.groupby(['Indicador', 'Status_Farol']).size().reset_index(name='Qtd'), 
@@ -673,7 +667,6 @@ if perfil == 'admin':
             
             st.markdown("---")
 
-            # VELOCÍMETRO
             st.markdown("### 🦁 Performance Global da Equipe")
             remove_pont = st.checkbox("Remover Pontualidade do Cálculo Global", value=False)
             total_dia_team = 0
@@ -711,31 +704,28 @@ if perfil == 'admin':
             
             # --- DESTINOS DAS ÂNCORAS ---
             
-            # 1. EXCELÊNCIA
             st.markdown('<div id="excelencia" style="padding-top: 20px;"></div>', unsafe_allow_html=True)
             st.subheader("💎 Destaques de Excelência (>= 90%)")
             df_exc = df_media_pessoas[df_media_pessoas['% Atingimento'] >= 0.90].sort_values(by='% Atingimento', ascending=False)
             if not df_exc.empty:
                 df_exc_show = df_exc[['Colaborador', '% Atingimento']].copy()
-                df_exc_show.columns = ['Colaborador', 'Média Geral (TAM)']
-                st.dataframe(df_exc_show.style.format({'Média Geral (TAM)': '{:.2%}'}), use_container_width=True)
+                df_exc_show.columns = ['Colaborador', 'Resultado (TAM)']
+                st.dataframe(df_exc_show.style.format({'Resultado (TAM)': '{:.2%}'}), use_container_width=True)
             else: st.info("Nenhum colaborador nesta faixa.")
 
             st.markdown("<br>", unsafe_allow_html=True)
 
-            # 2. META BATIDA
             st.markdown('<div id="meta-batida" style="padding-top: 20px;"></div>', unsafe_allow_html=True)
             st.subheader("🟢 Atingiram a Meta (80% - 89%)")
             df_meta = df_media_pessoas[(df_media_pessoas['% Atingimento'] >= 0.80) & (df_media_pessoas['% Atingimento'] < 0.90)].sort_values(by='% Atingimento', ascending=False)
             if not df_meta.empty:
                 df_meta_show = df_meta[['Colaborador', '% Atingimento']].copy()
-                df_meta_show.columns = ['Colaborador', 'Média Geral (TAM)']
-                st.dataframe(df_meta_show.style.format({'Média Geral (TAM)': '{:.2%}'}), use_container_width=True)
+                df_meta_show.columns = ['Colaborador', 'Resultado (TAM)']
+                st.dataframe(df_meta_show.style.format({'Resultado (TAM)': '{:.2%}'}), use_container_width=True)
             else: st.info("Nenhum colaborador nesta faixa.")
 
             st.markdown("<br>", unsafe_allow_html=True)
 
-            # 3. CRÍTICOS (ATENÇÃO PRIORITÁRIA) - IGNORA O TAM COMO PIOR INDICADOR
             st.markdown('<div id="atencao-prioritaria" style="padding-top: 20px;"></div>', unsafe_allow_html=True)
             st.subheader("📋 Atenção Prioritária (< 80%)")
             df_atencao = df_media_pessoas[df_media_pessoas['% Atingimento'] < 0.80].sort_values(by='% Atingimento')
@@ -743,11 +733,7 @@ if perfil == 'admin':
                 lista_detalhada = []
                 for colab in df_atencao['Colaborador']:
                     dados_pessoa = df_dados[df_dados['Colaborador'] == colab]
-                    
-                    # Puxa o resultado do TAM (Oficial)
                     media_pessoa = df_media_pessoas[df_media_pessoas['Colaborador'] == colab].iloc[0]['% Atingimento']
-                    
-                    # Procura o pior indicador excluindo a métrica global (TAM)
                     df_kpis_only = dados_pessoa[dados_pessoa['Indicador'] != 'TAM'] if tem_tam else dados_pessoa
                     
                     if not df_kpis_only.empty:
@@ -757,24 +743,53 @@ if perfil == 'admin':
                     else:
                         texto_pior = "N/A"
                         
-                    lista_detalhada.append({'Colaborador': colab, 'Média Geral (TAM)': media_pessoa, 'Status': '🔴 Crítico', 'Pior KPI p/ Focar': texto_pior})
+                    lista_detalhada.append({'Colaborador': colab, 'Resultado (TAM)': media_pessoa, 'Status': '🔴 Crítico', 'Pior KPI p/ Focar': texto_pior})
                 df_final_atencao = pd.DataFrame(lista_detalhada)
-                st.dataframe(df_final_atencao.style.format({'Média Geral (TAM)': '{:.2%}'}), use_container_width=True)
+                st.dataframe(df_final_atencao.style.format({'Resultado (TAM)': '{:.2%}'}), use_container_width=True)
             else: st.success("🎉 Equipe performando bem! Ninguém abaixo de 80%.")
 
+    # --- ABA RANKING GERAL (AGORA COM MEDALHAS, DIAMANTES E CORES) ---
     with tabs[1]:
         st.markdown(f"### 🏆 Ranking Geral (Consolidado)")
         if df_dados is not None:
-            # --- CORREÇÃO DO RANKING (USAR NOTA DO TAM OFICIAL SE EXISTIR) ---
             if tem_tam: 
                 df_rank = df_dados[df_dados['Indicador'] == 'TAM'].copy()
-                df_rank['%'] = df_rank['% Atingimento']
+                df_rank['Resultado'] = df_rank['% Atingimento']
             else: 
                 df_rank = df_dados.groupby('Colaborador').agg({'Diamantes':'sum', 'Max. Diamantes':'sum'}).reset_index()
-                df_rank['%'] = df_rank.apply(lambda x: x['Diamantes']/x['Max. Diamantes'] if x['Max. Diamantes']>0 else 0, axis=1)
+                df_rank['Resultado'] = df_rank.apply(lambda x: x['Diamantes']/x['Max. Diamantes'] if x['Max. Diamantes']>0 else 0, axis=1)
             
-            df_show_rank = df_rank[['Colaborador', '%']].sort_values(by='%', ascending=False)
-            st.dataframe(df_show_rank.style.format({'%': '{:.2%}'}), use_container_width=True)
+            # Ordenar do maior para o menor
+            df_rank = df_rank.sort_values(by='Resultado', ascending=False).reset_index(drop=True)
+            
+            # Criar e distribuir Medalhas de Posição
+            medalhas = []
+            for i in range(len(df_rank)):
+                if i == 0: medalhas.append("🥇 1º Lugar")
+                elif i == 1: medalhas.append("🥈 2º Lugar")
+                elif i == 2: medalhas.append("🥉 3º Lugar")
+                else: medalhas.append(f"🏅 {i+1}º Lugar")
+            df_rank.insert(0, 'Posição', medalhas)
+            
+            # Preparar visualização com colunas certas
+            cols_show = ['Posição', 'Colaborador', 'Resultado']
+            formato = {'Resultado': '{:.2%}'}
+            
+            if 'Diamantes' in df_rank.columns:
+                # Renomeia para ficar bonito
+                df_rank.rename(columns={'Diamantes': '💎 Diamantes Válidos', 'Max. Diamantes': '🏆 Máx. Diamantes'}, inplace=True)
+                cols_show.insert(2, '💎 Diamantes Válidos')
+                cols_show.insert(3, '🏆 Máx. Diamantes')
+                formato['💎 Diamantes Válidos'] = '{:.0f}'
+                formato['🏆 Máx. Diamantes'] = '{:.0f}'
+                
+            # Mostra a tabela aplicando o fundo gradiente na coluna Resultado
+            st.dataframe(
+                df_rank[cols_show].style.format(formato).background_gradient(subset=['Resultado'], cmap='RdYlGn'), 
+                use_container_width=True, 
+                hide_index=True,
+                height=600
+            )
 
     with tabs[2]:
         st.markdown("### ⏳ Evolução Temporal")
