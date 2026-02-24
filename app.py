@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 import os
 import json
 import time
+import base64
 from datetime import datetime
 import unicodedata
 
@@ -29,7 +30,6 @@ DICAS_KPI = {
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
 try:
-    # A barra lateral é inicializada fechada para não piscar na tela
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon=LOGO_FILE, initial_sidebar_state="collapsed")
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁", initial_sidebar_state="collapsed")
@@ -47,7 +47,6 @@ st.markdown("""
     [data-testid="stSidebar"] { display: none !important; }
 
     /* --- BOTÕES PRIMÁRIOS (VERMELHOS) --- */
-    /* Agora o botão 'Sair' e de 'Limpar Dados' ficam vermelhos */
     button[kind="primary"] {
         background-color: #e74c3c !important;
         color: white !important;
@@ -59,7 +58,7 @@ st.markdown("""
         border-color: #a93226 !important;
     }
 
-    /* --- BOTÕES SECUNDÁRIOS (AZUIS - PADRÃO DO SISTEMA) --- */
+    /* --- BOTÕES SECUNDÁRIOS (AZUIS) --- */
     button[kind="secondary"] {
         background-color: #003366 !important; 
         color: #FFFFFF !important; 
@@ -303,6 +302,7 @@ def ler_csv_inteligente(arquivo_ou_caminho):
                 if len(df.columns) > 1: return df
             except: continue
     return None
+
 def normalizar_nome_indicador(nome_arquivo):
     nome = nome_arquivo.upper()
     if 'ADER' in nome: return 'ADERENCIA'
@@ -509,7 +509,7 @@ if not st.session_state['logado']:
 
 
 # ==========================================
-# --- 5. BARRA SUPERIOR (SUBSTITUI A SIDEBAR) ---
+# --- 5. BARRA SUPERIOR (NAVBAR PREMIUM) ---
 # ==========================================
 
 lista_periodos = listar_periodos_disponiveis()
@@ -518,34 +518,51 @@ opcoes_periodo = lista_periodos if lista_periodos else ["Nenhum histórico dispo
 df_users_cadastrados = carregar_usuarios()
 nome_logado = st.session_state['usuario_nome'].title() if st.session_state['usuario_nome'] != 'Gestor' else 'Gestor'
 
-# Criação das colunas da Barra Superior
-c_logo, c_periodo, c_user, c_sair = st.columns([1, 3, 2, 1])
+# 1. Monta o texto de usuários ativos
+ativos_texto = ""
+if st.session_state['perfil'] == 'admin' and df_users_cadastrados is not None:
+    ativos_texto = f"👥 Usuários Ativos: {len(df_users_cadastrados)}"
 
-with c_logo:
-    st.markdown("<br>", unsafe_allow_html=True)
-    if os.path.exists(LOGO_FILE): 
-        st.image(LOGO_FILE, width=60)
-    else: 
-        st.markdown("#### 🦁 Sofistas")
-        
+# 2. Converte a logo para Base64 para usar dentro do HTML do Banner
+logo_html = "<h1 style='margin:0; padding:0; font-size:40px;'>🦁</h1>"
+if os.path.exists(LOGO_FILE):
+    try:
+        with open(LOGO_FILE, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read()).decode()
+        logo_html = f'<img src="data:image/png;base64,{encoded_string}" style="height: 60px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">'
+    except: pass
+
+# 3. Desenha o Banner (Navbar) com Gradiente e Sombras
+st.markdown(f"""
+<div style="background: linear-gradient(135deg, #002b55 0%, #004e92 100%); padding: 20px 30px; border-radius: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+    <div style="display: flex; align-items: center; gap: 20px;">
+        {logo_html}
+        <div>
+            <h2 style="color: #FFFFFF !important; margin: 0; padding: 0; font-family: 'Montserrat', sans-serif; font-weight: 800; letter-spacing: 1px;">TEAM SOFISTAS</h2>
+            <p style="color: #cce0ff !important; margin: 0; padding: 0; font-size: 14px; font-weight: 300;">Analytics & Performance</p>
+        </div>
+    </div>
+    <div style="text-align: right;">
+        <h4 style="color: #FFFFFF !important; margin: 0; padding: 0; font-family: 'Montserrat', sans-serif;">Olá, {nome_logado.split()[0]}! 👋</h4>
+        <p style="color: #cce0ff !important; margin: 0; padding: 0; font-size: 13px; font-weight: bold;">{ativos_texto}</p>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# 4. Controles (Seleção de Mês e Botão Sair)
+c_periodo, c_vazio, c_sair = st.columns([3, 6, 1.5])
+
 with c_periodo:
-    periodo_selecionado = st.selectbox("📅 Mês de Referência:", opcoes_periodo)
+    periodo_selecionado = st.selectbox("📅 Selecione o Mês de Referência:", opcoes_periodo)
     
-with c_user:
-    st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
-    st.markdown(f"**👤 Olá, {nome_logado.split()[0]}**")
-    # Mostra os ativos só se for gestor
-    if st.session_state['perfil'] == 'admin' and df_users_cadastrados is not None:
-        st.caption(f"👥 Usuários Ativos: **{len(df_users_cadastrados)}**")
-
 with c_sair:
-    st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
-    # Botão com type="primary" vai pegar a cor vermelha no CSS
-    if st.button("🚪 Sair", type="primary", use_container_width=True):
+    st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+    if st.button("🚪 Sair do Sistema", type="primary", use_container_width=True):
         st.session_state.update({'logado': False})
         st.rerun()
 
-st.markdown("---")
+st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px;'>", unsafe_allow_html=True)
+
 
 # Lógica de Carregamento baseada no Mês da Barra Superior
 if periodo_selecionado == "Nenhum histórico disponível":
@@ -570,11 +587,11 @@ if df_dados is None and perfil == 'user':
     st.info(f"👋 Olá, **{nome_logado}**! Dados de **{periodo_label}** indisponíveis.")
     st.stop()
 
+
 # ==========================================
 # --- 6. GESTOR ---
 # ==========================================
 if perfil == 'admin':
-    st.title(f"📊 Visão Gerencial")
     tabs = st.tabs(["🚦 Semáforo", "🏆 Ranking Geral", "⏳ Evolução", "🔍 Indicadores", "💰 Comissões", "📋 Tabela Geral", "🏖️ Férias Equipe", "⚙️ Admin", "⏰ Banco de Horas", "📝 Feedbacks GB"])
     
     tem_tam = False
@@ -594,7 +611,7 @@ if perfil == 'admin':
             
             # --- CARD DE CRÍTICOS COMO ÂNCORA ---
             html_card_critico = f"""
-            <a href="#atencao-prioritaria" class="card-link">
+            <a href="#aten-o-priorit-ria" class="card-link">
                 <div class="card-critico">
                     <div style="color: #666; font-size: 14px;">🔴 Crítico <span style="font-size:11px; color:#e74c3c;">(Ver detalhes ⬇)</span></div>
                     <div style="color: #003366; font-size: 26px; font-weight: 700; margin-top: -2px;">{qtd_vermelho}</div>
@@ -603,7 +620,8 @@ if perfil == 'admin':
             </a>
             """
             c3.markdown(html_card_critico, unsafe_allow_html=True)
-            
+            # ------------------------------------
+
             st.markdown("---")
             
             # FEEDBACK RÁPIDO
@@ -857,7 +875,6 @@ if perfil == 'admin':
                         excluir_periodo_historico(row['Periodo'])
                         st.rerun()
             st.divider()
-            # Botão primário para ficar vermelho no CSS
             if st.button("🔥 Limpar TUDO (Reset Completo)", type="primary"):
                 limpar_base_dados_completa()
                 st.success("Limpo!")
@@ -1066,9 +1083,10 @@ Sua Liderança.
         else:
             st.info("Nenhum feedback registrado no sistema até o momento.")
 
-# --- VISÃO OPERADOR ---
+# ==========================================
+# --- 7. VISÃO DO OPERADOR ---
+# ==========================================
 else:
-    # ... A VISÃO DO OPERADOR CONTINUA INTACTA AQUI ...
     st.markdown(f"## 🚀 Olá, **{nome_logado.split()[0]}**!")
     data_atualizacao = obter_data_atualizacao()
     st.markdown(f"<div style='display: flex; align-items: center; margin-bottom: 20px; color: #666;'><span style='margin-right: 15px;'>📅 Referência: <b>{periodo_label}</b></span><span class='update-badge'>🕒 Atualizado em: {data_atualizacao}</span></div>", unsafe_allow_html=True)
@@ -1273,5 +1291,6 @@ else:
                 st.info("Você ainda não possui registros de feedback no sistema.")
         else:
             st.info("Nenhum feedback registrado no sistema até o momento.")
+
 st.markdown("---")
 st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
