@@ -33,11 +33,13 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁")
 
-# --- 2. CSS (DESIGN PREMIUM + CORREÇÕES DE BOTÕES) ---
+# --- 2. CSS (DESIGN PREMIUM + ROLAGEM SUAVE + CARD CLICÁVEL) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
-    html, body, [class*="css"] { font-family: 'Roboto', sans-serif; }
+    
+    /* Rolagem Suave para a Âncora */
+    html, body { scroll-behavior: smooth !important; font-family: 'Roboto', sans-serif; }
     .stApp { background-color: #F4F7F6 !important; }
     
     /* --- SIDEBAR AZUL --- */
@@ -89,6 +91,27 @@ st.markdown("""
         background-color: #FFFFFF !important;
         box-shadow: 0 4px 10px rgba(0,0,0,0.05);
         border-radius: 10px;
+    }
+    
+    /* --- CARD PERSONALIZADO (CRÍTICOS CLICÁVEIS) --- */
+    .card-link {
+        text-decoration: none !important;
+        display: block;
+    }
+    .card-critico {
+        background-color: #FFFFFF;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        border-radius: 10px;
+        border: 1px solid #e0e0e0;
+        border-left: 5px solid #F37021;
+        padding: 10px 15px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .card-critico:hover {
+        transform: scale(1.03);
+        box-shadow: 0 6px 15px rgba(231, 76, 60, 0.2);
+        border-left: 5px solid #e74c3c;
     }
     
     /* --- CARD DE FÉRIAS --- */
@@ -641,10 +664,24 @@ if perfil == 'admin':
             qtd_verde = len(df_media_pessoas[df_media_pessoas['% Atingimento'] >= 0.90]) 
             qtd_amarelo = len(df_media_pessoas[(df_media_pessoas['% Atingimento'] >= 0.80) & (df_media_pessoas['% Atingimento'] < 0.90)]) 
             qtd_vermelho = len(df_media_pessoas[df_media_pessoas['% Atingimento'] < 0.80]) 
+            
             c1, c2, c3 = st.columns(3)
             c1.metric("💎 Excelência", f"{qtd_verde}", delta=">=90%")
             c2.metric("🟢 Meta Batida", f"{qtd_amarelo}", delta="80-90%", delta_color="off")
-            c3.metric("🔴 Crítico", f"{qtd_vermelho}", delta="<80%", delta_color="inverse")
+            
+            # --- CARD DE CRÍTICOS COMO ÂNCORA ---
+            html_card_critico = f"""
+            <a href="#atencao-prioritaria" class="card-link">
+                <div class="card-critico">
+                    <div style="color: #666; font-size: 14px;">🔴 Crítico <span style="font-size:11px; color:#e74c3c;">(Ver detalhes ⬇)</span></div>
+                    <div style="color: #003366; font-size: 26px; font-weight: 700; margin-top: -2px;">{qtd_vermelho}</div>
+                    <div style="color: #e74c3c; font-size: 13px; font-weight: bold; margin-top: 5px;">↓ &lt;80%</div>
+                </div>
+            </a>
+            """
+            c3.markdown(html_card_critico, unsafe_allow_html=True)
+            # ------------------------------------
+
             st.markdown("---")
             
             # FEEDBACK RÁPIDO
@@ -711,7 +748,11 @@ if perfil == 'admin':
             st.plotly_chart(fig_team, use_container_width=True)
 
             st.markdown("---")
+            
+            # --- ÂNCORA ALVO (ATENÇÃO PRIORITÁRIA) ---
+            st.markdown('<div id="atencao-prioritaria" style="padding-top: 20px;"></div>', unsafe_allow_html=True)
             st.subheader("📋 Atenção Prioritária")
+            
             df_atencao = df_media_pessoas[df_media_pessoas['% Atingimento'] < 0.80].sort_values(by='% Atingimento')
             if not df_atencao.empty:
                 lista_detalhada = []
@@ -1100,7 +1141,6 @@ Sua Liderança.
         st.markdown("### 📚 Base Geral de Feedbacks Aplicados")
         df_fbs_hist = carregar_feedbacks_gb()
         if df_fbs_hist is not None and not df_fbs_hist.empty:
-            # Exibe invertido (mais recente primeiro)
             st.dataframe(df_fbs_hist.iloc[::-1], use_container_width=True, hide_index=True)
         else:
             st.info("Nenhum feedback registrado no sistema até o momento.")
