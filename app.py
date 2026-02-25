@@ -488,6 +488,9 @@ with c_sair:
 
 st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px;'>", unsafe_allow_html=True)
 
+# Define variável tem_tam GLOBLALMENTE para evitar NameError no Operador
+tem_tam = False
+
 if periodo_selecionado == "Nenhum histórico disponível":
     df_raw = None
     periodo_label = "Aguardando Upload"
@@ -503,6 +506,7 @@ else:
 if df_raw is not None and not df_raw.empty:
     df_dados = df_raw.copy()
     df_dados['Colaborador'] = df_dados['Colaborador'].str.title()
+    tem_tam = 'TAM' in df_dados['Indicador'].unique()
 else: df_dados = None
 
 perfil = st.session_state['perfil']
@@ -516,9 +520,6 @@ if df_dados is None and perfil == 'user':
 # ==========================================
 if perfil == 'admin':
     tabs = st.tabs(["🚦 Semáforo", "🏆 Ranking Geral", "⏳ Evolução", "🔍 Indicadores", "💰 Comissões", "📋 Tabela Geral", "🏖️ Férias Equipe", "⚙️ Admin", "⏰ Banco de Horas", "📝 Feedbacks GB"])
-    
-    tem_tam = False
-    if df_dados is not None: tem_tam = 'TAM' in df_dados['Indicador'].unique()
 
     with tabs[0]: 
         if df_dados is not None and not df_dados.empty:
