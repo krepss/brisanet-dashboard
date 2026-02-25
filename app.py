@@ -93,7 +93,7 @@ st.markdown("""
         background-color: #FFFFFF !important; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-radius: 10px;
     }
     
-    /* --- CARD PERSONALIZADO (CRÍTICOS CLICÁVEIS) --- */
+    /* --- CARDS PERSONALIZADOS CLICÁVEIS --- */
     .card-link { text-decoration: none !important; display: block; }
     .card-excelencia, .card-meta, .card-critico {
         background-color: #FFFFFF;
@@ -202,12 +202,10 @@ def tentar_extrair_data_csv(df):
     return None
 
 def obter_data_hoje(): return datetime.now().strftime("%m/%Y")
-
 def obter_data_atualizacao():
     arquivo = 'historico_consolidado.csv'
     if os.path.exists(arquivo):
-        timestamp = os.path.getmtime(arquivo)
-        return datetime.fromtimestamp(timestamp).strftime("%d/%m/%Y às %H:%M")
+        return datetime.fromtimestamp(os.path.getmtime(arquivo)).strftime("%d/%m/%Y às %H:%M")
     return datetime.now().strftime("%d/%m/%Y")
 
 def salvar_config(data_texto):
@@ -278,13 +276,18 @@ def salvar_arquivos_padronizados(files):
         with open(f.name, "wb") as w: w.write(f.getbuffer())
     return True
 
+# --- CORREÇÃO DE PORCENTAGEM (Blindagem para 100% e Símbolos de %) ---
 def processar_porcentagem_br(valor):
-    if pd.isna(valor) or valor == '': return 0.0
+    if pd.isna(valor) or str(valor).strip() == '': return 0.0
     if isinstance(valor, str):
+        has_percent = '%' in valor
         v = valor.replace('%', '').replace(',', '.').strip()
         try: 
             num = float(v)
-            if num > 1.05: return num / 100.0
+            if has_percent: 
+                return num / 100.0
+            if num > 1.05: 
+                return num / 100.0
             return num
         except: return 0.0
     if isinstance(valor, (int, float)):
@@ -351,10 +354,10 @@ def tratar_arquivo_especial(df, nome_arquivo):
     
     col_valor = None
     nome_kpi_limpo = nome_arquivo.split('.')[0].lower()
-    prioridades = ['% atingimento', 'atingimento', 'resultado', 'nota final', 'score']
+    
+    # ARRAY DE PRIORIDADES MELHORADO PARA ENCONTRAR CONFORMIDADE
+    prioridades = ['% atingimento', 'atingimento', 'resultado', 'nota final', 'score', 'conformidade', 'aderência', 'aderencia', 'csat', 'ir']
     secundarios = [nome_kpi_limpo, 'nota', 'valor', 'pontos', 'final']
-    if 'ader' in nome_kpi_limpo: secundarios.append('aderência')
-    if 'conform' in nome_kpi_limpo: secundarios.append('conformidade')
     
     for p in prioridades:
         for c in df.columns:
@@ -702,8 +705,6 @@ if perfil == 'admin':
 
             st.markdown("---")
             
-            # --- DESTINOS DAS ÂNCORAS ---
-            
             st.markdown('<div id="excelencia" style="padding-top: 20px;"></div>', unsafe_allow_html=True)
             st.subheader("💎 Destaques de Excelência (>= 90%)")
             df_exc = df_media_pessoas[df_media_pessoas['% Atingimento'] >= 0.90].sort_values(by='% Atingimento', ascending=False)
@@ -748,7 +749,6 @@ if perfil == 'admin':
                 st.dataframe(df_final_atencao.style.format({'Resultado (TAM)': '{:.2%}'}), use_container_width=True)
             else: st.success("🎉 Equipe performando bem! Ninguém abaixo de 80%.")
 
-    # --- ABA RANKING GERAL (AGORA COM MEDALHAS, DIAMANTES E CORES) ---
     with tabs[1]:
         st.markdown(f"### 🏆 Ranking Geral (Consolidado)")
         if df_dados is not None:
@@ -759,10 +759,8 @@ if perfil == 'admin':
                 df_rank = df_dados.groupby('Colaborador').agg({'Diamantes':'sum', 'Max. Diamantes':'sum'}).reset_index()
                 df_rank['Resultado'] = df_rank.apply(lambda x: x['Diamantes']/x['Max. Diamantes'] if x['Max. Diamantes']>0 else 0, axis=1)
             
-            # Ordenar do maior para o menor
             df_rank = df_rank.sort_values(by='Resultado', ascending=False).reset_index(drop=True)
             
-            # Criar e distribuir Medalhas de Posição
             medalhas = []
             for i in range(len(df_rank)):
                 if i == 0: medalhas.append("🥇 1º Lugar")
@@ -771,19 +769,16 @@ if perfil == 'admin':
                 else: medalhas.append(f"🏅 {i+1}º Lugar")
             df_rank.insert(0, 'Posição', medalhas)
             
-            # Preparar visualização com colunas certas
             cols_show = ['Posição', 'Colaborador', 'Resultado']
             formato = {'Resultado': '{:.2%}'}
             
             if 'Diamantes' in df_rank.columns:
-                # Renomeia para ficar bonito
                 df_rank.rename(columns={'Diamantes': '💎 Diamantes Válidos', 'Max. Diamantes': '🏆 Máx. Diamantes'}, inplace=True)
                 cols_show.insert(2, '💎 Diamantes Válidos')
                 cols_show.insert(3, '🏆 Máx. Diamantes')
                 formato['💎 Diamantes Válidos'] = '{:.0f}'
                 formato['🏆 Máx. Diamantes'] = '{:.0f}'
                 
-            # Mostra a tabela aplicando o fundo gradiente na coluna Resultado
             st.dataframe(
                 df_rank[cols_show].style.format(formato).background_gradient(subset=['Resultado'], cmap='RdYlGn'), 
                 use_container_width=True, 
@@ -847,7 +842,8 @@ if perfil == 'admin':
                 desconto = 0
                 obs = "✅ Elegível"
                 
-                if conf_val < 0.92:
+                # ARREDONDAMENTO PARA EVITAR BUGS DE PONTO FLUTUANTE
+                if round(conf_val, 4) < 0.92:
                     row_pont = df_user[df_user['Indicador'] == 'PONTUALIDADE']
                     if not row_pont.empty:
                         desconto = row_pont.iloc[0]['Diamantes'] if 'Diamantes' in row_pont.columns else 0
@@ -1060,8 +1056,10 @@ if perfil == 'admin':
                                 val = row['% Atingimento']
                                 ind_nome = formatar_nome_visual(row['Indicador'])
                                 meta = 0.92 if row['Indicador'] in ['CONFORMIDADE', 'ADERENCIA'] else 0.80
-                                status_msg = "✅ Meta" if val >= meta else "🔻 Abaixo"
-                                color = "normal" if val >= meta else "inverse"
+                                
+                                # Arredondado para evitar falsos negativos (ex: 0.9199 vs 0.92)
+                                status_msg = "✅ Meta" if round(val, 4) >= meta else "🔻 Abaixo"
+                                color = "normal" if round(val, 4) >= meta else "inverse"
                                 cols[j].metric(ind_nome, f"{val:.1%}", status_msg, delta_color=color)
                     
                     st.markdown("---")
@@ -1218,20 +1216,22 @@ else:
                     st.markdown("##### 💎 Gamificação")
                     st.progress(resultado_global if resultado_global <= 1.0 else 1.0)
                     badges = []
+                    
+                    # Arredondamentos para não bugar a entrega das medalhas
                     if not meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE'].empty:
-                        if meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE'].iloc[0]['% Atingimento'] >= 1.0: badges.append("🛡️ Guardião")
+                        if round(meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE'].iloc[0]['% Atingimento'], 4) >= 1.0: badges.append("🛡️ Guardião")
                     if not meus_dados[meus_dados['Indicador'] == 'CSAT'].empty:
-                        if meus_dados[meus_dados['Indicador'] == 'CSAT'].iloc[0]['% Atingimento'] >= 0.95: badges.append("❤️ Amado")
+                        if round(meus_dados[meus_dados['Indicador'] == 'CSAT'].iloc[0]['% Atingimento'], 4) >= 0.95: badges.append("❤️ Amado")
                     if not meus_dados[meus_dados['Indicador'] == 'ADERENCIA'].empty:
-                        if meus_dados[meus_dados['Indicador'] == 'ADERENCIA'].iloc[0]['% Atingimento'] >= 0.98: badges.append("⏰ Relógio Suíço")
+                        if round(meus_dados[meus_dados['Indicador'] == 'ADERENCIA'].iloc[0]['% Atingimento'], 4) >= 0.98: badges.append("⏰ Relógio Suíço")
                     if not meus_dados[meus_dados['Indicador'] == 'IR'].empty:
-                        if meus_dados[meus_dados['Indicador'] == 'IR'].iloc[0]['% Atingimento'] >= 0.90: badges.append("🧩 Sherlock")
+                        if round(meus_dados[meus_dados['Indicador'] == 'IR'].iloc[0]['% Atingimento'], 4) >= 0.90: badges.append("🧩 Sherlock")
                     if not meus_dados[meus_dados['Indicador'] == 'PONTUALIDADE'].empty:
-                        if meus_dados[meus_dados['Indicador'] == 'PONTUALIDADE'].iloc[0]['% Atingimento'] >= 1.0: badges.append("🎯 No Alvo")
+                        if round(meus_dados[meus_dados['Indicador'] == 'PONTUALIDADE'].iloc[0]['% Atingimento'], 4) >= 1.0: badges.append("🎯 No Alvo")
                     if not meus_dados[meus_dados['Indicador'] == 'TPC'].empty:
-                        if meus_dados[meus_dados['Indicador'] == 'TPC'].iloc[0]['% Atingimento'] >= 1.0: badges.append("⚡ The Flash")
+                        if round(meus_dados[meus_dados['Indicador'] == 'TPC'].iloc[0]['% Atingimento'], 4) >= 1.0: badges.append("⚡ The Flash")
                     if not meus_dados[meus_dados['Indicador'] == 'INTERACOES'].empty:
-                        if meus_dados[meus_dados['Indicador'] == 'INTERACOES'].iloc[0]['% Atingimento'] >= 1.0: badges.append("🤖 Ciborgue")
+                        if round(meus_dados[meus_dados['Indicador'] == 'INTERACOES'].iloc[0]['% Atingimento'], 4) >= 1.0: badges.append("🤖 Ciborgue")
 
                     st.write(f"**{int(total_dia_bruto)} / {int(total_max)}** Diamantes")
                     if badges: st.success(f"Conquistas: {' '.join(badges)}")
@@ -1255,7 +1255,8 @@ else:
                 desconto_diamantes = 0
                 motivo_desconto = ""
                 GATILHO_FINANCEIRO = 0.92
-                if tem_dado_conf and atingimento_conf < GATILHO_FINANCEIRO:
+                
+                if tem_dado_conf and round(atingimento_conf, 4) < GATILHO_FINANCEIRO:
                     df_pont = meus_dados[meus_dados['Indicador'] == 'PONTUALIDADE']
                     if not df_pont.empty:
                         desconto_diamantes = df_pont.iloc[0]['Diamantes']
@@ -1273,7 +1274,7 @@ else:
                     st.error(f"⚠️ **Gatilho Financeiro não atingido**: Sua conformidade foi **{atingimento_conf:.2%}**. Para receber os diamantes de Pontualidade, é necessário ter >= 92% de Conformidade.")
                 else:
                     c3.metric("Valor a Receber", f"R$ {valor_final:.2f}", "Gatilho Atingido! 🤑")
-                    if atingimento_conf >= GATILHO_FINANCEIRO:
+                    if round(atingimento_conf, 4) >= GATILHO_FINANCEIRO:
                         st.success(f"✅ **Gatilho Financeiro Atingido**: Conformidade **{atingimento_conf:.2%}** (>= 92%). Todos os diamantes computados.")
                 st.divider()
 
@@ -1282,7 +1283,9 @@ else:
                 val = row['% Atingimento']
                 label = formatar_nome_visual(row['Indicador'])
                 meta = 0.92 if row['Indicador'] in ['CONFORMIDADE', 'ADERENCIA'] else 0.80
-                if val >= meta:
+                
+                # Arredonda para não reprovar 91.999%
+                if round(val, 4) >= meta:
                     delta_msg = "✅ Meta Batida"
                     color = "normal"
                 else:
