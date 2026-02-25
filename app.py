@@ -235,7 +235,6 @@ def normalizar_chave(texto):
     nfkd = unicodedata.normalize('NFKD', texto)
     return " ".join(u"".join([c for c in nfkd if not unicodedata.combining(c)]).split())
 
-# --- LÓGICA BLINDADA DE BUSCA DE COLUNAS E INDICADORES ---
 def tratar_arquivo_especial(df, nome_arquivo):
     df.columns = [str(c).strip().lower() for c in df.columns]
     
@@ -249,11 +248,9 @@ def tratar_arquivo_especial(df, nome_arquivo):
     df.rename(columns={col_agente: 'Colaborador'}, inplace=True)
     df['Colaborador'] = df['Colaborador'].apply(normalizar_chave)
     
-    # 1. Identifica se existem colunas de Aderencia E Conformidade no mesmo arquivo
     col_ad = next((c for c in df.columns if 'ader' in c and c != 'colaborador'), None)
     col_conf = next((c for c in df.columns if 'conform' in c and c != 'colaborador'), None)
     
-    # SE ACHAR AS DUAS JUNTAS (Planilha Dupla Brisanet)
     if col_ad and col_conf:
         lista_retorno = []
         df_ad = df[['Colaborador', col_ad]].copy()
@@ -267,12 +264,10 @@ def tratar_arquivo_especial(df, nome_arquivo):
         lista_retorno.append(df_conf[['Colaborador', 'Indicador', '% Atingimento']])
         return pd.concat(lista_retorno), "Combinado (Aderência e Conformidade)"
     
-    # SE FOR UM ARQUIVO DE INDICADOR ÚNICO
     col_valor = None
     nome_kpi_limpo = nome_arquivo.split('.')[0].lower()
     
     prioridades = ['% atingimento', 'atingimento', 'resultado', 'nota final', 'score', 'nota', 'valor']
-    # Adiciona o próprio nome do arquivo como possível nome de coluna (Ex: arquivo 'CSAT.csv' tendo coluna 'CSAT')
     for p in prioridades + [nome_kpi_limpo]:
         for c in df.columns:
             if p in c and c != 'colaborador': 
@@ -281,7 +276,6 @@ def tratar_arquivo_especial(df, nome_arquivo):
         if col_valor: break
         
     if not col_valor:
-        # Último recurso: pega a primeira coluna restante que não seja nome ou diamantes
         cols_restantes = [c for c in df.columns if c != 'colaborador' and 'diamante' not in c]
         if cols_restantes:
             col_valor = cols_restantes[0]
@@ -298,9 +292,7 @@ def tratar_arquivo_especial(df, nome_arquivo):
     if 'Diamantes' in df.columns: df['Diamantes'] = pd.to_numeric(df['Diamantes'], errors='coerce').fillna(0)
     if 'Max. Diamantes' in df.columns: df['Max. Diamantes'] = pd.to_numeric(df['Max. Diamantes'], errors='coerce').fillna(0)
     
-    # Padroniza o nome do indicador (Tenta usar o nome oficial se estiver no nome do arquivo)
     nome_indicador = normalizar_nome_indicador(nome_arquivo)
-    # Se o nome do arquivo for confuso mas tiver a coluna conformidade
     if col_conf and 'conform' in col_valor: nome_indicador = 'CONFORMIDADE'
     if col_ad and 'ader' in col_valor: nome_indicador = 'ADERENCIA'
     
@@ -441,7 +433,7 @@ if not st.session_state['logado']:
 
 
 # ==========================================
-# --- 5. BARRA SUPERIOR (NAVBAR PREMIUM) ---
+# --- 5. BARRA SUPERIOR E LÓGICA GLOBAL ---
 # ==========================================
 lista_periodos = listar_periodos_disponiveis()
 opcoes_periodo = lista_periodos if lista_periodos else ["Nenhum histórico disponível"]
@@ -975,14 +967,69 @@ else:
             with c_gamif:
                 st.markdown("##### 💎 Gamificação")
                 st.progress(resultado_global if resultado_global <= 1.0 else 1.0)
+                badges = []
+                if not meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE'].empty:
+                    if round(meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE'].iloc[0]['% Atingimento'], 4) >= 1.0: badges.append("🛡️ Guardião")
+                if not meus_dados[meus_dados['Indicador'] == 'CSAT'].empty:
+                    if round(meus_dados[meus_dados['Indicador'] == 'CSAT'].iloc[0]['% Atingimento'], 4) >= 0.95: badges.append("❤️ Amado")
+                if not meus_dados[meus_dados['Indicador'] == 'ADERENCIA'].empty:
+                    if round(meus_dados[meus_dados['Indicador'] == 'ADERENCIA'].iloc[0]['% Atingimento'], 4) >= 0.98: badges.append("⏰ Relógio Suíço")
+                if not meus_dados[meus_dados['Indicador'] == 'IR'].empty:
+                    if round(meus_dados[meus_dados['Indicador'] == 'IR'].iloc[0]['% Atingimento'], 4) >= 0.90: badges.append("🧩 Sherlock")
+                if not meus_dados[meus_dados['Indicador'] == 'PONTUALIDADE'].empty:
+                    if round(meus_dados[meus_dados['Indicador'] == 'PONTUALIDADE'].iloc[0]['% Atingimento'], 4) >= 1.0: badges.append("🎯 No Alvo")
+                if not meus_dados[meus_dados['Indicador'] == 'TPC'].empty:
+                    if round(meus_dados[meus_dados['Indicador'] == 'TPC'].iloc[0]['% Atingimento'], 4) >= 1.0: badges.append("⚡ The Flash")
+                if not meus_dados[meus_dados['Indicador'] == 'INTERACOES'].empty:
+                    if round(meus_dados[meus_dados['Indicador'] == 'INTERACOES'].iloc[0]['% Atingimento'], 4) >= 1.0: badges.append("🤖 Ciborgue")
                 st.write(f"**{int(total_dia_bruto)} / {int(total_max)}** Diamantes")
+                if badges: st.success(f"Conquistas: {' '.join(badges)}")
+                with st.expander("ℹ️ Legenda das Conquistas"):
+                    st.markdown("* 🛡️ **Guardião:** 100% Conformidade\n* ❤️ **Amado:** CSAT > 95%\n* ⏰ **Relógio Suíço:** Aderência > 98%\n* 🧩 **Sherlock:** Resolução > 90%\n* 🎯 **No Alvo:** Pontualidade 100%\n* ⚡ **The Flash:** TPC na Meta\n* 🤖 **Ciborgue:** Interações na Meta")
+
             with c_gauge:
                 fg = go.Figure(go.Indicator(mode="gauge+number", value=resultado_global*100, number={'font':{'size':24,'color':'#003366'}}, gauge={'axis':{'range':[None,100],'tickwidth':1,'tickcolor':"#003366"},'bar':{'color':"#F37021"},'bgcolor':"white",'steps':[{'range':[0,100],'color':'#f4f7f6'}],'threshold':{'line':{'color':"green",'width':4},'thickness':0.75,'value':100}}))
                 fg.update_layout(height=140, margin=dict(l=10,r=10,t=30,b=10), paper_bgcolor='rgba(0,0,0,0)', font={'color':'#003366'})
                 st.plotly_chart(fg, use_container_width=True)
+            
             st.markdown("---")
             
-            # Cards Operador
+            # --- DEVOLVENDO O EXTRATO FINANCEIRO ---
+            pior_row = meus_dados.sort_values(by='% Atingimento').iloc[0]
+            if pior_row['% Atingimento'] < 0.9:
+                dica = DICAS_KPI.get(pior_row['Indicador'], "Fale com seu gestor.")
+                st.markdown(f"""<div class="insight-box"><div class="insight-title">💡 Smart Coach: {formatar_nome_visual(pior_row['Indicador'])}</div><div class="insight-text">{dica} (Atual: {pior_row['% Atingimento']:.1%})</div></div>""", unsafe_allow_html=True)
+
+            df_conf = meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE']
+            atingimento_conf = df_conf.iloc[0]['% Atingimento'] if not df_conf.empty else 0.0
+            tem_dado_conf = not df_conf.empty
+            desconto_diamantes = 0
+            motivo_desconto = ""
+            GATILHO_FINANCEIRO = 0.92
+            
+            if tem_dado_conf and round(atingimento_conf, 4) < GATILHO_FINANCEIRO:
+                df_pont = meus_dados[meus_dados['Indicador'] == 'PONTUALIDADE']
+                if not df_pont.empty:
+                    desconto_diamantes = df_pont.iloc[0]['Diamantes']
+                    motivo_desconto = f"(Perdeu {desconto_diamantes} de Pontualidade)"
+            total_dia_liquido = total_dia_bruto - desconto_diamantes
+            valor_final = total_dia_liquido * 0.50
+            
+            st.markdown("#### 💰 Extrato Financeiro")
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Diamantes Válidos", f"{int(total_dia_liquido)}", f"{motivo_desconto}", delta_color="inverse" if desconto_diamantes > 0 else "normal")
+            c2.metric("Valor por Diamante", "R$ 0,50")
+            if not tem_dado_conf:
+                c3.metric("Valor a Receber", "Aguardando", "Conformidade Indisponível", delta_color="off")
+            elif desconto_diamantes > 0:
+                c3.metric("Valor a Receber", f"R$ {valor_final:.2f}", f"Gatilho não atingido (<{GATILHO_FINANCEIRO:.0%})", delta_color="inverse")
+                st.error(f"⚠️ **Gatilho Financeiro não atingido**: Sua conformidade foi **{atingimento_conf:.2%}**. Para receber os diamantes de Pontualidade, é necessário ter >= 92% de Conformidade.")
+            else:
+                c3.metric("Valor a Receber", f"R$ {valor_final:.2f}", "Gatilho Atingido! 🤑")
+                if round(atingimento_conf, 4) >= GATILHO_FINANCEIRO:
+                    st.success(f"✅ **Gatilho Financeiro Atingido**: Conformidade **{atingimento_conf:.2%}** (>= 92%). Todos os diamantes computados.")
+            st.divider()
+
             cols = st.columns(len(meus_dados))
             for i, (_, row) in enumerate(meus_dados.iterrows()):
                 val = row['% Atingimento']
@@ -991,6 +1038,28 @@ else:
                 with cols[i]: st.metric(label, f"{val:.2%}", "✅ Meta Batida" if round(val, 4) >= meta else f"🔻 Meta {meta:.0%}", delta_color="normal" if round(val, 4) >= meta else "inverse")
             st.markdown("---")
             
+            # --- DEVOLVENDO O RAIO-X RADAR CHART ---
+            media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
+            media_equipe.rename(columns={'% Atingimento': 'Média Equipe'}, inplace=True)
+            if not media_equipe.empty:
+                df_comp = pd.merge(meus_dados, media_equipe, on='Indicador')
+                if not df_comp.empty:
+                    df_comp['Indicador'] = df_comp['Indicador'].apply(formatar_nome_visual)
+                    categorias = df_comp['Indicador'].tolist()
+                    valores_user = df_comp['% Atingimento'].tolist()
+                    valores_media = df_comp['Média Equipe'].tolist()
+                    if categorias:
+                        categorias.append(categorias[0])
+                        valores_user.append(valores_user[0])
+                        valores_media.append(valores_media[0])
+                        fig = go.Figure()
+                        fig.add_trace(go.Scatterpolar(r=valores_media, theta=categorias, fill='toself', name='Média Equipe', line_color='#cccccc', opacity=0.5))
+                        fig.add_trace(go.Scatterpolar(r=valores_user, theta=categorias, fill='toself', name='Você', line_color='#F37021'))
+                        fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1.1])), showlegend=True, height=350, margin=dict(l=40, r=40, t=20, b=20), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                        st.markdown("##### 🕸️ Raio-X de Competências")
+                        st.plotly_chart(fig, use_container_width=True)
+            st.markdown("---")
+
             df_hist_full = carregar_historico_completo()
             if df_hist_full is not None:
                 hist_user = df_hist_full[df_hist_full['Colaborador'].astype(str).str.upper().apply(normalizar_chave) == normalizar_chave(nome_logado)].copy()
