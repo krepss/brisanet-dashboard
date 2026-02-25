@@ -235,6 +235,7 @@ def normalizar_chave(texto):
     nfkd = unicodedata.normalize('NFKD', texto)
     return " ".join(u"".join([c for c in nfkd if not unicodedata.combining(c)]).split())
 
+# --- LÓGICA BLINDADA DE BUSCA DE COLUNAS E INDICADORES ---
 def tratar_arquivo_especial(df, nome_arquivo):
     df.columns = [str(c).strip().lower() for c in df.columns]
     
@@ -248,9 +249,11 @@ def tratar_arquivo_especial(df, nome_arquivo):
     df.rename(columns={col_agente: 'Colaborador'}, inplace=True)
     df['Colaborador'] = df['Colaborador'].apply(normalizar_chave)
     
+    # 1. Identifica se existem colunas de Aderencia E Conformidade no mesmo arquivo
     col_ad = next((c for c in df.columns if 'ader' in c and c != 'colaborador'), None)
     col_conf = next((c for c in df.columns if 'conform' in c and c != 'colaborador'), None)
     
+    # SE ACHAR AS DUAS JUNTAS (Planilha Dupla Brisanet)
     if col_ad and col_conf:
         lista_retorno = []
         df_ad = df[['Colaborador', col_ad]].copy()
@@ -264,10 +267,12 @@ def tratar_arquivo_especial(df, nome_arquivo):
         lista_retorno.append(df_conf[['Colaborador', 'Indicador', '% Atingimento']])
         return pd.concat(lista_retorno), "Combinado (Aderência e Conformidade)"
     
+    # SE FOR UM ARQUIVO DE INDICADOR ÚNICO
     col_valor = None
     nome_kpi_limpo = nome_arquivo.split('.')[0].lower()
     
     prioridades = ['% atingimento', 'atingimento', 'resultado', 'nota final', 'score', 'nota', 'valor']
+    # Adiciona o próprio nome do arquivo como possível nome de coluna (Ex: arquivo 'CSAT.csv' tendo coluna 'CSAT')
     for p in prioridades + [nome_kpi_limpo]:
         for c in df.columns:
             if p in c and c != 'colaborador': 
@@ -276,6 +281,7 @@ def tratar_arquivo_especial(df, nome_arquivo):
         if col_valor: break
         
     if not col_valor:
+        # Último recurso: pega a primeira coluna restante que não seja nome ou diamantes
         cols_restantes = [c for c in df.columns if c != 'colaborador' and 'diamante' not in c]
         if cols_restantes:
             col_valor = cols_restantes[0]
@@ -292,7 +298,9 @@ def tratar_arquivo_especial(df, nome_arquivo):
     if 'Diamantes' in df.columns: df['Diamantes'] = pd.to_numeric(df['Diamantes'], errors='coerce').fillna(0)
     if 'Max. Diamantes' in df.columns: df['Max. Diamantes'] = pd.to_numeric(df['Max. Diamantes'], errors='coerce').fillna(0)
     
+    # Padroniza o nome do indicador (Tenta usar o nome oficial se estiver no nome do arquivo)
     nome_indicador = normalizar_nome_indicador(nome_arquivo)
+    # Se o nome do arquivo for confuso mas tiver a coluna conformidade
     if col_conf and 'conform' in col_valor: nome_indicador = 'CONFORMIDADE'
     if col_ad and 'ader' in col_valor: nome_indicador = 'ADERENCIA'
     
@@ -480,7 +488,6 @@ with c_sair:
 
 st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px;'>", unsafe_allow_html=True)
 
-# Define variável tem_tam GLOBLALMENTE para evitar NameError no Operador
 tem_tam = False
 
 if periodo_selecionado == "Nenhum histórico disponível":
@@ -651,16 +658,18 @@ if perfil == 'admin':
             df_rank.insert(0, 'Posição', medalhas)
             
             cols_show = ['Posição', 'Colaborador', 'Resultado']
-            formato = {'Resultado': '{:.2%}'}
+            
+            # --- Correção: Formatação Robusta do Ranking ---
+            format_dict = {'Resultado': lambda x: f"{x:.2%}" if pd.notnull(x) else "-"}
             
             if 'Diamantes' in df_rank.columns:
                 df_rank.rename(columns={'Diamantes': '💎 Diamantes Válidos', 'Max. Diamantes': '🏆 Máx. Diamantes'}, inplace=True)
                 cols_show.insert(2, '💎 Diamantes Válidos')
                 cols_show.insert(3, '🏆 Máx. Diamantes')
-                formato['💎 Diamantes Válidos'] = '{:.0f}'
-                formato['🏆 Máx. Diamantes'] = '{:.0f}'
+                format_dict['💎 Diamantes Válidos'] = '{:.0f}'
+                format_dict['🏆 Máx. Diamantes'] = '{:.0f}'
                 
-            st.dataframe(df_rank[cols_show].style.format(formato).background_gradient(subset=['Resultado'], cmap='RdYlGn'), use_container_width=True, hide_index=True, height=600)
+            st.dataframe(df_rank[cols_show].style.format(format_dict).background_gradient(subset=['Resultado'], cmap='RdYlGn'), use_container_width=True, hide_index=True, height=600)
 
     with tabs[2]:
         st.markdown("### ⏳ Evolução Temporal")
@@ -708,7 +717,7 @@ if perfil == 'admin':
                 
                 row_conf = df_user[df_user['Indicador'] == 'CONFORMIDADE']
                 tem_conf = not row_conf.empty
-                conf_val = row_conf.iloc[0]['% Atingimento'] if tem_conf else 0.0
+                conf_val = row_conf.iloc[0]['% Atingimento'] if tem_conf else None
                 
                 desconto = 0
                 obs = "✅ Elegível"
@@ -727,7 +736,7 @@ if perfil == 'admin':
                 
                 lista_comissoes.append({
                     "Colaborador": colab.title(),
-                    "Conformidade": conf_val if tem_conf else None,
+                    "Conformidade": conf_val,
                     "Total Diamantes": int(total_diamantes),
                     "Desconto": int(desconto),
                     "Diamantes Líquidos": int(diamantes_validos),
@@ -736,7 +745,14 @@ if perfil == 'admin':
                 })
             
             df_comissao = pd.DataFrame(lista_comissoes)
-            st.dataframe(df_comissao.style.format({"Conformidade": "{:.2%}", "A Pagar (R$)": "R$ {:.2f}"}).background_gradient(subset=['A Pagar (R$)'], cmap='Greens'), use_container_width=True, height=600)
+            
+            # --- CORREÇÃO DO ERRO DO TYPEERROR NA COMISSÃO ---
+            format_dict_comissao = {
+                "Conformidade": lambda x: f"{x:.2%}" if pd.notnull(x) else "Aguardando", 
+                "A Pagar (R$)": "R$ {:.2f}"
+            }
+            
+            st.dataframe(df_comissao.style.format(format_dict_comissao).background_gradient(subset=['A Pagar (R$)'], cmap='Greens'), use_container_width=True, height=600)
             st.download_button("⬇️ Baixar CSV", df_comissao.to_csv(index=False).encode('utf-8'), "comissoes.csv", "text/csv")
 
     with tabs[5]: 
