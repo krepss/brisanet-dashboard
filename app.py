@@ -10,7 +10,7 @@ from datetime import datetime
 import unicodedata
 
 # --- CONFIGURAÇÃO DA LOGO E ACESSOS ---
-LOGO_FILE = "logo.png"
+LOGO_FILE = "logo.ico"
 SENHA_ADMIN = "admin123"
 USUARIOS_ADMIN = ['gestor', 'admin']
 
@@ -162,10 +162,15 @@ def atualizar_historico(df_atual, periodo):
             df_final = pd.concat([df_hist, df_save], ignore_index=True)
         except: df_final = df_save
     else: df_final = df_save
-    cols_order = ['Periodo', 'Colaborador', 'Indicador', '% Atingimento']
-    if 'Diamantes' in df_final.columns: cols_order.append('Diamantes')
-    if 'Max. Diamantes' in df_final.columns: cols_order.append('Max. Diamantes')
+    
+    # Blinda colunas ausentes
+    cols_order = ['Periodo', 'Colaborador', 'Indicador', '% Atingimento', 'Diamantes', 'Max. Diamantes']
     existing_cols = [c for c in cols_order if c in df_final.columns]
+    
+    for c in ['Diamantes', 'Max. Diamantes']:
+        if c in existing_cols:
+            df_final[c] = df_final[c].fillna(0.0)
+            
     df_final[existing_cols].to_csv(ARQUIVO_HIST, index=False)
 
 def excluir_periodo_historico(periodo_alvo):
@@ -202,7 +207,7 @@ def salvar_arquivos_padronizados(files):
         with open(f.name, "wb") as w: w.write(f.getbuffer())
     return True
 
-# LÊ A PORCENTAGEM (Ex: 92%, 0.92, 92, etc)
+# LÊ A PORCENTAGEM (Blindada)
 def processar_porcentagem_br(valor):
     if pd.isna(valor) or str(valor).strip() == '': return 0.0
     if isinstance(valor, str):
@@ -235,7 +240,7 @@ def normalizar_chave(texto):
     nfkd = unicodedata.normalize('NFKD', texto)
     return " ".join(u"".join([c for c in nfkd if not unicodedata.combining(c)]).split())
 
-# --- LÓGICA BLINDADA DE BUSCA DE COLUNAS E INDICADORES ---
+# --- LÓGICA ULTRA-SEGURA DE BUSCA DE COLUNAS ---
 def tratar_arquivo_especial(df, nome_arquivo):
     df.columns = [str(c).strip().lower() for c in df.columns]
     
@@ -249,30 +254,41 @@ def tratar_arquivo_especial(df, nome_arquivo):
     df.rename(columns={col_agente: 'Colaborador'}, inplace=True)
     df['Colaborador'] = df['Colaborador'].apply(normalizar_chave)
     
-    # 1. Identifica se existem colunas de Aderencia E Conformidade no mesmo arquivo
-    col_ad = next((c for c in df.columns if 'ader' in c and c != 'colaborador'), None)
-    col_conf = next((c for c in df.columns if 'conform' in c and c != 'colaborador'), None)
+    # Identifica colunas flexívelmente
+    col_ad = None
+    col_conf = None
+    for c in df.columns:
+        if c == 'colaborador': continue
+        if 'ader' in c: col_ad = c
+        if 'conform' in c: col_conf = c
     
-    # SE ACHAR AS DUAS JUNTAS (Planilha Dupla Brisanet)
+    # CASO 1: Planilha Combinada (Tem Aderencia e Conformidade)
     if col_ad and col_conf:
         lista_retorno = []
+        
         df_ad = df[['Colaborador', col_ad]].copy()
-        df_ad['% Atingimento'] = df_ad[col_ad].apply(processar_porcentagem_br)
+        df_ad.rename(columns={col_ad: '% Atingimento'}, inplace=True)
+        df_ad['% Atingimento'] = df_ad['% Atingimento'].apply(processar_porcentagem_br)
         df_ad['Indicador'] = 'ADERENCIA'
-        lista_retorno.append(df_ad[['Colaborador', 'Indicador', '% Atingimento']])
+        df_ad['Diamantes'] = 0.0
+        df_ad['Max. Diamantes'] = 0.0
+        lista_retorno.append(df_ad[['Colaborador', 'Indicador', '% Atingimento', 'Diamantes', 'Max. Diamantes']])
         
         df_conf = df[['Colaborador', col_conf]].copy()
-        df_conf['% Atingimento'] = df_conf[col_conf].apply(processar_porcentagem_br)
+        df_conf.rename(columns={col_conf: '% Atingimento'}, inplace=True)
+        df_conf['% Atingimento'] = df_conf['% Atingimento'].apply(processar_porcentagem_br)
         df_conf['Indicador'] = 'CONFORMIDADE'
-        lista_retorno.append(df_conf[['Colaborador', 'Indicador', '% Atingimento']])
-        return pd.concat(lista_retorno), "Combinado (Aderência e Conformidade)"
+        df_conf['Diamantes'] = 0.0
+        df_conf['Max. Diamantes'] = 0.0
+        lista_retorno.append(df_conf[['Colaborador', 'Indicador', '% Atingimento', 'Diamantes', 'Max. Diamantes']])
+        
+        return pd.concat(lista_retorno, ignore_index=True), "Extração Dupla Segura"
     
-    # SE FOR UM ARQUIVO DE INDICADOR ÚNICO
+    # CASO 2: Planilha de Indicador Único
     col_valor = None
     nome_kpi_limpo = nome_arquivo.split('.')[0].lower()
     
     prioridades = ['% atingimento', 'atingimento', 'resultado', 'nota final', 'score', 'nota', 'valor']
-    # Adiciona o próprio nome do arquivo como possível nome de coluna (Ex: arquivo 'CSAT.csv' tendo coluna 'CSAT')
     for p in prioridades + [nome_kpi_limpo]:
         for c in df.columns:
             if p in c and c != 'colaborador': 
@@ -281,12 +297,11 @@ def tratar_arquivo_especial(df, nome_arquivo):
         if col_valor: break
         
     if not col_valor:
-        # Último recurso: pega a primeira coluna restante que não seja nome ou diamantes
         cols_restantes = [c for c in df.columns if c != 'colaborador' and 'diamante' not in c]
         if cols_restantes:
             col_valor = cols_restantes[0]
         else:
-            return None, f"Nenhuma coluna de nota identificada nas colunas: {list(df.columns)}"
+            return None, f"Nenhuma coluna de nota identificada."
             
     df.rename(columns={col_valor: '% Atingimento'}, inplace=True)
     
@@ -295,20 +310,20 @@ def tratar_arquivo_especial(df, nome_arquivo):
         if 'max' in c and 'diamantes' in c: df.rename(columns={c: 'Max. Diamantes'}, inplace=True)
     
     df['% Atingimento'] = df['% Atingimento'].apply(processar_porcentagem_br)
-    if 'Diamantes' in df.columns: df['Diamantes'] = pd.to_numeric(df['Diamantes'], errors='coerce').fillna(0)
-    if 'Max. Diamantes' in df.columns: df['Max. Diamantes'] = pd.to_numeric(df['Max. Diamantes'], errors='coerce').fillna(0)
     
-    # Padroniza o nome do indicador (Tenta usar o nome oficial se estiver no nome do arquivo)
+    if 'Diamantes' not in df.columns: df['Diamantes'] = 0.0
+    if 'Max. Diamantes' not in df.columns: df['Max. Diamantes'] = 0.0
+    
+    df['Diamantes'] = pd.to_numeric(df['Diamantes'], errors='coerce').fillna(0)
+    df['Max. Diamantes'] = pd.to_numeric(df['Max. Diamantes'], errors='coerce').fillna(0)
+    
     nome_indicador = normalizar_nome_indicador(nome_arquivo)
-    # Se o nome do arquivo for confuso mas tiver a coluna conformidade
     if col_conf and 'conform' in col_valor: nome_indicador = 'CONFORMIDADE'
     if col_ad and 'ader' in col_valor: nome_indicador = 'ADERENCIA'
     
     df['Indicador'] = nome_indicador
-    cols_to_keep = ['Colaborador', 'Indicador', '% Atingimento']
-    if 'Diamantes' in df.columns: cols_to_keep.append('Diamantes')
-    if 'Max. Diamantes' in df.columns: cols_to_keep.append('Max. Diamantes')
-    return df[cols_to_keep], "OK"
+    cols_to_keep = ['Colaborador', 'Indicador', '% Atingimento', 'Diamantes', 'Max. Diamantes']
+    return df[cols_to_keep], "Extração Simples"
 
 def normalizar_nome_indicador(nome_arquivo):
     nome = nome_arquivo.upper()
@@ -724,7 +739,7 @@ if perfil == 'admin':
                 
                 if not tem_conf:
                     obs = "⚠️ Aguardando Conformidade"
-                elif round(conf_val, 4) < 0.92:
+                elif conf_val is not None and round(conf_val, 4) < 0.92:
                     row_pont = df_user[df_user['Indicador'] == 'PONTUALIDADE']
                     if not row_pont.empty:
                         desconto = row_pont.iloc[0]['Diamantes'] if 'Diamantes' in row_pont.columns else 0
@@ -736,7 +751,7 @@ if perfil == 'admin':
                 
                 lista_comissoes.append({
                     "Colaborador": colab.title(),
-                    "Conformidade": conf_val,
+                    "Conformidade": conf_val if tem_conf else None,
                     "Total Diamantes": int(total_diamantes),
                     "Desconto": int(desconto),
                     "Diamantes Líquidos": int(diamantes_validos),
@@ -746,13 +761,14 @@ if perfil == 'admin':
             
             df_comissao = pd.DataFrame(lista_comissoes)
             
-            # --- CORREÇÃO DO ERRO DO TYPEERROR NA COMISSÃO ---
-            format_dict_comissao = {
-                "Conformidade": lambda x: f"{x:.2%}" if pd.notnull(x) else "Aguardando", 
-                "A Pagar (R$)": "R$ {:.2f}"
-            }
+            # Formatação prévia blindada para evitar o erro do Pandas (TypeError)
+            df_comissao['Conformidade'] = df_comissao['Conformidade'].apply(lambda x: f"{x:.2%}" if pd.notnull(x) else "Aguardando")
             
-            st.dataframe(df_comissao.style.format(format_dict_comissao).background_gradient(subset=['A Pagar (R$)'], cmap='Greens'), use_container_width=True, height=600)
+            st.dataframe(
+                df_comissao.style.format({"A Pagar (R$)": "R$ {:.2f}"}).background_gradient(subset=['A Pagar (R$)'], cmap='Greens'), 
+                use_container_width=True, 
+                height=600
+            )
             st.download_button("⬇️ Baixar CSV", df_comissao.to_csv(index=False).encode('utf-8'), "comissoes.csv", "text/csv")
 
     with tabs[5]: 
