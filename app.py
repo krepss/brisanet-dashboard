@@ -127,26 +127,21 @@ def tentar_extrair_data_csv(df):
     return None
 
 def obter_data_hoje(): return datetime.now().strftime("%m/%Y")
-
 def obter_data_atualizacao():
-    if os.path.exists('historico_consolidado.csv'): 
-        return datetime.fromtimestamp(os.path.getmtime('historico_consolidado.csv')).strftime("%d/%m/%Y às %H:%M")
+    if os.path.exists('historico_consolidado.csv'): return datetime.fromtimestamp(os.path.getmtime('historico_consolidado.csv')).strftime("%d/%m/%Y às %H:%M")
     return datetime.now().strftime("%d/%m/%Y")
 
 def salvar_config(data_texto):
     try:
         with open('config.json', 'w') as f: json.dump({'periodo': data_texto}, f)
     except: pass
-
 def ler_config():
     if os.path.exists('config.json'):
         with open('config.json', 'r') as f: return json.load(f).get('periodo', 'Não informado')
     return "Aguardando atualização"
-
 def limpar_base_dados_completa():
     for f in os.listdir('.'): 
         if f.endswith('.csv'): os.remove(f)
-
 def faxina_arquivos_temporarios():
     protegidos = ['historico_consolidado.csv', 'usuarios.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv']
     for f in os.listdir('.'):
@@ -168,7 +163,6 @@ def atualizar_historico(df_atual, periodo):
         except: df_final = df_save
     else: df_final = df_save
     
-    # Blinda colunas ausentes para não bugar o histórico
     cols_order = ['Periodo', 'Colaborador', 'Indicador', '% Atingimento', 'Diamantes', 'Max. Diamantes']
     existing_cols = [c for c in cols_order if c in df_final.columns]
     for c in ['Diamantes', 'Max. Diamantes']:
@@ -317,8 +311,8 @@ def tratar_arquivo_especial(df, nome_arquivo):
     if 'Diamantes' not in df.columns: df['Diamantes'] = 0.0
     if 'Max. Diamantes' not in df.columns: df['Max. Diamantes'] = 0.0
     
-    df['Diamantes'] = pd.to_numeric(df['Diamantes'], errors='coerce').fillna(0)
-    df['Max. Diamantes'] = pd.to_numeric(df['Max. Diamantes'], errors='coerce').fillna(0)
+    df['Diamantes'] = pd.to_numeric(df['Diamantes'], errors='coerce').fillna(0.0)
+    df['Max. Diamantes'] = pd.to_numeric(df['Max. Diamantes'], errors='coerce').fillna(0.0)
     
     nome_indicador = normalizar_nome_indicador(nome_arquivo)
     if col_conf and 'conform' in col_valor: nome_indicador = 'CONFORMIDADE'
@@ -762,7 +756,6 @@ if perfil == 'admin':
             
             df_comissao = pd.DataFrame(lista_comissoes)
             
-            # --- BLINDAGEM DO ERRO (TypeError) DE COMISSÕES ---
             df_comissao['Conformidade'] = df_comissao['Conformidade'].apply(lambda x: f"{x:.2%}" if pd.notnull(x) else "Aguardando")
             
             st.dataframe(
