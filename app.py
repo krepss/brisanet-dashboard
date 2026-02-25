@@ -10,7 +10,7 @@ from datetime import datetime
 import unicodedata
 
 # --- CONFIGURAÇÃO DA LOGO E ACESSOS ---
-LOGO_FILE = "logo.ico"
+LOGO_FILE = "logo.png"
 SENHA_ADMIN = "admin123"
 USUARIOS_ADMIN = ['gestor', 'admin']
 
@@ -163,7 +163,7 @@ def atualizar_historico(df_atual, periodo):
         except: df_final = df_save
     else: df_final = df_save
     
-    # Blinda colunas ausentes
+    # Blinda colunas ausentes para não bugar o histórico
     cols_order = ['Periodo', 'Colaborador', 'Indicador', '% Atingimento', 'Diamantes', 'Max. Diamantes']
     existing_cols = [c for c in cols_order if c in df_final.columns]
     
@@ -207,6 +207,7 @@ def salvar_arquivos_padronizados(files):
         with open(f.name, "wb") as w: w.write(f.getbuffer())
     return True
 
+# LÊ A PORCENTAGEM (Blindada contra erros de digitação e formatação)
 def processar_porcentagem_br(valor):
     if pd.isna(valor) or str(valor).strip() == '': return 0.0
     if isinstance(valor, str):
@@ -239,7 +240,7 @@ def normalizar_chave(texto):
     nfkd = unicodedata.normalize('NFKD', texto)
     return " ".join(u"".join([c for c in nfkd if not unicodedata.combining(c)]).split())
 
-# --- LÓGICA ULTRA-SEGURA DE BUSCA DE COLUNAS ---
+# --- LÓGICA ULTRA-SEGURA DE BUSCA DE COLUNAS (CONFORMIDADE E ADERENCIA) ---
 def tratar_arquivo_especial(df, nome_arquivo):
     df.columns = [str(c).strip().lower() for c in df.columns]
     
@@ -253,7 +254,7 @@ def tratar_arquivo_especial(df, nome_arquivo):
     df.rename(columns={col_agente: 'Colaborador'}, inplace=True)
     df['Colaborador'] = df['Colaborador'].apply(normalizar_chave)
     
-    # 1. Identifica as colunas de Aderência e Conformidade cravando no símbolo "%" para evitar falsos positivos
+    # 1. Identifica as colunas de Aderência e Conformidade cravando no símbolo "%" para evitar pegar colunas erradas
     col_ad = next((c for c in df.columns if 'ader' in c and ('%' in c or 'perc' in c)), None)
     if not col_ad: 
         col_ad = next((c for c in df.columns if 'ader' in c and 'duração' not in c and 'programado' not in c and c != 'colaborador'), None)
@@ -262,7 +263,7 @@ def tratar_arquivo_especial(df, nome_arquivo):
     if not col_conf: 
         col_conf = next((c for c in df.columns if 'conform' in c and c != 'colaborador'), None)
     
-    # CASO 1: Planilha Combinada (Tem Aderencia e Conformidade)
+    # CASO 1: Planilha Combinada (Se encontrar as duas colunas, divide perfeitamente)
     if col_ad and col_conf:
         lista_retorno = []
         
@@ -284,7 +285,7 @@ def tratar_arquivo_especial(df, nome_arquivo):
         
         return pd.concat(lista_retorno, ignore_index=True), "Extração Dupla Segura"
     
-    # CASO 2: Planilha de Indicador Único
+    # CASO 2: Planilha de Indicador Único (Com ou sem diamantes)
     col_valor = None
     nome_kpi_limpo = nome_arquivo.split('.')[0].lower()
     
@@ -309,7 +310,7 @@ def tratar_arquivo_especial(df, nome_arquivo):
     
     df['% Atingimento'] = df['% Atingimento'].apply(processar_porcentagem_br)
     
-    # Blinda caso não tenha vindo com diamantes do arquivo
+    # Garante colunas de Diamantes mesmo quando não vieram
     if 'Diamantes' not in df.columns: df['Diamantes'] = 0.0
     if 'Max. Diamantes' not in df.columns: df['Max. Diamantes'] = 0.0
     
@@ -757,6 +758,8 @@ if perfil == 'admin':
                 })
             
             df_comissao = pd.DataFrame(lista_comissoes)
+            
+            # --- BLINDAGEM DO ERRO (TypeError) DE COMISSÕES ---
             df_comissao['Conformidade'] = df_comissao['Conformidade'].apply(lambda x: f"{x:.2%}" if pd.notnull(x) else "Aguardando")
             
             st.dataframe(
@@ -1021,7 +1024,6 @@ else:
             
             st.markdown("---")
             
-            # --- DEVOLVENDO O EXTRATO FINANCEIRO ---
             pior_row = meus_dados.sort_values(by='% Atingimento').iloc[0]
             if pior_row['% Atingimento'] < 0.9:
                 dica = DICAS_KPI.get(pior_row['Indicador'], "Fale com seu gestor.")
@@ -1065,7 +1067,6 @@ else:
                 with cols[i]: st.metric(label, f"{val:.2%}", "✅ Meta Batida" if round(val, 4) >= meta else f"🔻 Meta {meta:.0%}", delta_color="normal" if round(val, 4) >= meta else "inverse")
             st.markdown("---")
             
-            # --- DEVOLVENDO O RAIO-X RADAR CHART ---
             media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
             media_equipe.rename(columns={'% Atingimento': 'Média Equipe'}, inplace=True)
             if not media_equipe.empty:
