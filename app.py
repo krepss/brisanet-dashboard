@@ -127,21 +127,26 @@ def tentar_extrair_data_csv(df):
     return None
 
 def obter_data_hoje(): return datetime.now().strftime("%m/%Y")
+
 def obter_data_atualizacao():
-    if os.path.exists('historico_consolidado.csv'): return datetime.fromtimestamp(os.path.getmtime('historico_consolidado.csv')).strftime("%d/%m/%Y às %H:%M")
+    if os.path.exists('historico_consolidado.csv'): 
+        return datetime.fromtimestamp(os.path.getmtime('historico_consolidado.csv')).strftime("%d/%m/%Y às %H:%M")
     return datetime.now().strftime("%d/%m/%Y")
 
 def salvar_config(data_texto):
     try:
         with open('config.json', 'w') as f: json.dump({'periodo': data_texto}, f)
     except: pass
+
 def ler_config():
     if os.path.exists('config.json'):
         with open('config.json', 'r') as f: return json.load(f).get('periodo', 'Não informado')
     return "Aguardando atualização"
+
 def limpar_base_dados_completa():
     for f in os.listdir('.'): 
         if f.endswith('.csv'): os.remove(f)
+
 def faxina_arquivos_temporarios():
     protegidos = ['historico_consolidado.csv', 'usuarios.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv']
     for f in os.listdir('.'):
@@ -166,10 +171,8 @@ def atualizar_historico(df_atual, periodo):
     # Blinda colunas ausentes para não bugar o histórico
     cols_order = ['Periodo', 'Colaborador', 'Indicador', '% Atingimento', 'Diamantes', 'Max. Diamantes']
     existing_cols = [c for c in cols_order if c in df_final.columns]
-    
     for c in ['Diamantes', 'Max. Diamantes']:
-        if c in existing_cols:
-            df_final[c] = df_final[c].fillna(0.0)
+        if c in existing_cols: df_final[c] = df_final[c].fillna(0.0)
             
     df_final[existing_cols].to_csv(ARQUIVO_HIST, index=False)
 
@@ -207,7 +210,7 @@ def salvar_arquivos_padronizados(files):
         with open(f.name, "wb") as w: w.write(f.getbuffer())
     return True
 
-# LÊ A PORCENTAGEM (Blindada contra erros de digitação e formatação)
+# --- LÊ A PORCENTAGEM (Blindada) ---
 def processar_porcentagem_br(valor):
     if pd.isna(valor) or str(valor).strip() == '': return 0.0
     if isinstance(valor, str):
@@ -254,7 +257,7 @@ def tratar_arquivo_especial(df, nome_arquivo):
     df.rename(columns={col_agente: 'Colaborador'}, inplace=True)
     df['Colaborador'] = df['Colaborador'].apply(normalizar_chave)
     
-    # 1. Identifica as colunas de Aderência e Conformidade cravando no símbolo "%" para evitar pegar colunas erradas
+    # 1. Identifica as colunas cravando no símbolo "%" para evitar pegar "Programado" ou "Duração"
     col_ad = next((c for c in df.columns if 'ader' in c and ('%' in c or 'perc' in c)), None)
     if not col_ad: 
         col_ad = next((c for c in df.columns if 'ader' in c and 'duração' not in c and 'programado' not in c and c != 'colaborador'), None)
@@ -263,7 +266,7 @@ def tratar_arquivo_especial(df, nome_arquivo):
     if not col_conf: 
         col_conf = next((c for c in df.columns if 'conform' in c and c != 'colaborador'), None)
     
-    # CASO 1: Planilha Combinada (Se encontrar as duas colunas, divide perfeitamente)
+    # CASO 1: Planilha Combinada (Se encontrar as duas colunas, divide perfeitamente e cria diamantes zerados)
     if col_ad and col_conf:
         lista_retorno = []
         
@@ -310,7 +313,7 @@ def tratar_arquivo_especial(df, nome_arquivo):
     
     df['% Atingimento'] = df['% Atingimento'].apply(processar_porcentagem_br)
     
-    # Garante colunas de Diamantes mesmo quando não vieram
+    # Blinda caso não tenha vindo com diamantes do arquivo
     if 'Diamantes' not in df.columns: df['Diamantes'] = 0.0
     if 'Max. Diamantes' not in df.columns: df['Max. Diamantes'] = 0.0
     
