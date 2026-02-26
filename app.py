@@ -131,29 +131,27 @@ def obter_data_hoje():
 
 # --- CONVERSÃO INTELIGENTE PARA FUSO DE BRASÍLIA ---
 def obter_data_atualizacao():
-    # Cria o fuso horário UTC-3 (Brasília)
     fuso_brasilia = timezone(timedelta(hours=-3))
-    
     if os.path.exists('historico_consolidado.csv'): 
-        # Lê a data de modificação em UTC
         timestamp_utc = os.path.getmtime('historico_consolidado.csv')
         dt_utc = datetime.fromtimestamp(timestamp_utc, tz=timezone.utc)
-        # Converte e formata para o fuso brasileiro
         return dt_utc.astimezone(fuso_brasilia).strftime("%d/%m/%Y às %H:%M")
-        
     return datetime.now(fuso_brasilia).strftime("%d/%m/%Y às %H:%M")
 
 def salvar_config(data_texto):
     try:
         with open('config.json', 'w') as f: json.dump({'periodo': data_texto}, f)
     except: pass
+
 def ler_config():
     if os.path.exists('config.json'):
         with open('config.json', 'r') as f: return json.load(f).get('periodo', 'Não informado')
     return "Aguardando atualização"
+
 def limpar_base_dados_completa():
     for f in os.listdir('.'): 
         if f.endswith('.csv'): os.remove(f)
+
 def faxina_arquivos_temporarios():
     protegidos = ['historico_consolidado.csv', 'usuarios.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv']
     for f in os.listdir('.'):
@@ -263,6 +261,7 @@ def tratar_arquivo_especial(df, nome_arquivo):
     df.rename(columns={col_agente: 'Colaborador'}, inplace=True)
     df['Colaborador'] = df['Colaborador'].apply(normalizar_chave)
     
+    # 1. Identifica as colunas cravando no símbolo "%" para evitar pegar "Programado" ou "Duração"
     col_ad = next((c for c in df.columns if 'ader' in c and ('%' in c or 'perc' in c)), None)
     if not col_ad: 
         col_ad = next((c for c in df.columns if 'ader' in c and 'duração' not in c and 'programado' not in c and c != 'colaborador'), None)
@@ -271,6 +270,7 @@ def tratar_arquivo_especial(df, nome_arquivo):
     if not col_conf: 
         col_conf = next((c for c in df.columns if 'conform' in c and c != 'colaborador'), None)
     
+    # CASO 1: Planilha Combinada
     if col_ad and col_conf:
         lista_retorno = []
         
@@ -292,6 +292,7 @@ def tratar_arquivo_especial(df, nome_arquivo):
         
         return pd.concat(lista_retorno, ignore_index=True), "Extração Dupla Segura"
     
+    # CASO 2: Planilha de Indicador Único
     col_valor = None
     nome_kpi_limpo = nome_arquivo.split('.')[0].lower()
     
@@ -665,14 +666,16 @@ if perfil == 'admin':
                 qtd_vermelho = len(df_media_pessoas[df_media_pessoas['% Atingimento'] < 0.80])
                 
                 media_csat = df_dados[df_dados['Indicador'] == 'CSAT']['% Atingimento'].mean() if 'CSAT' in df_dados['Indicador'].unique() else 0.0
+                media_ir = df_dados[df_dados['Indicador'] == 'IR']['% Atingimento'].mean() if 'IR' in df_dados['Indicador'].unique() else 0.0
                 media_ad = df_dados[df_dados['Indicador'] == 'ADERENCIA']['% Atingimento'].mean() if 'ADERENCIA' in df_dados['Indicador'].unique() else 0.0
                 media_conf = df_dados[df_dados['Indicador'] == 'CONFORMIDADE']['% Atingimento'].mean() if 'CONFORMIDADE' in df_dados['Indicador'].unique() else 0.0
                 
+                # --- AGORA A BUSCA POR PONTO FORTE E GARGALO ANALISA TODOS OS INDICADORES SUBIDOS ---
                 df_medias_kpis = df_dados[df_dados['Indicador'] != 'TAM'].groupby('Indicador')['% Atingimento'].mean().reset_index()
                 melhor_kpi = df_medias_kpis.loc[df_medias_kpis['% Atingimento'].idxmax()] if not df_medias_kpis.empty else None
                 pior_kpi = df_medias_kpis.loc[df_medias_kpis['% Atingimento'].idxmin()] if not df_medias_kpis.empty else None
 
-                # --- COMPARAÇÃO HISTÓRICA ---
+                # --- COMPARAÇÃO HISTÓRICA DO MÊS ANTERIOR ---
                 texto_comparacao = ""
                 periodos_ord = listar_periodos_disponiveis()
                 if periodo_label in periodos_ord:
@@ -700,6 +703,7 @@ if perfil == 'admin':
                                 else:
                                     texto_comparacao = f" Em comparação ao mês anterior ({periodo_anterior}), mantivemos a performance estável (era {media_anterior_tam:.1%}). ⚖️"
 
+                # Identificação de Operadores Específicos
                 try:
                     top_operador = df_media_pessoas.loc[df_media_pessoas['% Atingimento'].idxmax()]
                     nome_top = top_operador['Colaborador'].title()
@@ -729,7 +733,7 @@ if perfil == 'admin':
                 nome_top_formatado = nome_top.split(" ")[0] if nome_top != "Indisponível" else "foco"
                 pior_kpi_str = formatar_nome_visual(pior_kpi['Indicador']) if pior_kpi is not None else "gargalos"
 
-                # Geração da String Final
+                # Geração da String Formatada
                 texto_resumo = f"""📊 *RESUMO EXECUTIVO | {periodo_label} - TEAM SOFISTAS* 📊
 
 *1️⃣ VISÃO GERAL DA OPERAÇÃO*
@@ -739,24 +743,25 @@ Tivemos um total de {total_pessoas} operadores avaliados, distribuídos da segui
 ▪️ 🟢 Meta Batida (80% a 89%): {qtd_amarelo} op. ({qtd_amarelo/total_pessoas:.0%})
 ▪️ 🔴 Atenção Prioritária (< 80%): {qtd_vermelho} op. ({qtd_vermelho/total_pessoas:.0%})
 
-*2️⃣ INDICADORES DE QUALIDADE*
+*2️⃣ INDICADORES PRINCIPAIS DA LIDERANÇA*
 ▪️ CSAT Médio: {media_csat:.1%}
+▪️ IR (Resolução) Médio: {media_ir:.1%}
 ▪️ Aderência Média: {media_ad:.1%}
 ▪️ Conformidade Média: {media_conf:.1%}
 
-*3️⃣ ANÁLISE DE DESTAQUES E OPORTUNIDADES*
+*3️⃣ ANÁLISE GERAL E DESTAQUES*
 🏆 *Top Performer:* O operador *{nome_top}* entregou o melhor resultado da equipe, atingindo *{nota_top:.1%}* de performance global. 
 🎯 *Foco de Desenvolvimento:* Por outro lado, *{nome_pior}* obteve o menor resultado do ciclo (*{nota_pior:.1%}*) e será priorizado no acompanhamento (PDI).
 """
                 if melhor_kpi is not None and pior_kpi is not None:
-                    texto_resumo += f"""📈 *Ponto Forte da Equipe:* {formatar_nome_visual(melhor_kpi['Indicador'])} (Média: {melhor_kpi['% Atingimento']:.1%}).
-⚠️ *Gargalo Coletivo:* {formatar_nome_visual(pior_kpi['Indicador'])} (Média: {pior_kpi['% Atingimento']:.1%}). O operador *{nome_ofensor_kpi}* foi o mais impactado individualmente neste indicador ({nota_ofensor_kpi:.1%}).
+                    texto_resumo += f"""📈 *Ponto Forte da Equipe:* {formatar_nome_visual(melhor_kpi['Indicador'])} atingiu o melhor desempenho (Média: {melhor_kpi['% Atingimento']:.1%}).
+⚠️ *Gargalo Coletivo:* O ofensor geral que mais exigirá atenção de todos os indicadores é {formatar_nome_visual(pior_kpi['Indicador'])} (Média: {pior_kpi['% Atingimento']:.1%}). O operador *{nome_ofensor_kpi}* foi o mais impactado individualmente neste indicador ({nota_ofensor_kpi:.1%}).
 """
                 texto_resumo += f"""
 *4️⃣ PRÓXIMOS PASSOS*
-O foco da liderança para o próximo ciclo será atuar diretamente na base crítica, com PDI prioritário focado em {nome_pior_formatado}, além de rodadas de ouvidoria para alavancar os números de {pior_kpi_str}. Paralelamente, manteremos as ações de reconhecimento exaltando o alto desempenho de {nome_top_formatado} para engajar o restante do time."""
+O foco da liderança para o próximo ciclo será atuar diretamente na base crítica, com PDI prioritário focado em {nome_pior_formatado}, além de rodadas de calibração para alavancar os números de {pior_kpi_str}. Paralelamente, manteremos o reconhecimento de alto desempenho voltado a {nome_top_formatado} e demais Destaques para engajar o restante do time."""
 
-                st.info("💡 **Dica de Ouro:** O texto abaixo foi gerado automaticamente e já está **formatado para o WhatsApp**. Copie e cole na sua janela de conversa com os seus coordenadores e os asteriscos transformarão os títulos em negrito!")
+                st.info("💡 **Dica de Ouro:** O texto abaixo foi gerado automaticamente e já está **formatado para o WhatsApp**. Copie e cole na sua janela de conversa com a sua coordenação!")
                 st.code(texto_resumo, language="markdown")
             else:
                 st.info("Aguardando upload de dados para calcular o resumo executivo.")
