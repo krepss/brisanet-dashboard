@@ -204,6 +204,7 @@ def salvar_arquivos_padronizados(files):
         with open(f.name, "wb") as w: w.write(f.getbuffer())
     return True
 
+# --- LÊ A PORCENTAGEM (Blindada) ---
 def processar_porcentagem_br(valor):
     if pd.isna(valor) or str(valor).strip() == '': return 0.0
     if isinstance(valor, str):
@@ -236,6 +237,7 @@ def normalizar_chave(texto):
     nfkd = unicodedata.normalize('NFKD', texto)
     return " ".join(u"".join([c for c in nfkd if not unicodedata.combining(c)]).split())
 
+# --- LÓGICA ULTRA-SEGURA DE BUSCA DE COLUNAS (CONFORMIDADE E ADERENCIA) ---
 def tratar_arquivo_especial(df, nome_arquivo):
     df.columns = [str(c).strip().lower() for c in df.columns]
     
@@ -259,6 +261,7 @@ def tratar_arquivo_especial(df, nome_arquivo):
     
     if col_ad and col_conf:
         lista_retorno = []
+        
         df_ad = df[['Colaborador', col_ad]].copy()
         df_ad.rename(columns={col_ad: '% Atingimento'}, inplace=True)
         df_ad['% Atingimento'] = df_ad['% Atingimento'].apply(processar_porcentagem_br)
@@ -479,7 +482,7 @@ with c_sair:
         st.session_state.update({'logado': False})
         st.rerun()
 
-st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px;'>", unsafe_allow_html=True)
+st.markdown("<hr style='margin: 5px 0px 20px 0px;'>", unsafe_allow_html=True)
 
 tem_tam = False
 
@@ -511,8 +514,10 @@ if df_dados is None and perfil == 'user':
 # --- 6. GESTOR ---
 # ==========================================
 if perfil == 'admin':
-    tabs = st.tabs(["🚦 Semáforo", "🏆 Ranking Geral", "⏳ Evolução", "🔍 Indicadores", "💰 Comissões", "📋 Tabela Geral", "🏖️ Férias Equipe", "⚙️ Admin", "⏰ Banco de Horas", "📝 Feedbacks GB"])
+    # ADICIONADA A NOVA ABA "Resumo Executivo" AQUI
+    tabs = st.tabs(["🚦 Semáforo", "📈 Resumo Executivo", "🏆 Ranking Geral", "⏳ Evolução", "🔍 Indicadores", "💰 Comissões", "📋 Tabela Geral", "🏖️ Férias Equipe", "⚙️ Admin", "⏰ Banco de Horas", "📝 Feedbacks GB"])
 
+    # ------------------ SEMÁFORO ------------------
     with tabs[0]: 
         if df_dados is not None and not df_dados.empty:
             st.markdown(f"### Resumo de Saúde: **{periodo_label}**")
@@ -630,7 +635,68 @@ if perfil == 'admin':
                 st.dataframe(pd.DataFrame(lista_detalhada).style.format({'Resultado (TAM)': '{:.2%}'}), use_container_width=True)
             else: st.success("🎉 Equipe performando bem! Ninguém abaixo de 80%.")
 
+    # ------------------ RESUMO EXECUTIVO (NOVA ABA) ------------------
     with tabs[1]:
+        st.markdown(f"### 📈 Resumo Executivo: {periodo_label}")
+        if df_dados is not None and not df_dados.empty:
+            
+            # --- Cálculos para o Relatório ---
+            # 1. Performance Geral (Usa df_media_pessoas já calculado no Semáforo)
+            if tem_tam:
+                df_media_pessoas = df_dados[df_dados['Indicador'] == 'TAM'][['Colaborador', '% Atingimento']].copy()
+            else:
+                df_media_pessoas = df_dados.groupby('Colaborador').agg({'Diamantes': 'sum', 'Max. Diamantes': 'sum'}).reset_index()
+                df_media_pessoas['% Atingimento'] = df_media_pessoas.apply(lambda row: row['Diamantes'] / row['Max. Diamantes'] if row['Max. Diamantes'] > 0 else 0, axis=1)
+
+            total_pessoas = len(df_media_pessoas)
+            
+            if total_pessoas > 0:
+                media_geral_tam = df_media_pessoas['% Atingimento'].mean()
+                qtd_verde = len(df_media_pessoas[df_media_pessoas['% Atingimento'] >= 0.90])
+                qtd_amarelo = len(df_media_pessoas[(df_media_pessoas['% Atingimento'] >= 0.80) & (df_media_pessoas['% Atingimento'] < 0.90)])
+                qtd_vermelho = len(df_media_pessoas[df_media_pessoas['% Atingimento'] < 0.80])
+                
+                # 2. Qualidade (Média dos indicadores de apoio)
+                media_csat = df_dados[df_dados['Indicador'] == 'CSAT']['% Atingimento'].mean() if 'CSAT' in df_dados['Indicador'].unique() else 0.0
+                media_ad = df_dados[df_dados['Indicador'] == 'ADERENCIA']['% Atingimento'].mean() if 'ADERENCIA' in df_dados['Indicador'].unique() else 0.0
+                media_conf = df_dados[df_dados['Indicador'] == 'CONFORMIDADE']['% Atingimento'].mean() if 'CONFORMIDADE' in df_dados['Indicador'].unique() else 0.0
+                
+                # 3. Ponto Forte e Gargalo
+                df_medias_kpis = df_dados[df_dados['Indicador'] != 'TAM'].groupby('Indicador')['% Atingimento'].mean().reset_index()
+                melhor_kpi = df_medias_kpis.loc[df_medias_kpis['% Atingimento'].idxmax()] if not df_medias_kpis.empty else None
+                pior_kpi = df_medias_kpis.loc[df_medias_kpis['% Atingimento'].idxmin()] if not df_medias_kpis.empty else None
+
+                texto_resumo = f"""**Resumo Executivo - {periodo_label} | Team Sofistas**
+
+**1. Visão Geral da Operação**
+Neste ciclo, a equipe fechou com um Resultado Geral médio de **{media_geral_tam:.1%}**.
+Tivemos um total de {total_pessoas} operadores avaliados, distribuídos da seguinte forma:
+* 💎 Excelência (>= 90%): {qtd_verde} operadores ({qtd_verde/total_pessoas:.0%})
+* 🟢 Meta Batida (80% - 89%): {qtd_amarelo} operadores ({qtd_amarelo/total_pessoas:.0%})
+* 🔴 Atenção Prioritária (< 80%): {qtd_vermelho} operadores ({qtd_vermelho/total_pessoas:.0%})
+
+**2. Destaques Operacionais**
+* **Média de CSAT:** {media_csat:.1%}
+* **Média de Aderência:** {media_ad:.1%}
+* **Média de Conformidade:** {media_conf:.1%}
+
+**3. Análise Crítica (Pontos Fortes e Gargalos)**
+"""
+                if melhor_kpi is not None and pior_kpi is not None:
+                    texto_resumo += f"""* **Ponto Forte do Time:** O indicador em que a equipe teve a melhor performance foi **{formatar_nome_visual(melhor_kpi['Indicador'])}** (Média: {melhor_kpi['% Atingimento']:.1%}).
+* **Gargalo do Mês:** O ofensor que mais penalizou a operação foi **{formatar_nome_visual(pior_kpi['Indicador'])}** (Média: {pior_kpi['% Atingimento']:.1%}). Ele demanda acompanhamento direto.
+"""
+                texto_resumo += "\n**4. Próximos Passos**\nO foco da liderança para o próximo ciclo será atuar fortemente na base crítica de operadores, realizando ouvidorias e monitorias no ofensor principal, ao mesmo tempo em que manteremos o engajamento e o reconhecimento da base de excelência."
+
+                st.markdown("💡 **Dica:** O texto abaixo é gerado automaticamente pela Inteligência do sistema cruzando os dados do mês inteiro da sua equipe. Você pode copiá-lo para enviar à coordenação ou usar em reuniões gerenciais.")
+                st.code(texto_resumo, language="markdown")
+            else:
+                st.info("Aguardando upload de dados para calcular o resumo executivo.")
+        else:
+            st.info("Nenhum dado disponível neste período.")
+
+    # ------------------ RANKING ------------------
+    with tabs[2]:
         st.markdown(f"### 🏆 Ranking Geral (Consolidado)")
         if df_dados is not None:
             if tem_tam: 
@@ -662,7 +728,8 @@ if perfil == 'admin':
                 
             st.dataframe(df_rank[cols_show].style.format(format_dict).background_gradient(subset=['Resultado'], cmap='RdYlGn'), use_container_width=True, hide_index=True, height=600)
 
-    with tabs[2]:
+    # ------------------ EVOLUÇÃO ------------------
+    with tabs[3]:
         st.markdown("### ⏳ Evolução Temporal")
         df_hist = carregar_historico_completo()
         if df_hist is not None:
@@ -681,7 +748,8 @@ if perfil == 'admin':
             else: st.warning("Histórico vazio após filtro.")
         else: st.info("Histórico vazio.")
 
-    with tabs[3]:
+    # ------------------ INDICADORES ------------------
+    with tabs[4]:
         if df_dados is not None:
             st.markdown("### 🔬 Detalhe por Indicador")
             df_viz = df_dados.copy()
@@ -693,7 +761,8 @@ if perfil == 'admin':
                     fig_rank.add_vline(x=0.8, line_dash="dash", line_color="black")
                     st.plotly_chart(fig_rank, use_container_width=True)
 
-    with tabs[4]:
+    # ------------------ COMISSÕES ------------------
+    with tabs[5]:
         st.markdown(f"### 💰 Relatório de Comissões")
         if df_dados is not None:
             st.info("ℹ️ Regra: R$ 0,50 por Diamante. **Trava:** Conformidade >= 92%.")
@@ -745,7 +814,8 @@ if perfil == 'admin':
             )
             st.download_button("⬇️ Baixar CSV", df_comissao.to_csv(index=False).encode('utf-8'), "comissoes.csv", "text/csv")
 
-    with tabs[5]: 
+    # ------------------ MAPA DE RESULTADOS ------------------
+    with tabs[6]: 
         if df_dados is not None:
             c1, c2 = st.columns([3, 1])
             with c1: st.markdown(f"### Mapa de Resultados: {periodo_label}")
@@ -756,14 +826,16 @@ if perfil == 'admin':
             pivot = df_show_visual.pivot_table(index='Colaborador', columns='Indicador', values='% Atingimento').fillna(0.0)
             st.dataframe(pivot.style.background_gradient(cmap='RdYlGn', vmin=0.7, vmax=1.0).format("{:.2%}"), use_container_width=True, height=600)
 
-    with tabs[6]:
+    # ------------------ FÉRIAS ------------------
+    with tabs[7]:
         st.markdown("### 🏖️ Férias da Equipe")
         if df_users_cadastrados is not None:
             df_f = df_users_cadastrados[['nome', 'ferias']].copy()
             df_f['nome'] = df_f['nome'].str.title()
             st.dataframe(df_f, use_container_width=True)
 
-    with tabs[7]:
+    # ------------------ ADMIN ------------------
+    with tabs[8]:
         st.markdown("### 📂 Gestão e Diagnóstico")
         st1, st2, st3, st4 = st.tabs(["📤 Upload", "🗑️ Limpeza", "💾 Backup", "🔍 Diagnóstico"])
         with st1:
@@ -834,7 +906,8 @@ if perfil == 'admin':
                 _, log_df = carregar_dados_completo_debug()
                 st.dataframe(log_df)
 
-    with tabs[8]:
+    # ------------------ BANCO DE HORAS ------------------
+    with tabs[9]:
         st.markdown("### ⏰ Análise de Folha de Ponto")
         st.info("Faça o upload do arquivo .xlsx ou .csv.")
         uploaded_ponto = st.file_uploader("Carregar Planilha de Ponto", type=['xlsx', 'csv'])
@@ -874,7 +947,8 @@ if perfil == 'admin':
                 else: st.error("Colunas não identificadas.")
             except Exception as e: st.error(f"Erro: {e}")
 
-    with tabs[9]:
+    # ------------------ FEEDBACKS ------------------
+    with tabs[10]:
         st.markdown("### 📝 Controle de Feedbacks (GB)")
         st.info("💡 **Objetivo:** Registrar feedback orientado a valor.")
         if df_dados is not None and tem_tam:
@@ -924,7 +998,6 @@ if perfil == 'admin':
                                 salvar_feedback_gb({"Data_Registro": datetime.now().strftime("%d/%m/%Y %H:%M"), "Periodo_Ref": periodo_label, "Colaborador": colab_fb, "Faixa": faixa_sel.split(" ")[0], "TAM": f"{tam_v:.1%}", "Motivo": motivo_txt, "Acao_GB": acao_txt, "Feedback_Valor": fb_valor_txt})
                                 st.success("✅ Feedback registrado!")
                                 
-                                # --- GERADOR DE EMAIL RESTAURADO ---
                                 lista_kpis_email = "\n".join([f"* **{formatar_nome_visual(row['Indicador'])}:** {row['% Atingimento']:.1%}" for _, row in df_user_fb.iterrows()])
                                 if tam_v < 0.70: ab = f"O seu Resultado Geral (TAM) fechou em **{tam_v:.1%}**, abaixo da meta. Vamos focar na recuperação!"
                                 elif tam_v < 0.80: ab = f"O seu Resultado Geral (TAM) fechou em **{tam_v:.1%}**. Estamos quase lá! Vamos alinhar os ponteiros."
