@@ -204,7 +204,6 @@ def salvar_arquivos_padronizados(files):
         with open(f.name, "wb") as w: w.write(f.getbuffer())
     return True
 
-# --- LÊ A PORCENTAGEM (Blindada) ---
 def processar_porcentagem_br(valor):
     if pd.isna(valor) or str(valor).strip() == '': return 0.0
     if isinstance(valor, str):
@@ -237,7 +236,6 @@ def normalizar_chave(texto):
     nfkd = unicodedata.normalize('NFKD', texto)
     return " ".join(u"".join([c for c in nfkd if not unicodedata.combining(c)]).split())
 
-# --- LÓGICA ULTRA-SEGURA DE BUSCA DE COLUNAS (CONFORMIDADE E ADERENCIA) ---
 def tratar_arquivo_especial(df, nome_arquivo):
     df.columns = [str(c).strip().lower() for c in df.columns]
     
@@ -251,7 +249,6 @@ def tratar_arquivo_especial(df, nome_arquivo):
     df.rename(columns={col_agente: 'Colaborador'}, inplace=True)
     df['Colaborador'] = df['Colaborador'].apply(normalizar_chave)
     
-    # 1. Identifica as colunas cravando no símbolo "%" para evitar pegar "Programado" ou "Duração"
     col_ad = next((c for c in df.columns if 'ader' in c and ('%' in c or 'perc' in c)), None)
     if not col_ad: 
         col_ad = next((c for c in df.columns if 'ader' in c and 'duração' not in c and 'programado' not in c and c != 'colaborador'), None)
@@ -260,10 +257,8 @@ def tratar_arquivo_especial(df, nome_arquivo):
     if not col_conf: 
         col_conf = next((c for c in df.columns if 'conform' in c and c != 'colaborador'), None)
     
-    # CASO 1: Planilha Combinada (Se encontrar as duas colunas, divide perfeitamente e cria diamantes zerados)
     if col_ad and col_conf:
         lista_retorno = []
-        
         df_ad = df[['Colaborador', col_ad]].copy()
         df_ad.rename(columns={col_ad: '% Atingimento'}, inplace=True)
         df_ad['% Atingimento'] = df_ad['% Atingimento'].apply(processar_porcentagem_br)
@@ -282,7 +277,6 @@ def tratar_arquivo_especial(df, nome_arquivo):
         
         return pd.concat(lista_retorno, ignore_index=True), "Extração Dupla Segura"
     
-    # CASO 2: Planilha de Indicador Único (Com ou sem diamantes)
     col_valor = None
     nome_kpi_limpo = nome_arquivo.split('.')[0].lower()
     
@@ -307,12 +301,11 @@ def tratar_arquivo_especial(df, nome_arquivo):
     
     df['% Atingimento'] = df['% Atingimento'].apply(processar_porcentagem_br)
     
-    # Blinda caso não tenha vindo com diamantes do arquivo
     if 'Diamantes' not in df.columns: df['Diamantes'] = 0.0
     if 'Max. Diamantes' not in df.columns: df['Max. Diamantes'] = 0.0
     
-    df['Diamantes'] = pd.to_numeric(df['Diamantes'], errors='coerce').fillna(0.0)
-    df['Max. Diamantes'] = pd.to_numeric(df['Max. Diamantes'], errors='coerce').fillna(0.0)
+    df['Diamantes'] = pd.to_numeric(df['Diamantes'], errors='coerce').fillna(0)
+    df['Max. Diamantes'] = pd.to_numeric(df['Max. Diamantes'], errors='coerce').fillna(0)
     
     nome_indicador = normalizar_nome_indicador(nome_arquivo)
     if col_conf and 'conform' in col_valor: nome_indicador = 'CONFORMIDADE'
@@ -321,18 +314,6 @@ def tratar_arquivo_especial(df, nome_arquivo):
     df['Indicador'] = nome_indicador
     cols_to_keep = ['Colaborador', 'Indicador', '% Atingimento', 'Diamantes', 'Max. Diamantes']
     return df[cols_to_keep], "Extração Simples"
-
-def normalizar_nome_indicador(nome_arquivo):
-    nome = nome_arquivo.upper()
-    if 'ADER' in nome: return 'ADERENCIA'
-    if 'CONFORM' in nome: return 'CONFORMIDADE'
-    if 'INTERA' in nome: return 'INTERACOES'
-    if 'PONTUAL' in nome: return 'PONTUALIDADE'
-    if 'CSAT' in nome: return 'CSAT'
-    if 'IR' in nome or 'RESOLU' in nome: return 'IR'
-    if 'TPC' in nome: return 'TPC'
-    if 'TAM' in nome: return 'TAM'
-    return nome.split('.')[0].upper()
 
 def classificar_farol(val):
     if val >= 0.90: return '💎 Excelência' 
@@ -755,7 +736,6 @@ if perfil == 'admin':
                 })
             
             df_comissao = pd.DataFrame(lista_comissoes)
-            
             df_comissao['Conformidade'] = df_comissao['Conformidade'].apply(lambda x: f"{x:.2%}" if pd.notnull(x) else "Aguardando")
             
             st.dataframe(
@@ -943,6 +923,19 @@ if perfil == 'admin':
                             else:
                                 salvar_feedback_gb({"Data_Registro": datetime.now().strftime("%d/%m/%Y %H:%M"), "Periodo_Ref": periodo_label, "Colaborador": colab_fb, "Faixa": faixa_sel.split(" ")[0], "TAM": f"{tam_v:.1%}", "Motivo": motivo_txt, "Acao_GB": acao_txt, "Feedback_Valor": fb_valor_txt})
                                 st.success("✅ Feedback registrado!")
+                                
+                                # --- GERADOR DE EMAIL RESTAURADO ---
+                                lista_kpis_email = "\n".join([f"* **{formatar_nome_visual(row['Indicador'])}:** {row['% Atingimento']:.1%}" for _, row in df_user_fb.iterrows()])
+                                if tam_v < 0.70: ab = f"O seu Resultado Geral (TAM) fechou em **{tam_v:.1%}**, abaixo da meta. Vamos focar na recuperação!"
+                                elif tam_v < 0.80: ab = f"O seu Resultado Geral (TAM) fechou em **{tam_v:.1%}**. Estamos quase lá! Vamos alinhar os ponteiros."
+                                elif tam_v < 0.90: ab = f"Parabéns! O seu Resultado Geral (TAM) fechou em **{tam_v:.1%}**, batendo a nossa meta."
+                                else: ab = f"Uau! O seu Resultado Geral (TAM) fechou em **{tam_v:.1%}**, resultado de extrema Excelência!"
+                                
+                                email_template = f"**Assunto:** Feedback Mensal - Resultado Operacional - {periodo_label}\n\nOlá, **{colab_fb}**. Tudo bem?\n\nGostaria de repassar os pontos referentes ao seu desempenho de **{periodo_label}**.\n{ab}\n\nAqui está o detalhamento dos seus indicadores:\n{lista_kpis_email}\n\n**Pontos Mapeados:**\n{motivo_txt}\n\n**Nosso Plano de Ação:**\n{acao_txt}\n\n**Feedback Estratégico:**\n{fb_valor_txt}\n\nConto com seu engajamento para o próximo ciclo!\n\nAtenciosamente,\nSua Liderança."
+                                
+                                st.markdown("### 📧 E-mail Gerado (Copie e cole):")
+                                st.code(email_template, language='markdown')
+
             else: st.success(f"Nenhum colaborador encontrado na faixa.")
         
         st.markdown("---")
