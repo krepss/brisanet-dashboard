@@ -129,7 +129,6 @@ def tentar_extrair_data_csv(df):
 def obter_data_hoje(): 
     return datetime.now().strftime("%m/%Y")
 
-# --- CONVERSÃO INTELIGENTE PARA FUSO DE BRASÍLIA ---
 def obter_data_atualizacao():
     fuso_brasilia = timezone(timedelta(hours=-3))
     if os.path.exists('historico_consolidado.csv'): 
@@ -214,7 +213,6 @@ def salvar_arquivos_padronizados(files):
         with open(f.name, "wb") as w: w.write(f.getbuffer())
     return True
 
-# --- LÊ A PORCENTAGEM (Blindada) ---
 def processar_porcentagem_br(valor):
     if pd.isna(valor) or str(valor).strip() == '': return 0.0
     if isinstance(valor, str):
@@ -247,7 +245,19 @@ def normalizar_chave(texto):
     nfkd = unicodedata.normalize('NFKD', texto)
     return " ".join(u"".join([c for c in nfkd if not unicodedata.combining(c)]).split())
 
-# --- LÓGICA ULTRA-SEGURA DE BUSCA DE COLUNAS (CONFORMIDADE E ADERENCIA) ---
+# --- FUNÇÃO RESTAURADA ---
+def normalizar_nome_indicador(nome_arquivo):
+    nome = nome_arquivo.upper()
+    if 'ADER' in nome: return 'ADERENCIA'
+    if 'CONFORM' in nome: return 'CONFORMIDADE'
+    if 'INTERA' in nome: return 'INTERACOES'
+    if 'PONTUAL' in nome: return 'PONTUALIDADE'
+    if 'CSAT' in nome: return 'CSAT'
+    if 'IR' in nome or 'RESOLU' in nome: return 'IR'
+    if 'TPC' in nome: return 'TPC'
+    if 'TAM' in nome: return 'TAM'
+    return nome.split('.')[0].upper()
+
 def tratar_arquivo_especial(df, nome_arquivo):
     df.columns = [str(c).strip().lower() for c in df.columns]
     
@@ -261,7 +271,6 @@ def tratar_arquivo_especial(df, nome_arquivo):
     df.rename(columns={col_agente: 'Colaborador'}, inplace=True)
     df['Colaborador'] = df['Colaborador'].apply(normalizar_chave)
     
-    # 1. Identifica as colunas cravando no símbolo "%" para evitar pegar "Programado" ou "Duração"
     col_ad = next((c for c in df.columns if 'ader' in c and ('%' in c or 'perc' in c)), None)
     if not col_ad: 
         col_ad = next((c for c in df.columns if 'ader' in c and 'duração' not in c and 'programado' not in c and c != 'colaborador'), None)
@@ -270,7 +279,6 @@ def tratar_arquivo_especial(df, nome_arquivo):
     if not col_conf: 
         col_conf = next((c for c in df.columns if 'conform' in c and c != 'colaborador'), None)
     
-    # CASO 1: Planilha Combinada
     if col_ad and col_conf:
         lista_retorno = []
         
@@ -292,7 +300,6 @@ def tratar_arquivo_especial(df, nome_arquivo):
         
         return pd.concat(lista_retorno, ignore_index=True), "Extração Dupla Segura"
     
-    # CASO 2: Planilha de Indicador Único
     col_valor = None
     nome_kpi_limpo = nome_arquivo.split('.')[0].lower()
     
@@ -703,7 +710,6 @@ if perfil == 'admin':
                                 else:
                                     texto_comparacao = f" Em comparação ao mês anterior ({periodo_anterior}), mantivemos a performance estável (era {media_anterior_tam:.1%}). ⚖️"
 
-                # Identificação de Operadores Específicos
                 try:
                     top_operador = df_media_pessoas.loc[df_media_pessoas['% Atingimento'].idxmax()]
                     nome_top = top_operador['Colaborador'].title()
