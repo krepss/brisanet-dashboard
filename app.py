@@ -6,7 +6,7 @@ import os
 import json
 import time
 import base64
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import unicodedata
 
 # --- CONFIGURAÇÃO DA LOGO E ACESSOS ---
@@ -126,10 +126,22 @@ def tentar_extrair_data_csv(df):
             except: continue
     return None
 
-def obter_data_hoje(): return datetime.now().strftime("%m/%Y")
+def obter_data_hoje(): 
+    return datetime.now().strftime("%m/%Y")
+
+# --- CONVERSÃO INTELIGENTE PARA FUSO DE BRASÍLIA ---
 def obter_data_atualizacao():
-    if os.path.exists('historico_consolidado.csv'): return datetime.fromtimestamp(os.path.getmtime('historico_consolidado.csv')).strftime("%d/%m/%Y às %H:%M")
-    return datetime.now().strftime("%d/%m/%Y")
+    # Cria o fuso horário UTC-3 (Brasília)
+    fuso_brasilia = timezone(timedelta(hours=-3))
+    
+    if os.path.exists('historico_consolidado.csv'): 
+        # Lê a data de modificação em UTC
+        timestamp_utc = os.path.getmtime('historico_consolidado.csv')
+        dt_utc = datetime.fromtimestamp(timestamp_utc, tz=timezone.utc)
+        # Converte e formata para o fuso brasileiro
+        return dt_utc.astimezone(fuso_brasilia).strftime("%d/%m/%Y às %H:%M")
+        
+    return datetime.now(fuso_brasilia).strftime("%d/%m/%Y às %H:%M")
 
 def salvar_config(data_texto):
     try:
@@ -261,6 +273,7 @@ def tratar_arquivo_especial(df, nome_arquivo):
     
     if col_ad and col_conf:
         lista_retorno = []
+        
         df_ad = df[['Colaborador', col_ad]].copy()
         df_ad.rename(columns={col_ad: '% Atingimento'}, inplace=True)
         df_ad['% Atingimento'] = df_ad['% Atingimento'].apply(processar_porcentagem_br)
@@ -281,6 +294,7 @@ def tratar_arquivo_especial(df, nome_arquivo):
     
     col_valor = None
     nome_kpi_limpo = nome_arquivo.split('.')[0].lower()
+    
     prioridades = ['% atingimento', 'atingimento', 'resultado', 'nota final', 'score', 'nota', 'valor']
     for p in prioridades + [nome_kpi_limpo]:
         for c in df.columns:
@@ -295,13 +309,16 @@ def tratar_arquivo_especial(df, nome_arquivo):
         else: return None, f"Nenhuma coluna de nota identificada."
             
     df.rename(columns={col_valor: '% Atingimento'}, inplace=True)
+    
     for c in df.columns:
         if 'diamantes' in c and 'max' not in c: df.rename(columns={c: 'Diamantes'}, inplace=True)
         if 'max' in c and 'diamantes' in c: df.rename(columns={c: 'Max. Diamantes'}, inplace=True)
     
     df['% Atingimento'] = df['% Atingimento'].apply(processar_porcentagem_br)
+    
     if 'Diamantes' not in df.columns: df['Diamantes'] = 0.0
     if 'Max. Diamantes' not in df.columns: df['Max. Diamantes'] = 0.0
+    
     df['Diamantes'] = pd.to_numeric(df['Diamantes'], errors='coerce').fillna(0)
     df['Max. Diamantes'] = pd.to_numeric(df['Max. Diamantes'], errors='coerce').fillna(0)
     
@@ -527,6 +544,7 @@ if perfil == 'admin':
             qtd_vermelho = len(df_media_pessoas[df_media_pessoas['% Atingimento'] < 0.80]) 
             
             c1, c2, c3 = st.columns(3)
+            
             html_card_excelencia = f"""<a href="#excelencia" class="card-link"><div class="card-excelencia"><div style="color: #666; font-size: 14px;">💎 Excelência <span style="font-size:11px; color:#003366;">(Ver detalhes ⬇)</span></div><div style="color: #003366; font-size: 26px; font-weight: 700; margin-top: -2px;">{qtd_verde}</div><div style="color: #003366; font-size: 13px; font-weight: bold; margin-top: 5px;">↑ &gt;=90%</div></div></a>"""
             c1.markdown(html_card_excelencia, unsafe_allow_html=True)
             html_card_meta = f"""<a href="#meta-batida" class="card-link"><div class="card-meta"><div style="color: #666; font-size: 14px;">🟢 Meta Batida <span style="font-size:11px; color:#2ecc71;">(Ver detalhes ⬇)</span></div><div style="color: #003366; font-size: 26px; font-weight: 700; margin-top: -2px;">{qtd_amarelo}</div><div style="color: #2ecc71; font-size: 13px; font-weight: bold; margin-top: 5px;">~ 80-89%</div></div></a>"""
@@ -654,7 +672,7 @@ if perfil == 'admin':
                 melhor_kpi = df_medias_kpis.loc[df_medias_kpis['% Atingimento'].idxmax()] if not df_medias_kpis.empty else None
                 pior_kpi = df_medias_kpis.loc[df_medias_kpis['% Atingimento'].idxmin()] if not df_medias_kpis.empty else None
 
-                # --- COMPARAÇÃO HISTÓRICA DO MÊS ANTERIOR ---
+                # --- COMPARAÇÃO HISTÓRICA ---
                 texto_comparacao = ""
                 periodos_ord = listar_periodos_disponiveis()
                 if periodo_label in periodos_ord:
@@ -676,13 +694,12 @@ if perfil == 'admin':
                                 
                                 variacao = media_geral_tam - media_anterior_tam
                                 if variacao > 0.001:
-                                    texto_comparacao = f" Em comparação ao mês anterior ({periodo_anterior}), tivemos um **crescimento de {variacao*100:.1f} p.p.** na performance global da equipe (era {media_anterior_tam:.1%}). 🚀"
+                                    texto_comparacao = f" Em comparação ao mês anterior ({periodo_anterior}), tivemos um *crescimento de {variacao*100:.1f} p.p.* na performance da equipe (era {media_anterior_tam:.1%}). 🚀"
                                 elif variacao < -0.001:
-                                    texto_comparacao = f" Em comparação ao mês anterior ({periodo_anterior}), tivemos uma **queda de {abs(variacao)*100:.1f} p.p.** na performance global da equipe (era {media_anterior_tam:.1%}). 📉"
+                                    texto_comparacao = f" Em comparação ao mês anterior ({periodo_anterior}), tivemos uma *queda de {abs(variacao)*100:.1f} p.p.* na performance da equipe (era {media_anterior_tam:.1%}). 📉"
                                 else:
-                                    texto_comparacao = f" Em comparação ao mês anterior ({periodo_anterior}), mantivemos a performance global estável (era {media_anterior_tam:.1%}). ⚖️"
+                                    texto_comparacao = f" Em comparação ao mês anterior ({periodo_anterior}), mantivemos a performance estável (era {media_anterior_tam:.1%}). ⚖️"
 
-                # Identificação de Operadores Específicos
                 try:
                     top_operador = df_media_pessoas.loc[df_media_pessoas['% Atingimento'].idxmax()]
                     nome_top = top_operador['Colaborador'].title()
@@ -708,37 +725,38 @@ if perfil == 'admin':
                         nome_ofensor_kpi = ofensor_kpi['Colaborador'].title()
                         nota_ofensor_kpi = ofensor_kpi['% Atingimento']
 
-                texto_resumo = f"""**Resumo Executivo - {periodo_label} | Team Sofistas**
-
-**1. Visão Geral da Operação**
-Neste ciclo, a equipe fechou com um Resultado Geral médio de **{media_geral_tam:.1%}**.{texto_comparacao}
-Tivemos um total de {total_pessoas} operadores avaliados, distribuídos da seguinte forma:
-* 💎 Excelência (>= 90%): {qtd_verde} operadores ({qtd_verde/total_pessoas:.0%})
-* 🟢 Meta Batida (80% - 89%): {qtd_amarelo} operadores ({qtd_amarelo/total_pessoas:.0%})
-* 🔴 Atenção Prioritária (< 80%): {qtd_vermelho} operadores ({qtd_vermelho/total_pessoas:.0%})
-
-**2. Qualidade e Produtividade**
-* **Média de CSAT:** {media_csat:.1%}
-* **Média de Aderência:** {media_ad:.1%}
-* **Média de Conformidade:** {media_conf:.1%}
-
-**3. Análise de Destaques e Oportunidades**
-* 🏆 **Destaque do Mês:** O operador **{nome_top}** entregou o melhor resultado da equipe, atingindo impressionantes **{nota_top:.1%}** de performance global. 
-* 🎯 **Atenção Individual:** Por outro lado, **{nome_pior}** obteve o menor resultado do ciclo (**{nota_pior:.1%}**) e precisará de acompanhamento intensivo (PDI) nas próximas semanas.
-"""
-                if melhor_kpi is not None and pior_kpi is not None:
-                    texto_resumo += f"""* 📈 **Ponto Forte da Equipe:** O indicador com melhor desempenho coletivo foi **{formatar_nome_visual(melhor_kpi['Indicador'])}** (Média: {melhor_kpi['% Atingimento']:.1%}).
-* ⚠️ **Gargalo Coletivo:** O ofensor que mais penalizou a operação de forma geral foi **{formatar_nome_visual(pior_kpi['Indicador'])}** (Média: {pior_kpi['% Atingimento']:.1%}). O operador **{nome_ofensor_kpi}** foi o mais impactado individualmente neste indicador ({nota_ofensor_kpi:.1%}).
-"""
                 nome_pior_formatado = nome_pior.split(" ")[0] if nome_pior != "Indisponível" else "foco"
                 nome_top_formatado = nome_top.split(" ")[0] if nome_top != "Indisponível" else "foco"
                 pior_kpi_str = formatar_nome_visual(pior_kpi['Indicador']) if pior_kpi is not None else "gargalos"
 
-                texto_resumo += f"""
-**4. Próximos Passos (Plano de Ação Sugerido)**
-O foco da liderança para o próximo ciclo será atuar diretamente na base crítica de operadores, com PDI prioritário focado em {nome_pior_formatado}. Além disso, faremos rodadas de ouvidorias e calibração voltadas para **{pior_kpi_str}** com o intuito de recuperar a média da equipe. Paralelamente, manteremos as ações de reconhecimento público exaltando o alto desempenho entregue por {nome_top_formatado} e demais operadores de excelência para engajar o restante do time."""
+                # Geração da String Final
+                texto_resumo = f"""📊 *RESUMO EXECUTIVO | {periodo_label} - TEAM SOFISTAS* 📊
 
-                st.markdown("💡 **Dica:** O texto abaixo é gerado automaticamente pela Inteligência do sistema cruzando os dados do mês inteiro da sua equipe com os resultados do mês anterior. Você pode copiá-lo para enviar à coordenação ou usar em reuniões gerenciais.")
+*1️⃣ VISÃO GERAL DA OPERAÇÃO*
+Neste ciclo, a equipe fechou com um Resultado Geral médio de *{media_geral_tam:.1%}*.{texto_comparacao}
+Tivemos um total de {total_pessoas} operadores avaliados, distribuídos da seguinte forma:
+▪️ 💎 Excelência (>= 90%): {qtd_verde} op. ({qtd_verde/total_pessoas:.0%})
+▪️ 🟢 Meta Batida (80% a 89%): {qtd_amarelo} op. ({qtd_amarelo/total_pessoas:.0%})
+▪️ 🔴 Atenção Prioritária (< 80%): {qtd_vermelho} op. ({qtd_vermelho/total_pessoas:.0%})
+
+*2️⃣ INDICADORES DE QUALIDADE*
+▪️ CSAT Médio: {media_csat:.1%}
+▪️ Aderência Média: {media_ad:.1%}
+▪️ Conformidade Média: {media_conf:.1%}
+
+*3️⃣ ANÁLISE DE DESTAQUES E OPORTUNIDADES*
+🏆 *Top Performer:* O operador *{nome_top}* entregou o melhor resultado da equipe, atingindo *{nota_top:.1%}* de performance global. 
+🎯 *Foco de Desenvolvimento:* Por outro lado, *{nome_pior}* obteve o menor resultado do ciclo (*{nota_pior:.1%}*) e será priorizado no acompanhamento (PDI).
+"""
+                if melhor_kpi is not None and pior_kpi is not None:
+                    texto_resumo += f"""📈 *Ponto Forte da Equipe:* {formatar_nome_visual(melhor_kpi['Indicador'])} (Média: {melhor_kpi['% Atingimento']:.1%}).
+⚠️ *Gargalo Coletivo:* {formatar_nome_visual(pior_kpi['Indicador'])} (Média: {pior_kpi['% Atingimento']:.1%}). O operador *{nome_ofensor_kpi}* foi o mais impactado individualmente neste indicador ({nota_ofensor_kpi:.1%}).
+"""
+                texto_resumo += f"""
+*4️⃣ PRÓXIMOS PASSOS*
+O foco da liderança para o próximo ciclo será atuar diretamente na base crítica, com PDI prioritário focado em {nome_pior_formatado}, além de rodadas de ouvidoria para alavancar os números de {pior_kpi_str}. Paralelamente, manteremos as ações de reconhecimento exaltando o alto desempenho de {nome_top_formatado} para engajar o restante do time."""
+
+                st.info("💡 **Dica de Ouro:** O texto abaixo foi gerado automaticamente e já está **formatado para o WhatsApp**. Copie e cole na sua janela de conversa com os seus coordenadores e os asteriscos transformarão os títulos em negrito!")
                 st.code(texto_resumo, language="markdown")
             else:
                 st.info("Aguardando upload de dados para calcular o resumo executivo.")
