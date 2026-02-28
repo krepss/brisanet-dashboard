@@ -10,7 +10,7 @@ from datetime import datetime, timezone, timedelta
 import unicodedata
 
 # --- CONFIGURAÇÃO DA LOGO E ACESSOS ---
-LOGO_FILE = "logo.png"
+LOGO_FILE = "logo.ico"
 SENHA_ADMIN = "admin123"
 USUARIOS_ADMIN = ['gestor', 'admin']
 
@@ -129,6 +129,7 @@ def tentar_extrair_data_csv(df):
 def obter_data_hoje(): 
     return datetime.now().strftime("%m/%Y")
 
+# --- CONVERSÃO INTELIGENTE PARA FUSO DE BRASÍLIA ---
 def obter_data_atualizacao():
     fuso_brasilia = timezone(timedelta(hours=-3))
     if os.path.exists('historico_consolidado.csv'): 
@@ -213,6 +214,7 @@ def salvar_arquivos_padronizados(files):
         with open(f.name, "wb") as w: w.write(f.getbuffer())
     return True
 
+# --- LÊ A PORCENTAGEM (Blindada) ---
 def processar_porcentagem_br(valor):
     if pd.isna(valor) or str(valor).strip() == '': return 0.0
     if isinstance(valor, str):
@@ -414,7 +416,8 @@ def salvar_feedback_gb(dados_fb):
 
 def carregar_feedbacks_gb():
     if os.path.exists('feedbacks_gb.csv'):
-        try: return pd.read_csv('feedbacks_gb.csv')
+        # --- CORREÇÃO: LEITOR INTELIGENTE PARA FEEDBACKS ---
+        try: return ler_csv_inteligente('feedbacks_gb.csv')
         except: return None
     return None
 
@@ -710,6 +713,7 @@ if perfil == 'admin':
                                 else:
                                     texto_comparacao = f" Em comparação ao mês anterior ({periodo_anterior}), mantivemos a performance estável (era {media_anterior_tam:.1%}). ⚖️"
 
+                # Identificação de Operadores Específicos
                 try:
                     top_operador = df_media_pessoas.loc[df_media_pessoas['% Atingimento'].idxmax()]
                     nome_top = top_operador['Colaborador'].title()
