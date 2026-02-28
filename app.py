@@ -153,7 +153,7 @@ def limpar_base_dados_completa():
         if f.endswith('.csv'): os.remove(f)
 
 def faxina_arquivos_temporarios():
-    protegidos = ['historico_consolidado.csv', 'usuarios.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv']
+    protegidos = ['historico_consolidado.csv', 'usuarios.csv', 'config.json', LOGO_FILE, 'feedbacks_gb_backup.csv']
     for f in os.listdir('.'):
         if f.endswith('.csv') and f not in protegidos:
             try: os.remove(f)
