@@ -10,7 +10,7 @@ from datetime import datetime, timezone, timedelta
 import unicodedata
 
 # --- CONFIGURAÇÃO DA LOGO E ACESSOS ---
-LOGO_FILE = "logo.ico"
+LOGO_FILE = "logo.png"
 SENHA_ADMIN = "admin123"
 USUARIOS_ADMIN = ['gestor', 'admin']
 
@@ -129,7 +129,6 @@ def tentar_extrair_data_csv(df):
 def obter_data_hoje(): 
     return datetime.now().strftime("%m/%Y")
 
-# --- CONVERSÃO INTELIGENTE PARA FUSO DE BRASÍLIA ---
 def obter_data_atualizacao():
     fuso_brasilia = timezone(timedelta(hours=-3))
     if os.path.exists('historico_consolidado.csv'): 
@@ -153,7 +152,7 @@ def limpar_base_dados_completa():
         if f.endswith('.csv'): os.remove(f)
 
 def faxina_arquivos_temporarios():
-    protegidos = ['historico_consolidado.csv', 'usuarios.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv']
+    protegidos = ['historico_consolidado.csv', 'usuarios.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv', 'feedbacks_gb_backup.csv']
     for f in os.listdir('.'):
         if f.endswith('.csv') and f not in protegidos:
             try: os.remove(f)
@@ -247,7 +246,7 @@ def normalizar_chave(texto):
     nfkd = unicodedata.normalize('NFKD', texto)
     return " ".join(u"".join([c for c in nfkd if not unicodedata.combining(c)]).split())
 
-# --- FUNÇÃO DE NORMALIZAÇÃO ---
+# --- FUNÇÃO RESTAURADA ---
 def normalizar_nome_indicador(nome_arquivo):
     nome = nome_arquivo.upper()
     if 'ADER' in nome: return 'ADERENCIA'
@@ -348,7 +347,7 @@ def classificar_farol(val):
 def carregar_dados_completo_debug():
     lista_final = []
     log_debug = []
-    arquivos_ignorar = ['usuarios.csv', 'historico_consolidado.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv']
+    arquivos_ignorar = ['usuarios.csv', 'historico_consolidado.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv', 'feedbacks_gb_backup.csv']
     arquivos = [f for f in os.listdir('.') if f.endswith('.csv') and f.lower() not in arquivos_ignorar]
     for arquivo in arquivos:
         try:
@@ -406,23 +405,35 @@ def filtrar_por_usuarios_cadastrados(df_dados, df_users):
 def salvar_feedback_gb(dados_fb):
     ARQUIVO_FB = 'feedbacks_gb.csv'
     df_novo = pd.DataFrame([dados_fb])
+    # Tenta salvar no principal
     if os.path.exists(ARQUIVO_FB):
         try:
             df_hist = pd.read_csv(ARQUIVO_FB)
             df_final = pd.concat([df_hist, df_novo], ignore_index=True)
         except: df_final = df_novo
-    else: df_final = df_novo
+    else: 
+        # Se não existe, verifica se existe o backup e cria o principal a partir dele
+        if os.path.exists('feedbacks_gb_backup.csv'):
+            try:
+                df_hist = pd.read_csv('feedbacks_gb_backup.csv')
+                df_final = pd.concat([df_hist, df_novo], ignore_index=True)
+            except: df_final = df_novo
+        else:
+            df_final = df_novo
+    
     df_final.to_csv(ARQUIVO_FB, index=False)
 
 def carregar_feedbacks_gb():
-    if os.path.exists('feedbacks_gb.csv'):
-        try:
-            # Tenta ler com força bruta usando os leitores inteligentes
-            df = ler_csv_inteligente('feedbacks_gb.csv')
-            if df is not None: return df
-            # Fallback para leitura padrão
-            return pd.read_csv('feedbacks_gb.csv')
-        except: return None
+    # Estratégia de Força Bruta para achar o arquivo
+    nomes_possiveis = ['feedbacks_gb.csv', 'feedbacks_gb_backup.csv']
+    
+    for nome in nomes_possiveis:
+        if os.path.exists(nome):
+            try:
+                df = ler_csv_inteligente(nome)
+                if df is not None: return df
+            except: continue
+            
     return None
 
 # --- 4. LOGIN RENOVADO ---
@@ -1039,9 +1050,14 @@ O foco da liderança para o próximo ciclo será atuar diretamente na base crít
         st.markdown("### 📝 Controle de Feedbacks (GB)")
         
         # --- DIAGNÓSTICO DE ARQUIVO ---
-        arquivo_fb_existe = os.path.exists('feedbacks_gb_backup.csv')
-        status_msg = "✅ Arquivo Encontrado" if arquivo_fb_existe else "⚠️ Arquivo Não Encontrado (Será criado ao salvar o primeiro)"
-        st.caption(f"Status do Banco de Dados: {status_msg}")
+        arquivo_padrao = os.path.exists('feedbacks_gb.csv')
+        arquivo_backup = os.path.exists('feedbacks_gb_backup.csv')
+        
+        status_msg = "❌ Nenhum banco de dados encontrado."
+        if arquivo_padrao: status_msg = "✅ Banco de Dados Principal (feedbacks_gb.csv) encontrado."
+        elif arquivo_backup: status_msg = "⚠️ Usando Backup (feedbacks_gb_backup.csv)."
+        
+        st.caption(f"Status do Sistema: {status_msg}")
         
         st.info("💡 **Objetivo:** Registrar feedback orientado a valor.")
         
@@ -1252,10 +1268,7 @@ else:
 
     with tab_feedbacks:
         st.markdown("### 📝 Histórico de Feedbacks")
-        
-        # --- CARREGAMENTO ROBUSTO ---
         df_fbs = carregar_feedbacks_gb()
-        
         if df_fbs is not None and not df_fbs.empty:
             df_fbs['Colaborador_Norm'] = df_fbs['Colaborador'].apply(normalizar_chave)
             meus_fbs = df_fbs[df_fbs['Colaborador_Norm'] == normalizar_chave(nome_logado)].copy()
