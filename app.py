@@ -430,8 +430,11 @@ def carregar_feedbacks_gb():
     for nome in nomes_possiveis:
         if os.path.exists(nome):
             try:
+                # Tenta ler com o leitor inteligente
                 df = ler_csv_inteligente(nome)
                 if df is not None: return df
+                # Se falhar, tenta leitura padrão
+                return pd.read_csv(nome)
             except: continue
             
     return None
@@ -788,6 +791,36 @@ O foco da liderança para o próximo ciclo será atuar diretamente na base crít
 
                 st.info("💡 **Dica de Ouro:** O texto abaixo foi gerado automaticamente e já está **formatado para o WhatsApp**. Copie e cole na sua janela de conversa com a sua coordenação!")
                 st.code(texto_resumo, language="markdown")
+                
+                # --- NOVO: MURAL DO TIME (GTALK) ---
+                st.markdown("---")
+                st.markdown("#### 📢 Mural do Time (GTalk/WhatsApp)")
+                st.caption("Copie e cole no grupo da equipe para celebrar os resultados!")
+                
+                # Top 3
+                df_rank = df_media_pessoas.sort_values(by='% Atingimento', ascending=False).reset_index(drop=True)
+                top1 = df_rank.iloc[0]['Colaborador'] if len(df_rank) > 0 else "N/A"
+                top2 = df_rank.iloc[1]['Colaborador'] if len(df_rank) > 1 else "N/A"
+                top3 = df_rank.iloc[2]['Colaborador'] if len(df_rank) > 2 else "N/A"
+
+                msg_time = f"""Fala, Time! 🦁🚀
+
+Passando para fechar a régua do mês de *{periodo_label}*!
+Queria agradecer o empenho de cada um. Sabemos que a operação é dinâmica, mas o foco de vocês faz toda a diferença.
+
+🏆 *PODIUM DO MÊS - DESTAQUES* 🏆
+🥇 *{top1.title()}*
+🥈 *{top2.title()}*
+🥉 *{top3.title()}*
+
+Parabéns aos destaques! Vocês mandaram muito bem! 👏
+
+Para quem não chegou lá dessa vez: o jogo reinicia agora. Vamos ajustar os ponteiros, focar na qualidade (CSAT/Conformidade) e buscar esse topo no próximo ciclo. Conto com vocês!
+
+O detalhe individual já está atualizado no painel.
+Vamos com tudo! 🔥"""
+                st.code(msg_time, language="markdown")
+
             else:
                 st.info("Aguardando upload de dados para calcular o resumo executivo.")
         else:
@@ -1268,7 +1301,10 @@ else:
 
     with tab_feedbacks:
         st.markdown("### 📝 Histórico de Feedbacks")
+        
+        # --- CARREGAMENTO ROBUSTO ---
         df_fbs = carregar_feedbacks_gb()
+        
         if df_fbs is not None and not df_fbs.empty:
             df_fbs['Colaborador_Norm'] = df_fbs['Colaborador'].apply(normalizar_chave)
             meus_fbs = df_fbs[df_fbs['Colaborador_Norm'] == normalizar_chave(nome_logado)].copy()
