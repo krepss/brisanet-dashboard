@@ -153,7 +153,7 @@ def limpar_base_dados_completa():
         if f.endswith('.csv'): os.remove(f)
 
 def faxina_arquivos_temporarios():
-    protegidos = ['historico_consolidado.csv', 'usuarios.csv', 'config.json', LOGO_FILE, 'feedbacks_gb_backup.csv']
+    protegidos = ['historico_consolidado.csv', 'usuarios.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv']
     for f in os.listdir('.'):
         if f.endswith('.csv') and f not in protegidos:
             try: os.remove(f)
@@ -247,7 +247,7 @@ def normalizar_chave(texto):
     nfkd = unicodedata.normalize('NFKD', texto)
     return " ".join(u"".join([c for c in nfkd if not unicodedata.combining(c)]).split())
 
-# --- FUNÇÃO RESTAURADA ---
+# --- FUNÇÃO DE NORMALIZAÇÃO ---
 def normalizar_nome_indicador(nome_arquivo):
     nome = nome_arquivo.upper()
     if 'ADER' in nome: return 'ADERENCIA'
@@ -416,8 +416,12 @@ def salvar_feedback_gb(dados_fb):
 
 def carregar_feedbacks_gb():
     if os.path.exists('feedbacks_gb.csv'):
-        # --- CORREÇÃO: LEITOR INTELIGENTE PARA FEEDBACKS ---
-        try: return ler_csv_inteligente('feedbacks_gb.csv')
+        try:
+            # Tenta ler com força bruta usando os leitores inteligentes
+            df = ler_csv_inteligente('feedbacks_gb.csv')
+            if df is not None: return df
+            # Fallback para leitura padrão
+            return pd.read_csv('feedbacks_gb.csv')
         except: return None
     return None
 
@@ -1033,7 +1037,14 @@ O foco da liderança para o próximo ciclo será atuar diretamente na base crít
     # ------------------ FEEDBACKS GB ------------------
     with tabs[10]:
         st.markdown("### 📝 Controle de Feedbacks (GB)")
+        
+        # --- DIAGNÓSTICO DE ARQUIVO ---
+        arquivo_fb_existe = os.path.exists('feedbacks_gb_backup.csv')
+        status_msg = "✅ Arquivo Encontrado" if arquivo_fb_existe else "⚠️ Arquivo Não Encontrado (Será criado ao salvar o primeiro)"
+        st.caption(f"Status do Banco de Dados: {status_msg}")
+        
         st.info("💡 **Objetivo:** Registrar feedback orientado a valor.")
+        
         if df_dados is not None and tem_tam:
             df_tam = df_dados[df_dados['Indicador'] == 'TAM'].copy()
             faixa_sel = st.selectbox("🎯 Selecione a Faixa de Desempenho (Baseado no TAM):", ["🔴 Abaixo de 70% (Crítico)", "🟠 Entre 70% e 80% (Atenção)", "🟡 Entre 80% e 90% (Meta Batida)", "🟢 Acima de 90% (Excelência)"])
@@ -1080,25 +1091,20 @@ O foco da liderança para o próximo ciclo será atuar diretamente na base crít
                             else:
                                 salvar_feedback_gb({"Data_Registro": datetime.now().strftime("%d/%m/%Y %H:%M"), "Periodo_Ref": periodo_label, "Colaborador": colab_fb, "Faixa": faixa_sel.split(" ")[0], "TAM": f"{tam_v:.1%}", "Motivo": motivo_txt, "Acao_GB": acao_txt, "Feedback_Valor": fb_valor_txt})
                                 st.success("✅ Feedback registrado!")
-                                
-                                lista_kpis_email = "\n".join([f"* **{formatar_nome_visual(row['Indicador'])}:** {row['% Atingimento']:.1%}" for _, row in df_user_fb.iterrows()])
-                                if tam_v < 0.70: ab = f"O seu Resultado Geral (TAM) fechou em **{tam_v:.1%}**, abaixo da meta. Vamos focar na recuperação!"
-                                elif tam_v < 0.80: ab = f"O seu Resultado Geral (TAM) fechou em **{tam_v:.1%}**. Estamos quase lá! Vamos alinhar os ponteiros."
-                                elif tam_v < 0.90: ab = f"Parabéns! O seu Resultado Geral (TAM) fechou em **{tam_v:.1%}**, batendo a nossa meta."
-                                else: ab = f"Uau! O seu Resultado Geral (TAM) fechou em **{tam_v:.1%}**, resultado de extrema Excelência!"
-                                
-                                email_template = f"**Assunto:** Feedback Mensal - Resultado Operacional - {periodo_label}\n\nOlá, **{colab_fb}**. Tudo bem?\n\nGostaria de repassar os pontos referentes ao seu desempenho de **{periodo_label}**.\n{ab}\n\nAqui está o detalhamento dos seus indicadores:\n{lista_kpis_email}\n\n**Pontos Mapeados:**\n{motivo_txt}\n\n**Nosso Plano de Ação:**\n{acao_txt}\n\n**Feedback Estratégico:**\n{fb_valor_txt}\n\nConto com seu engajamento para o próximo ciclo!\n\nAtenciosamente,\nSua Liderança."
-                                
-                                st.markdown("### 📧 E-mail Gerado (Copie e cole):")
-                                st.code(email_template, language='markdown')
-
+                                time.sleep(1) # Espera um pouco para o arquivo ser escrito
+                                st.rerun() # Recarrega a página para mostrar o novo feedback na tabela abaixo
             else: st.success(f"Nenhum colaborador encontrado na faixa.")
         
         st.markdown("---")
         st.markdown("### 📚 Base Geral de Feedbacks Aplicados")
+        
+        # --- CARREGAMENTO ROBUSTO ---
         df_fbs_hist = carregar_feedbacks_gb()
-        if df_fbs_hist is not None and not df_fbs_hist.empty: st.dataframe(df_fbs_hist.iloc[::-1], use_container_width=True, hide_index=True)
-        else: st.info("Nenhum feedback registrado no sistema até o momento.")
+        
+        if df_fbs_hist is not None and not df_fbs_hist.empty: 
+            st.dataframe(df_fbs_hist.iloc[::-1], use_container_width=True, hide_index=True)
+        else: 
+            st.info("Nenhum feedback registrado no sistema até o momento.")
 
 # ==========================================
 # --- 7. VISÃO DO OPERADOR ---
@@ -1246,7 +1252,10 @@ else:
 
     with tab_feedbacks:
         st.markdown("### 📝 Histórico de Feedbacks")
+        
+        # --- CARREGAMENTO ROBUSTO ---
         df_fbs = carregar_feedbacks_gb()
+        
         if df_fbs is not None and not df_fbs.empty:
             df_fbs['Colaborador_Norm'] = df_fbs['Colaborador'].apply(normalizar_chave)
             meus_fbs = df_fbs[df_fbs['Colaborador_Norm'] == normalizar_chave(nome_logado)].copy()
