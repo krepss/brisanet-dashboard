@@ -561,10 +561,21 @@ if perfil == 'admin':
         if df_dados is not None and not df_dados.empty:
             st.markdown(f"### Resumo de Saúde: **{periodo_label}**")
             
+            ignorar_pontualidade = st.checkbox("Recalcular Cards sem Pontualidade", value=False)
+
             if tem_tam:
-                df_media_pessoas = df_dados[df_dados['Indicador'] == 'TAM'][['Colaborador', '% Atingimento']].copy()
+                df_base = df_dados[df_dados['Indicador'] == 'TAM'][['Colaborador', 'Diamantes', 'Max. Diamantes']].set_index('Colaborador').copy()
+                if ignorar_pontualidade:
+                    df_pont = df_dados[df_dados['Indicador'] == 'PONTUALIDADE'][['Colaborador', 'Diamantes', 'Max. Diamantes']].set_index('Colaborador').copy()
+                    df_base = df_base.subtract(df_pont, fill_value=0)
+                df_base['% Atingimento'] = df_base.apply(lambda row: row['Diamantes'] / row['Max. Diamantes'] if row['Max. Diamantes'] > 0 else 0, axis=1)
+                df_media_pessoas = df_base.reset_index()
             else:
-                df_media_pessoas = df_dados.groupby('Colaborador').agg({'Diamantes': 'sum', 'Max. Diamantes': 'sum'}).reset_index()
+                if ignorar_pontualidade:
+                    df_calc = df_dados[df_dados['Indicador'] != 'PONTUALIDADE']
+                else:
+                    df_calc = df_dados
+                df_media_pessoas = df_calc.groupby('Colaborador').agg({'Diamantes': 'sum', 'Max. Diamantes': 'sum'}).reset_index()
                 df_media_pessoas['% Atingimento'] = df_media_pessoas.apply(lambda row: row['Diamantes'] / row['Max. Diamantes'] if row['Max. Diamantes'] > 0 else 0, axis=1)
 
             qtd_verde = len(df_media_pessoas[df_media_pessoas['% Atingimento'] >= 0.90]) 
@@ -1313,10 +1324,7 @@ else:
 
     with tab_feedbacks:
         st.markdown("### 📝 Histórico de Feedbacks")
-        
-        # --- CARREGAMENTO ROBUSTO ---
         df_fbs = carregar_feedbacks_gb()
-        
         if df_fbs is not None and not df_fbs.empty:
             df_fbs['Colaborador_Norm'] = df_fbs['Colaborador'].apply(normalizar_chave)
             meus_fbs = df_fbs[df_fbs['Colaborador_Norm'] == normalizar_chave(nome_logado)].copy()
