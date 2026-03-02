@@ -404,7 +404,6 @@ def filtrar_por_usuarios_cadastrados(df_dados, df_users):
 def salvar_feedback_gb(dados_fb):
     ARQUIVO_FB = 'feedbacks_gb.csv'
     df_novo = pd.DataFrame([dados_fb])
-    
     # Tenta salvar no principal
     if os.path.exists(ARQUIVO_FB):
         try:
@@ -412,7 +411,7 @@ def salvar_feedback_gb(dados_fb):
             df_final = pd.concat([df_hist, df_novo], ignore_index=True)
         except: df_final = df_novo
     else: 
-        # Se não existe o principal, verifica se existe o backup
+        # Se não existe, verifica se existe o backup e cria o principal a partir dele
         if os.path.exists('feedbacks_gb_backup.csv'):
             try:
                 df_hist = pd.read_csv('feedbacks_gb_backup.csv')
@@ -421,19 +420,20 @@ def salvar_feedback_gb(dados_fb):
         else:
             df_final = df_novo
     
-    # Salva no arquivo padrão
     df_final.to_csv(ARQUIVO_FB, index=False)
 
 def carregar_feedbacks_gb():
-    # Estratégia de Força Bruta para achar o arquivo e ler sem erro
+    # Estratégia de Força Bruta para achar o arquivo
     nomes_possiveis = ['feedbacks_gb.csv', 'feedbacks_gb_backup.csv']
     
     for nome in nomes_possiveis:
         if os.path.exists(nome):
             try:
-                # Tenta ler com o leitor inteligente (utf8/latin1/pontovirgula)
+                # Tenta ler com o leitor inteligente
                 df = ler_csv_inteligente(nome)
                 if df is not None: return df
+                # Se falhar, tenta leitura padrão
+                return pd.read_csv(nome)
             except: continue
             
     return None
@@ -889,7 +889,7 @@ Vamos com tudo! 🔥"""
                     df_kpi = df_viz[df_viz['Indicador'] == kpi].sort_values(by='% Atingimento', ascending=True)
                     fig_rank = px.bar(df_kpi, x='% Atingimento', y='Colaborador', orientation='h', text_auto='.1%', color='% Atingimento', color_continuous_scale=['#e74c3c', '#f1c40f', '#2ecc71'])
                     fig_rank.add_vline(x=0.8, line_dash="dash", line_color="black")
-                    st.plotly_chart(fig_rank, use_container_width=True)
+                    st.plotly_chart(fig_rank, use_container_width=True, key=f"chart_rank_{kpi}")
 
     # ------------------ COMISSÕES ------------------
     with tabs[5]:
@@ -1313,7 +1313,10 @@ else:
 
     with tab_feedbacks:
         st.markdown("### 📝 Histórico de Feedbacks")
+        
+        # --- CARREGAMENTO ROBUSTO ---
         df_fbs = carregar_feedbacks_gb()
+        
         if df_fbs is not None and not df_fbs.empty:
             df_fbs['Colaborador_Norm'] = df_fbs['Colaborador'].apply(normalizar_chave)
             meus_fbs = df_fbs[df_fbs['Colaborador_Norm'] == normalizar_chave(nome_logado)].copy()
