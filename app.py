@@ -246,7 +246,6 @@ def normalizar_chave(texto):
     nfkd = unicodedata.normalize('NFKD', texto)
     return " ".join(u"".join([c for c in nfkd if not unicodedata.combining(c)]).split())
 
-# --- FUNÇÃO RESTAURADA ---
 def normalizar_nome_indicador(nome_arquivo):
     nome = nome_arquivo.upper()
     if 'ADER' in nome: return 'ADERENCIA'
@@ -272,6 +271,7 @@ def tratar_arquivo_especial(df, nome_arquivo):
     df.rename(columns={col_agente: 'Colaborador'}, inplace=True)
     df['Colaborador'] = df['Colaborador'].apply(normalizar_chave)
     
+    # 1. Identifica as colunas cravando no símbolo "%"
     col_ad = next((c for c in df.columns if 'ader' in c and ('%' in c or 'perc' in c)), None)
     if not col_ad: 
         col_ad = next((c for c in df.columns if 'ader' in c and 'duração' not in c and 'programado' not in c and c != 'colaborador'), None)
@@ -282,7 +282,6 @@ def tratar_arquivo_especial(df, nome_arquivo):
     
     if col_ad and col_conf:
         lista_retorno = []
-        
         df_ad = df[['Colaborador', col_ad]].copy()
         df_ad.rename(columns={col_ad: '% Atingimento'}, inplace=True)
         df_ad['% Atingimento'] = df_ad['% Atingimento'].apply(processar_porcentagem_br)
@@ -405,6 +404,7 @@ def filtrar_por_usuarios_cadastrados(df_dados, df_users):
 def salvar_feedback_gb(dados_fb):
     ARQUIVO_FB = 'feedbacks_gb.csv'
     df_novo = pd.DataFrame([dados_fb])
+    
     # Tenta salvar no principal
     if os.path.exists(ARQUIVO_FB):
         try:
@@ -412,7 +412,7 @@ def salvar_feedback_gb(dados_fb):
             df_final = pd.concat([df_hist, df_novo], ignore_index=True)
         except: df_final = df_novo
     else: 
-        # Se não existe, verifica se existe o backup e cria o principal a partir dele
+        # Se não existe o principal, verifica se existe o backup
         if os.path.exists('feedbacks_gb_backup.csv'):
             try:
                 df_hist = pd.read_csv('feedbacks_gb_backup.csv')
@@ -421,20 +421,19 @@ def salvar_feedback_gb(dados_fb):
         else:
             df_final = df_novo
     
+    # Salva no arquivo padrão
     df_final.to_csv(ARQUIVO_FB, index=False)
 
 def carregar_feedbacks_gb():
-    # Estratégia de Força Bruta para achar o arquivo
+    # Estratégia de Força Bruta para achar o arquivo e ler sem erro
     nomes_possiveis = ['feedbacks_gb.csv', 'feedbacks_gb_backup.csv']
     
     for nome in nomes_possiveis:
         if os.path.exists(nome):
             try:
-                # Tenta ler com o leitor inteligente
+                # Tenta ler com o leitor inteligente (utf8/latin1/pontovirgula)
                 df = ler_csv_inteligente(nome)
                 if df is not None: return df
-                # Se falhar, tenta leitura padrão
-                return pd.read_csv(nome)
             except: continue
             
     return None
@@ -1139,9 +1138,20 @@ Vamos com tudo! 🔥"""
                             if not motivo_txt or not fb_valor_txt or not acao_txt: st.error("⚠️ Preencha todos os campos.")
                             else:
                                 salvar_feedback_gb({"Data_Registro": datetime.now().strftime("%d/%m/%Y %H:%M"), "Periodo_Ref": periodo_label, "Colaborador": colab_fb, "Faixa": faixa_sel.split(" ")[0], "TAM": f"{tam_v:.1%}", "Motivo": motivo_txt, "Acao_GB": acao_txt, "Feedback_Valor": fb_valor_txt})
-                                st.success("✅ Feedback registrado!")
-                                time.sleep(1) # Espera um pouco para o arquivo ser escrito
-                                st.rerun() # Recarrega a página para mostrar o novo feedback na tabela abaixo
+                                st.success("✅ Feedback registrado! (A tabela atualizará no próximo clique)")
+                                
+                                # GERADOR DE EMAIL (MOSTRAR ANTES DE RECARREGAR)
+                                lista_kpis_email = "\n".join([f"* **{formatar_nome_visual(row['Indicador'])}:** {row['% Atingimento']:.1%}" for _, row in df_user_fb.iterrows()])
+                                if tam_v < 0.70: ab = f"O seu Resultado Geral (TAM) fechou em **{tam_v:.1%}**, abaixo da meta. Vamos focar na recuperação!"
+                                elif tam_v < 0.80: ab = f"O seu Resultado Geral (TAM) fechou em **{tam_v:.1%}**. Estamos quase lá! Vamos alinhar os ponteiros."
+                                elif tam_v < 0.90: ab = f"Parabéns! O seu Resultado Geral (TAM) fechou em **{tam_v:.1%}**, batendo a nossa meta."
+                                else: ab = f"Uau! O seu Resultado Geral (TAM) fechou em **{tam_v:.1%}**, resultado de extrema Excelência!"
+                                
+                                email_template = f"**Assunto:** Feedback Mensal - Resultado Operacional - {periodo_label}\n\nOlá, **{colab_fb}**. Tudo bem?\n\nGostaria de repassar os pontos referentes ao seu desempenho de **{periodo_label}**.\n{ab}\n\nAqui está o detalhamento dos seus indicadores:\n{lista_kpis_email}\n\n**Pontos Mapeados:**\n{motivo_txt}\n\n**Nosso Plano de Ação:**\n{acao_txt}\n\n**Feedback Estratégico:**\n{fb_valor_txt}\n\nConto com seu engajamento para o próximo ciclo!\n\nAtenciosamente,\nSua Liderança."
+                                
+                                st.markdown("### 📧 E-mail Gerado (Copie e cole):")
+                                st.code(email_template, language='markdown')
+
             else: st.success(f"Nenhum colaborador encontrado na faixa.")
         
         st.markdown("---")
@@ -1224,6 +1234,7 @@ else:
             
             st.markdown("---")
             
+            # --- DEVOLVENDO O EXTRATO FINANCEIRO ---
             pior_row = meus_dados.sort_values(by='% Atingimento').iloc[0]
             if pior_row['% Atingimento'] < 0.9:
                 dica = DICAS_KPI.get(pior_row['Indicador'], "Fale com seu gestor.")
@@ -1267,6 +1278,7 @@ else:
                 with cols[i]: st.metric(label, f"{val:.2%}", "✅ Meta Batida" if round(val, 4) >= meta else f"🔻 Meta {meta:.0%}", delta_color="normal" if round(val, 4) >= meta else "inverse")
             st.markdown("---")
             
+            # --- DEVOLVENDO O RAIO-X RADAR CHART ---
             media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
             media_equipe.rename(columns={'% Atingimento': 'Média Equipe'}, inplace=True)
             if not media_equipe.empty:
@@ -1301,10 +1313,7 @@ else:
 
     with tab_feedbacks:
         st.markdown("### 📝 Histórico de Feedbacks")
-        
-        # --- CARREGAMENTO ROBUSTO ---
         df_fbs = carregar_feedbacks_gb()
-        
         if df_fbs is not None and not df_fbs.empty:
             df_fbs['Colaborador_Norm'] = df_fbs['Colaborador'].apply(normalizar_chave)
             meus_fbs = df_fbs[df_fbs['Colaborador_Norm'] == normalizar_chave(nome_logado)].copy()
