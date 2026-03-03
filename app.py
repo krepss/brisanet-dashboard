@@ -839,21 +839,12 @@ Vamos com tudo! 🔥"""
     # ------------------ RANKING ------------------
     with tabs[2]:
         st.markdown(f"### 🏆 Ranking Geral (Consolidado)")
-        recalcular_ranking = st.checkbox("Visualizar Ranking sem Pontualidade", value=False)
         if df_dados is not None:
             if tem_tam: 
-                df_rank = df_dados[df_dados['Indicador'] == 'TAM'][['Colaborador', 'Diamantes', 'Max. Diamantes']].set_index('Colaborador').copy()
-                if recalcular_ranking:
-                    df_pont = df_dados[df_dados['Indicador'] == 'PONTUALIDADE'][['Colaborador', 'Diamantes', 'Max. Diamantes']].set_index('Colaborador').copy()
-                    df_rank = df_rank.subtract(df_pont, fill_value=0)
-                df_rank['Resultado'] = df_rank.apply(lambda row: row['Diamantes'] / row['Max. Diamantes'] if row['Max. Diamantes'] > 0 else 0, axis=1)
-                df_rank = df_rank.reset_index()
+                df_rank = df_dados[df_dados['Indicador'] == 'TAM'].copy()
+                df_rank['Resultado'] = df_rank['% Atingimento']
             else: 
-                if recalcular_ranking:
-                    df_calc = df_dados[df_dados['Indicador'] != 'PONTUALIDADE']
-                else:
-                    df_calc = df_dados
-                df_rank = df_calc.groupby('Colaborador').agg({'Diamantes':'sum', 'Max. Diamantes':'sum'}).reset_index()
+                df_rank = df_dados.groupby('Colaborador').agg({'Diamantes':'sum', 'Max. Diamantes':'sum'}).reset_index()
                 df_rank['Resultado'] = df_rank.apply(lambda x: x['Diamantes']/x['Max. Diamantes'] if x['Max. Diamantes']>0 else 0, axis=1)
             
             df_rank = df_rank.sort_values(by='Resultado', ascending=False).reset_index(drop=True)
@@ -980,8 +971,48 @@ Vamos com tudo! 🔥"""
     with tabs[7]:
         st.markdown("### 🏖️ Férias da Equipe")
         if df_users_cadastrados is not None:
+            # Lógica para mostrar quem está de férias no mês selecionado
+            mapa_meses = {
+                '01': 'Janeiro', '02': 'Fevereiro', '03': 'Março', '04': 'Abril',
+                '05': 'Maio', '06': 'Junho', '07': 'Julho', '08': 'Agosto',
+                '09': 'Setembro', '10': 'Outubro', '11': 'Novembro', '12': 'Dezembro'
+            }
+            
+            # Tenta pegar o mês do seletor (ex: "03" de "03/2026")
+            try:
+                mes_num = periodo_selecionado.split('/')[0]
+                nome_mes = mapa_meses.get(mes_num, "")
+            except:
+                mes_num = ""
+                nome_mes = ""
+
             df_f = df_users_cadastrados[['nome', 'ferias']].copy()
             df_f['nome'] = df_f['nome'].str.title()
+            
+            # Filtro Inteligente
+            def esta_de_ferias(texto_ferias, mes_num, nome_mes):
+                t = str(texto_ferias).lower()
+                # Verifica se tem o nome do mês (ex: "março", "marco") ou o número (ex: "/03")
+                termos = []
+                if nome_mes: 
+                    termos.append(nome_mes.lower())
+                    termos.append(unicodedata.normalize('NFKD', nome_mes).encode('ASCII', 'ignore').decode('utf-8').lower())
+                if mes_num:
+                    termos.append(f"/{mes_num}")
+                    termos.append(f"/{mes_num}/")
+                
+                for termo in termos:
+                    if termo in t: return True
+                return False
+
+            if nome_mes:
+                df_ferias_mes = df_f[df_f['ferias'].apply(lambda x: esta_de_ferias(x, mes_num, nome_mes))]
+                if not df_ferias_mes.empty:
+                    st.success(f"🌴 **Ausentes em {nome_mes}: {len(df_ferias_mes)} colaboradores**")
+                    st.dataframe(df_ferias_mes, use_container_width=True)
+                    st.markdown("---")
+            
+            st.markdown("**📋 Lista Completa**")
             st.dataframe(df_f, use_container_width=True)
 
     # ------------------ ADMIN ------------------
@@ -1333,10 +1364,7 @@ else:
 
     with tab_feedbacks:
         st.markdown("### 📝 Histórico de Feedbacks")
-        
-        # --- CARREGAMENTO ROBUSTO ---
         df_fbs = carregar_feedbacks_gb()
-        
         if df_fbs is not None and not df_fbs.empty:
             df_fbs['Colaborador_Norm'] = df_fbs['Colaborador'].apply(normalizar_chave)
             meus_fbs = df_fbs[df_fbs['Colaborador_Norm'] == normalizar_chave(nome_logado)].copy()
