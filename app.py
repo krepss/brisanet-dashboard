@@ -839,12 +839,21 @@ Vamos com tudo! 🔥"""
     # ------------------ RANKING ------------------
     with tabs[2]:
         st.markdown(f"### 🏆 Ranking Geral (Consolidado)")
+        recalcular_ranking = st.checkbox("Visualizar Ranking sem Pontualidade", value=False)
         if df_dados is not None:
             if tem_tam: 
-                df_rank = df_dados[df_dados['Indicador'] == 'TAM'].copy()
-                df_rank['Resultado'] = df_rank['% Atingimento']
+                df_rank = df_dados[df_dados['Indicador'] == 'TAM'][['Colaborador', 'Diamantes', 'Max. Diamantes']].set_index('Colaborador').copy()
+                if recalcular_ranking:
+                    df_pont = df_dados[df_dados['Indicador'] == 'PONTUALIDADE'][['Colaborador', 'Diamantes', 'Max. Diamantes']].set_index('Colaborador').copy()
+                    df_rank = df_rank.subtract(df_pont, fill_value=0)
+                df_rank['Resultado'] = df_rank.apply(lambda row: row['Diamantes'] / row['Max. Diamantes'] if row['Max. Diamantes'] > 0 else 0, axis=1)
+                df_rank = df_rank.reset_index()
             else: 
-                df_rank = df_dados.groupby('Colaborador').agg({'Diamantes':'sum', 'Max. Diamantes':'sum'}).reset_index()
+                if recalcular_ranking:
+                    df_calc = df_dados[df_dados['Indicador'] != 'PONTUALIDADE']
+                else:
+                    df_calc = df_dados
+                df_rank = df_calc.groupby('Colaborador').agg({'Diamantes':'sum', 'Max. Diamantes':'sum'}).reset_index()
                 df_rank['Resultado'] = df_rank.apply(lambda x: x['Diamantes']/x['Max. Diamantes'] if x['Max. Diamantes']>0 else 0, axis=1)
             
             df_rank = df_rank.sort_values(by='Resultado', ascending=False).reset_index(drop=True)
@@ -996,7 +1005,8 @@ Vamos com tudo! 🔥"""
                 termos = []
                 if nome_mes: 
                     termos.append(nome_mes.lower())
-                    termos.append(unicodedata.normalize('NFKD', nome_mes).encode('ASCII', 'ignore').decode('utf-8').lower())
+                    try: termos.append(unicodedata.normalize('NFKD', nome_mes).encode('ASCII', 'ignore').decode('utf-8').lower())
+                    except: pass
                 if mes_num:
                     termos.append(f"/{mes_num}")
                     termos.append(f"/{mes_num}/")
