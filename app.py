@@ -1318,14 +1318,6 @@ else:
                         fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1.1])), showlegend=True, height=350, margin=dict(l=40, r=40, t=20, b=20), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                         st.markdown("##### 🕸️ Raio-X de Competências")
                         st.plotly_chart(fig, use_container_width=True)
-            st.markdown("---")
-
-            df_hist_full = carregar_historico_completo()
-            if df_hist_full is not None:
-                hist_user = df_hist_full[df_hist_full['Colaborador'].astype(str).str.upper().apply(normalizar_chave) == normalizar_chave(nome_logado)].copy()
-                if not hist_user.empty:
-                    hist_user['Indicador'] = hist_user['Indicador'].apply(formatar_nome_visual)
-                    st.plotly_chart(px.line(hist_user, x='Periodo', y='% Atingimento', color='Indicador', markers=True), use_container_width=True)
 
     # --- NOVA ABA: VISÃO DO TIME (OPERADOR) ---
     with tab_time:
@@ -1356,7 +1348,21 @@ else:
             total_max_team = df_media_team['Max. Diamantes'].sum()
             perc_team = (total_dia_team / total_max_team) if total_max_team > 0 else 0
             
-            st.markdown(f"#### 🦁 Média Global da Equipe: **{perc_team:.1%}**")
+            # --- 🍰 SUA FATIA NO BOLO (CONTRIBUIÇÃO) ---
+            user_share_row = df_media_team[df_media_team['Colaborador'] == nome_logado]
+            user_share_val = 0.0
+            msg_share = "Dados insuficientes"
+            
+            if not user_share_row.empty and total_dia_team > 0:
+                user_dia = user_share_row.iloc[0]['Diamantes']
+                share = (user_dia / total_dia_team)
+                user_share_val = share
+                msg_share = f"{share:.1%} do total"
+
+            # Display
+            c1, c2 = st.columns(2)
+            c1.markdown(f"#### 🦁 Média Global da Equipe: **{perc_team:.1%}**")
+            c2.metric("🍰 Sua Fatia no Resultado (Diamantes)", msg_share, help="Quanto você contribuiu para o total de diamantes da equipe neste mês.")
             
             # Gauge Chart
             fig_team = go.Figure(go.Indicator(
