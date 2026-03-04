@@ -980,49 +980,8 @@ Vamos com tudo! 🔥"""
     with tabs[7]:
         st.markdown("### 🏖️ Férias da Equipe")
         if df_users_cadastrados is not None:
-            # Lógica para mostrar quem está de férias no mês selecionado
-            mapa_meses = {
-                '01': 'Janeiro', '02': 'Fevereiro', '03': 'Março', '04': 'Abril',
-                '05': 'Maio', '06': 'Junho', '07': 'Julho', '08': 'Agosto',
-                '09': 'Setembro', '10': 'Outubro', '11': 'Novembro', '12': 'Dezembro'
-            }
-            
-            # Tenta pegar o mês do seletor (ex: "03" de "03/2026")
-            try:
-                mes_num = periodo_selecionado.split('/')[0]
-                nome_mes = mapa_meses.get(mes_num, "")
-            except:
-                mes_num = ""
-                nome_mes = ""
-
             df_f = df_users_cadastrados[['nome', 'ferias']].copy()
             df_f['nome'] = df_f['nome'].str.title()
-            
-            # Filtro Inteligente
-            def esta_de_ferias(texto_ferias, mes_num, nome_mes):
-                t = str(texto_ferias).lower()
-                # Verifica se tem o nome do mês (ex: "março", "marco") ou o número (ex: "/03")
-                termos = []
-                if nome_mes: 
-                    termos.append(nome_mes.lower())
-                    try: termos.append(unicodedata.normalize('NFKD', nome_mes).encode('ASCII', 'ignore').decode('utf-8').lower())
-                    except: pass
-                if mes_num:
-                    termos.append(f"/{mes_num}")
-                    termos.append(f"/{mes_num}/")
-                
-                for termo in termos:
-                    if termo in t: return True
-                return False
-
-            if nome_mes:
-                df_ferias_mes = df_f[df_f['ferias'].apply(lambda x: esta_de_ferias(x, mes_num, nome_mes))]
-                if not df_ferias_mes.empty:
-                    st.success(f"🌴 **Ausentes em {nome_mes}: {len(df_ferias_mes)} colaboradores**")
-                    st.dataframe(df_ferias_mes, use_container_width=True)
-                    st.markdown("---")
-            
-            st.markdown("**📋 Lista Completa**")
             st.dataframe(df_f, use_container_width=True)
 
     # ------------------ ADMIN ------------------
@@ -1240,7 +1199,7 @@ else:
             if not user_info.empty: minhas_ferias = user_info.iloc[0]['ferias']
         except: pass
 
-    tab_results, tab_ferias, tab_feedbacks = st.tabs(["📊 Meus Resultados", "🏖️ Minhas Férias", "📝 Meus Feedbacks"])
+    tab_results, tab_time, tab_ferias, tab_feedbacks = st.tabs(["📊 Meus Resultados", "🦁 Visão do Time", "🏖️ Minhas Férias", "📝 Meus Feedbacks"])
 
     with tab_results:
         ranking_msg = "Não classificado"
@@ -1367,6 +1326,49 @@ else:
                 if not hist_user.empty:
                     hist_user['Indicador'] = hist_user['Indicador'].apply(formatar_nome_visual)
                     st.plotly_chart(px.line(hist_user, x='Periodo', y='% Atingimento', color='Indicador', markers=True), use_container_width=True)
+
+    # --- NOVA ABA: VISÃO DO TIME (OPERADOR) ---
+    with tab_time:
+        st.markdown("### 🦁 Visão Geral do Time")
+        st.info("Aqui você acompanha como estamos indo como equipe. Lembre-se: quando o time ganha, todos ganham!")
+
+        if df_dados is not None:
+            # Opção de Ignorar Pontualidade
+            ignorar_pont_op = st.checkbox("Recalcular Visão Global sem Pontualidade", value=False)
+            
+            if tem_tam:
+                df_base = df_dados[df_dados['Indicador'] == 'TAM'][['Colaborador', 'Diamantes', 'Max. Diamantes']].set_index('Colaborador').copy()
+                if ignorar_pont_op:
+                    df_pont = df_dados[df_dados['Indicador'] == 'PONTUALIDADE'][['Colaborador', 'Diamantes', 'Max. Diamantes']].set_index('Colaborador').copy()
+                    df_base = df_base.subtract(df_pont, fill_value=0)
+                df_base['% Atingimento'] = df_base.apply(lambda row: row['Diamantes'] / row['Max. Diamantes'] if row['Max. Diamantes'] > 0 else 0, axis=1)
+                df_media_team = df_base.reset_index()
+            else:
+                if ignorar_pont_op:
+                    df_calc = df_dados[df_dados['Indicador'] != 'PONTUALIDADE']
+                else:
+                    df_calc = df_dados
+                df_media_team = df_calc.groupby('Colaborador').agg({'Diamantes': 'sum', 'Max. Diamantes': 'sum'}).reset_index()
+                df_media_team['% Atingimento'] = df_media_team.apply(lambda row: row['Diamantes'] / row['Max. Diamantes'] if row['Max. Diamantes'] > 0 else 0, axis=1)
+
+            # Cálculo dos Totais
+            total_dia_team = df_media_team['Diamantes'].sum()
+            total_max_team = df_media_team['Max. Diamantes'].sum()
+            perc_team = (total_dia_team / total_max_team) if total_max_team > 0 else 0
+            
+            st.markdown(f"#### 🦁 Média Global da Equipe: **{perc_team:.1%}**")
+            
+            # Gauge Chart
+            fig_team = go.Figure(go.Indicator(
+                mode = "gauge+number", value = perc_team * 100, domain = {'x': [0, 1], 'y': [0, 1]},
+                gauge = {
+                    'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': 'white'}, 'bar': {'color': "#003366"},
+                    'steps': [{'range': [0, 80], 'color': '#ffcccb'},{'range': [80, 90], 'color': '#fff4cc'},{'range': [90, 100], 'color': '#d9f7be'}],
+                    'threshold': {'line': {'color': "red", 'width': 4}, 'thickness': 0.75, 'value': 100}
+                }
+            ))
+            fig_team.update_layout(height=250, margin=dict(l=20, r=20, t=30, b=20))
+            st.plotly_chart(fig_team, use_container_width=True)
 
     with tab_ferias:
         st.markdown("### 🗓️ Planejamento de Férias")
