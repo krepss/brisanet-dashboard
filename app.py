@@ -980,8 +980,52 @@ Vamos com tudo! 🔥"""
     with tabs[7]:
         st.markdown("### 🏖️ Férias da Equipe")
         if df_users_cadastrados is not None:
+            # Lógica para mostrar quem está de férias no mês selecionado
+            mapa_meses = {
+                '01': 'Janeiro', '02': 'Fevereiro', '03': 'Março', '04': 'Abril',
+                '05': 'Maio', '06': 'Junho', '07': 'Julho', '08': 'Agosto',
+                '09': 'Setembro', '10': 'Outubro', '11': 'Novembro', '12': 'Dezembro'
+            }
+            
+            # Tenta pegar o mês do seletor (ex: "03" de "03/2026")
+            try:
+                mes_num = periodo_selecionado.split('/')[0]
+                nome_mes = mapa_meses.get(mes_num, "")
+            except:
+                mes_num = ""
+                nome_mes = ""
+
             df_f = df_users_cadastrados[['nome', 'ferias']].copy()
             df_f['nome'] = df_f['nome'].str.title()
+            
+            # Filtro Inteligente
+            def esta_de_ferias(texto_ferias, mes_num, nome_mes):
+                t = str(texto_ferias).lower()
+                # Verifica se tem o nome do mês (ex: "março", "marco") ou o número (ex: "/03")
+                termos = []
+                if nome_mes: 
+                    termos.append(nome_mes.lower())
+                    try: termos.append(unicodedata.normalize('NFKD', nome_mes).encode('ASCII', 'ignore').decode('utf-8').lower())
+                    except: pass
+                if mes_num:
+                    termos.append(f"/{mes_num}")
+                    termos.append(f"/{mes_num}/")
+                    termos.append(f"-{mes_num}-")
+                
+                for termo in termos:
+                    if termo in t: return True
+                return False
+
+            if nome_mes:
+                df_ferias_mes = df_f[df_f['ferias'].apply(lambda x: esta_de_ferias(x, mes_num, nome_mes))]
+                if not df_ferias_mes.empty:
+                    st.success(f"🌴 **Ausentes em {nome_mes}: {len(df_ferias_mes)} colaboradores**")
+                    st.dataframe(df_ferias_mes, use_container_width=True)
+                    st.markdown("---")
+                else:
+                    st.info(f"ℹ️ Nenhum colaborador identificado com férias marcadas para **{nome_mes}**.")
+            
+            st.markdown("**📋 Lista Completa**")
             st.dataframe(df_f, use_container_width=True)
 
     # ------------------ ADMIN ------------------
