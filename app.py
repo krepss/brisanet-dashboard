@@ -6,7 +6,7 @@ import os
 import json
 import time
 import base64
-import requests # NOVO: Necessário para comunicar com o GitHub
+import requests 
 from datetime import datetime, timezone, timedelta
 import unicodedata
 
@@ -85,9 +85,8 @@ st.markdown("""
 # --- 3. FUNÇÕES DE BACKEND ---
 
 def sincronizar_com_github(nome_arquivo, mensagem="Atualização via Painel Gestor"):
-    """Envia silenciosamente as atualizações locais para o repositório remoto do GitHub"""
     if "GITHUB_TOKEN" not in st.secrets or "GITHUB_REPO" not in st.secrets:
-        return False # Executa apenas localmente se as chaves não existirem
+        return False
     try:
         token = st.secrets["GITHUB_TOKEN"]
         repo = st.secrets["GITHUB_REPO"]
@@ -99,15 +98,12 @@ def sincronizar_com_github(nome_arquivo, mensagem="Atualização via Painel Gest
             "Accept": "application/vnd.github.v3+json"
         }
         
-        # 1. Pede o SHA atual do arquivo no GitHub
         r = requests.get(url, headers=headers, params={"ref": branch})
         sha = r.json().get("sha") if r.status_code == 200 else None
         
-        # 2. Lê o novo conteúdo
         with open(nome_arquivo, "rb") as f:
             content_b64 = base64.b64encode(f.read()).decode("utf-8")
             
-        # 3. Prepara o pacote de envio
         payload = {
             "message": f"🤖 {mensagem} - Arquivo: {nome_arquivo}",
             "content": content_b64,
@@ -116,7 +112,6 @@ def sincronizar_com_github(nome_arquivo, mensagem="Atualização via Painel Gest
         if sha: 
             payload["sha"] = sha
             
-        # 4. Grava na nuvem
         requests.put(url, headers=headers, json=payload)
         return True
     except Exception as e:
@@ -195,13 +190,13 @@ def limpar_base_dados_completa():
             sincronizar_com_github(f, "Reset de base de dados")
 
 def faxina_arquivos_temporarios():
-    protegidos = ['historico_consolidado.csv', 'usuarios.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv', 'feedbacks_gb_backup.csv', 'historico_operacional.csv']
+    protegidos = ['historico_consolidado.csv', 'usuarios.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv', 'feedbacks_gb_backup.csv', 'historico_operacional.csv', 'historico_voz.csv']
     for f in os.listdir('.'):
         if f.endswith('.csv') and f not in protegidos:
             try: os.remove(f)
             except: pass
 
-# --- FUNÇÕES DE TMA (NOVO) ---
+# --- FUNÇÕES DE TMA (CHAT E VOZ) ---
 def processar_desempenho_agente(df):
     df.columns = [str(c).strip().lower() for c in df.columns]
     col_nome = next((c for c in df.columns if 'nome' in c and 'agente' in c), None)
@@ -219,7 +214,6 @@ def processar_desempenho_agente(df):
             df_op['Atendimentos'] = 0
             
         df_op['TMA_ms'] = pd.to_numeric(df[col_tma], errors='coerce').fillna(0)
-        # O arquivo do Genesys vem em milissegundos
         df_op['TMA_seg'] = df_op['TMA_ms'] / 1000.0
         
         def formata_tma(segs):
@@ -233,7 +227,7 @@ def processar_desempenho_agente(df):
     return None
 
 def atualizar_historico_operacional(df_novo, periodo):
-    ARQ = 'historico_operacional.csv'
+    ARQ = 'historico_operacional.csv' # BANCO DE CHAT
     df_save = df_novo.copy()
     df_save['Periodo'] = str(periodo).strip()
     if os.path.exists(ARQ):
@@ -252,6 +246,28 @@ def carregar_historico_operacional():
         try: return pd.read_csv('historico_operacional.csv')
         except: return None
     return None
+
+def atualizar_historico_voz(df_novo, periodo):
+    ARQ = 'historico_voz.csv' # BANCO DE VOZ
+    df_save = df_novo.copy()
+    df_save['Periodo'] = str(periodo).strip()
+    if os.path.exists(ARQ):
+        try:
+            df_hist = pd.read_csv(ARQ)
+            df_hist['Periodo'] = df_hist['Periodo'].astype(str).str.strip()
+            df_hist = df_hist[df_hist['Periodo'] != str(periodo).strip()]
+            df_final = pd.concat([df_hist, df_save], ignore_index=True)
+        except: df_final = df_save
+    else: df_final = df_save
+    df_final.to_csv(ARQ, index=False)
+    sincronizar_com_github(ARQ, f"Atualizando Produtividade Voz - {periodo}")
+
+def carregar_historico_voz():
+    if os.path.exists('historico_voz.csv'):
+        try: return pd.read_csv('historico_voz.csv')
+        except: return None
+    return None
+
 
 # --- FUNÇÕES DE KPI (ANTIGAS) ---
 def atualizar_historico(df_atual, periodo):
@@ -444,7 +460,7 @@ def classificar_farol(val):
 def carregar_dados_completo_debug():
     lista_final = []
     log_debug = []
-    arquivos_ignorar = ['usuarios.csv', 'historico_consolidado.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv', 'feedbacks_gb_backup.csv', 'historico_operacional.csv']
+    arquivos_ignorar = ['usuarios.csv', 'historico_consolidado.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv', 'feedbacks_gb_backup.csv', 'historico_operacional.csv', 'historico_voz.csv']
     arquivos = [f for f in os.listdir('.') if f.endswith('.csv') and f.lower() not in arquivos_ignorar]
     for arquivo in arquivos:
         try:
@@ -645,7 +661,7 @@ if df_dados is None and perfil == 'user':
 # --- 6. GESTOR ---
 # ==========================================
 if perfil == 'admin':
-    tabs = st.tabs(["🚦 Semáforo", "📈 Resumo Executivo", "🏆 Ranking Geral", "⏳ Evolução", "🔍 Indicadores", "💬 Produtividade Chat", "💰 Comissões", "📋 Tabela Geral", "🏖️ Férias Equipe", "⚙️ Admin", "⏰ Banco de Horas", "📝 Feedbacks GB"])
+    tabs = st.tabs(["🚦 Semáforo", "📈 Resumo Executivo", "🏆 Ranking Geral", "⏳ Evolução", "🔍 Indicadores", "⏱️ Produtividade (Chat & Voz)", "💰 Comissões", "📋 Tabela Geral", "🏖️ Férias Equipe", "⚙️ Admin", "⏰ Banco de Horas", "📝 Feedbacks GB"])
 
     # ------------------ SEMÁFORO ------------------
     with tabs[0]: 
@@ -916,7 +932,7 @@ Queria agradecer o empenho de cada um. Sabemos que a operação é dinâmica, ma
 
 Parabéns aos destaques! Vocês mandaram muito bem! 👏
 
-Para quem não chegaram lá dessa vez: o jogo reinicia agora. Vamos ajustar os ponteiros, focar na qualidade (CSAT/Conformidade) e buscar esse topo no próximo ciclo. Conto com vocês!
+Para quem não chegou lá dessa vez: o jogo reinicia agora. Vamos ajustar os ponteiros, focar na qualidade (CSAT/Conformidade) e buscar esse topo no próximo ciclo. Conto com vocês!
 
 O detalhe individual já está atualizado no painel.
 Vamos com tudo! 🔥"""
@@ -1002,47 +1018,93 @@ Vamos com tudo! 🔥"""
                     fig_rank.add_vline(x=0.8, line_dash="dash", line_color="black")
                     st.plotly_chart(fig_rank, use_container_width=True, key=f"chart_rank_{kpi}")
                     
-    # ------------------ PRODUTIVIDADE (NOVO) ------------------
+    # ------------------ PRODUTIVIDADE (CHAT & VOZ) ------------------
     with tabs[5]:
-        st.markdown("### 💬 Produtividade Operacional (Chat)")
-        df_op_hist = carregar_historico_operacional()
-        if df_op_hist is not None:
-            df_op_atual = df_op_hist[df_op_hist['Periodo'] == periodo_label].copy()
-            if not df_op_atual.empty:
-                if df_users_cadastrados is not None:
-                    lista_vip = df_users_cadastrados['nome'].unique()
-                    df_op_atual = df_op_atual[df_op_atual['Colaborador'].apply(normalizar_chave).isin(lista_vip)]
-                
-                df_op_atual['Colaborador'] = df_op_atual['Colaborador'].str.title()
-                
-                c1, c2 = st.columns(2)
-                with c1:
-                    df_vol = df_op_atual.sort_values('Atendimentos', ascending=True)
-                    fig_vol = px.bar(df_vol, x='Atendimentos', y='Colaborador', orientation='h', 
-                                     title='💬 Volume de Chats Atendidos', text='Atendimentos',
-                                     color='Atendimentos', color_continuous_scale='Blues')
-                    fig_vol.update_traces(textposition='outside', textfont_size=12)
-                    fig_vol.update_layout(coloraxis_showscale=False, margin=dict(l=10, r=50, t=40, b=20))
-                    fig_vol.update_xaxes(visible=False) # Remove o eixo X para limpar o visual
-                    fig_vol.update_yaxes(title="")
-                    st.plotly_chart(fig_vol, use_container_width=True)
-                with c2:
-                    df_tma = df_op_atual.sort_values('TMA_seg', ascending=False)
-                    fig_tma = px.bar(df_tma, x='TMA_seg', y='Colaborador', orientation='h', 
-                                     title='⏱️ Tempo Médio de Atendimento (TMA Chat)', text='TMA_Formatado',
-                                     color='TMA_seg', color_continuous_scale=['#2ecc71', '#f1c40f', '#e74c3c'])
-                    fig_tma.update_traces(textposition='outside', textfont_size=12)
-                    fig_tma.update_layout(coloraxis_showscale=False, margin=dict(l=10, r=50, t=40, b=20))
-                    fig_tma.update_xaxes(visible=False) # Remove o eixo X numérico
-                    fig_tma.update_yaxes(title="")
-                    st.plotly_chart(fig_tma, use_container_width=True)
+        st.markdown("### ⏱️ Produtividade Operacional")
+        
+        tb_chat, tb_voz = st.tabs(["💬 Canal Chat", "📞 Canal Voz"])
+        
+        # --- TAB CHAT ---
+        with tb_chat:
+            df_op_hist = carregar_historico_operacional()
+            if df_op_hist is not None:
+                df_op_atual = df_op_hist[df_op_hist['Periodo'] == periodo_label].copy()
+                if not df_op_atual.empty:
+                    if df_users_cadastrados is not None:
+                        lista_vip = df_users_cadastrados['nome'].unique()
+                        df_op_atual = df_op_atual[df_op_atual['Colaborador'].apply(normalizar_chave).isin(lista_vip)]
                     
-                st.markdown("#### 📋 Tabela de Produtividade (Chat)")
-                st.dataframe(df_op_atual[['Colaborador', 'Atendimentos', 'TMA_Formatado']].rename(columns={'Atendimentos': 'Chats Atendidos', 'TMA_Formatado': 'TMA Chat (mm:ss)'}), use_container_width=True, hide_index=True)
+                    df_op_atual['Colaborador'] = df_op_atual['Colaborador'].str.title()
+                    
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        df_vol = df_op_atual.sort_values('Atendimentos', ascending=True)
+                        fig_vol = px.bar(df_vol, x='Atendimentos', y='Colaborador', orientation='h', 
+                                         title='💬 Volume de Chats Atendidos', text='Atendimentos',
+                                         color='Atendimentos', color_continuous_scale='Blues')
+                        fig_vol.update_traces(textposition='outside', textfont_size=12)
+                        fig_vol.update_layout(coloraxis_showscale=False, margin=dict(l=10, r=50, t=40, b=20))
+                        fig_vol.update_xaxes(visible=False)
+                        fig_vol.update_yaxes(title="")
+                        st.plotly_chart(fig_vol, use_container_width=True)
+                    with c2:
+                        df_tma = df_op_atual.sort_values('TMA_seg', ascending=False)
+                        fig_tma = px.bar(df_tma, x='TMA_seg', y='Colaborador', orientation='h', 
+                                         title='⏱️ Tempo Médio de Atendimento (TMA Chat)', text='TMA_Formatado',
+                                         color='TMA_seg', color_continuous_scale=['#2ecc71', '#f1c40f', '#e74c3c'])
+                        fig_tma.update_traces(textposition='outside', textfont_size=12)
+                        fig_tma.update_layout(coloraxis_showscale=False, margin=dict(l=10, r=50, t=40, b=20))
+                        fig_tma.update_xaxes(visible=False)
+                        fig_tma.update_yaxes(title="")
+                        st.plotly_chart(fig_tma, use_container_width=True)
+                        
+                    st.markdown("#### 📋 Tabela de Produtividade (Chat)")
+                    st.dataframe(df_op_atual[['Colaborador', 'Atendimentos', 'TMA_Formatado']].rename(columns={'Atendimentos': 'Chats Atendidos', 'TMA_Formatado': 'TMA Chat (mm:ss)'}), use_container_width=True, hide_index=True)
+                else:
+                    st.info("Nenhum dado de produtividade de Chat para este período. Faça o upload na aba Admin.")
             else:
-                st.info("Nenhum dado de produtividade de Chat para este período. Faça o upload na aba Admin.")
-        else:
-            st.info("Nenhum histórico de produtividade de Chat encontrado. Faça o upload na aba Admin.")
+                st.info("Nenhum histórico de produtividade de Chat encontrado. Faça o upload na aba Admin.")
+                
+        # --- TAB VOZ ---
+        with tb_voz:
+            df_voz_hist = carregar_historico_voz()
+            if df_voz_hist is not None:
+                df_voz_atual = df_voz_hist[df_voz_hist['Periodo'] == periodo_label].copy()
+                if not df_voz_atual.empty:
+                    if df_users_cadastrados is not None:
+                        lista_vip = df_users_cadastrados['nome'].unique()
+                        df_voz_atual = df_voz_atual[df_voz_atual['Colaborador'].apply(normalizar_chave).isin(lista_vip)]
+                    
+                    df_voz_atual['Colaborador'] = df_voz_atual['Colaborador'].str.title()
+                    
+                    c3, c4 = st.columns(2)
+                    with c3:
+                        df_vol_v = df_voz_atual.sort_values('Atendimentos', ascending=True)
+                        fig_vol_v = px.bar(df_vol_v, x='Atendimentos', y='Colaborador', orientation='h', 
+                                         title='📞 Volume de Ligações Atendidas', text='Atendimentos',
+                                         color='Atendimentos', color_continuous_scale='Purples')
+                        fig_vol_v.update_traces(textposition='outside', textfont_size=12)
+                        fig_vol_v.update_layout(coloraxis_showscale=False, margin=dict(l=10, r=50, t=40, b=20))
+                        fig_vol_v.update_xaxes(visible=False)
+                        fig_vol_v.update_yaxes(title="")
+                        st.plotly_chart(fig_vol_v, use_container_width=True)
+                    with c4:
+                        df_tma_v = df_voz_atual.sort_values('TMA_seg', ascending=False)
+                        fig_tma_v = px.bar(df_tma_v, x='TMA_seg', y='Colaborador', orientation='h', 
+                                         title='⏱️ Tempo Médio de Atendimento (TMA Voz)', text='TMA_Formatado',
+                                         color='TMA_seg', color_continuous_scale=['#2ecc71', '#f1c40f', '#e74c3c'])
+                        fig_tma_v.update_traces(textposition='outside', textfont_size=12)
+                        fig_tma_v.update_layout(coloraxis_showscale=False, margin=dict(l=10, r=50, t=40, b=20))
+                        fig_tma_v.update_xaxes(visible=False)
+                        fig_tma_v.update_yaxes(title="")
+                        st.plotly_chart(fig_tma_v, use_container_width=True)
+                        
+                    st.markdown("#### 📋 Tabela de Produtividade (Voz)")
+                    st.dataframe(df_voz_atual[['Colaborador', 'Atendimentos', 'TMA_Formatado']].rename(columns={'Atendimentos': 'Ligações Atendidas', 'TMA_Formatado': 'TMA Voz (mm:ss)'}), use_container_width=True, hide_index=True)
+                else:
+                    st.info("Nenhum dado de produtividade de Voz para este período. Faça o upload na aba Admin.")
+            else:
+                st.info("Nenhum histórico de produtividade de Voz encontrado. Faça o upload na aba Admin.")
 
     # ------------------ COMISSÕES ------------------
     with tabs[6]:
@@ -1174,16 +1236,20 @@ Vamos com tudo! 🔥"""
             st.markdown("#### 💎 Arquivos de Indicadores (Qualidade, Aderência, etc)")
             up_k = st.file_uploader("Indicadores (CSVs)", accept_multiple_files=True, key="k")
             
-            st.markdown("#### 💬 Arquivo de Produtividade Chat (Opcional)")
-            up_op = st.file_uploader("Relatório de Desempenho (Volume / TMA Chat)", type=['csv'], key="up_op")
+            c_up1, c_up2 = st.columns(2)
+            with c_up1:
+                st.markdown("#### 💬 Arquivo Chat (Opcional)")
+                up_op = st.file_uploader("Relatório (Volume / TMA Chat)", type=['csv'], key="up_op")
+            with c_up2:
+                st.markdown("#### 📞 Arquivo Voz (Opcional)")
+                up_voz = st.file_uploader("Relatório (Volume / TMA Voz)", type=['csv'], key="up_voz")
 
             if st.button("💾 Salvar e Atualizar Histórico", type="primary"): 
                 if not nova_data.strip():
                     st.error("⚠️ O campo 'Mês/Ano' não pode estar vazio!")
                     st.stop()
                 
-                sucesso_kpi = False
-                sucesso_op = False
+                sucesso = False
 
                 try:
                     if up_k:
@@ -1193,7 +1259,7 @@ Vamos com tudo! 🔥"""
                         df_debug, log = carregar_dados_completo_debug() 
                         if df_debug is not None:
                             atualizar_historico(df_debug, nova_data)
-                            sucesso_kpi = True
+                            sucesso = True
                             st.success("✅ Histórico de Diamantes atualizado com sucesso!")
                         else: st.error("❌ Erro ao processar arquivos de indicadores.")
                     
@@ -1203,11 +1269,21 @@ Vamos com tudo! 🔥"""
                             df_op_tratado = processar_desempenho_agente(df_op_raw)
                             if df_op_tratado is not None:
                                 atualizar_historico_operacional(df_op_tratado, nova_data)
-                                sucesso_op = True
-                                st.success("✅ Dados de Produtividade (TMA/Volume) atualizados!")
-                            else: st.error("❌ Erro ao ler colunas de TMA. Certifique-se de ser o arquivo padrão do sistema.")
+                                sucesso = True
+                                st.success("✅ Dados de Produtividade (Chat) atualizados!")
+                            else: st.error("❌ Erro ao ler colunas de TMA Chat.")
+                            
+                    if up_voz:
+                        df_voz_raw = ler_csv_inteligente(up_voz)
+                        if df_voz_raw is not None:
+                            df_voz_tratado = processar_desempenho_agente(df_voz_raw)
+                            if df_voz_tratado is not None:
+                                atualizar_historico_voz(df_voz_tratado, nova_data)
+                                sucesso = True
+                                st.success("✅ Dados de Produtividade (Voz) atualizados!")
+                            else: st.error("❌ Erro ao ler colunas de TMA Voz.")
                     
-                    if sucesso_kpi or sucesso_op:
+                    if sucesso:
                         time.sleep(1.5)
                         st.rerun()
 
@@ -1252,7 +1328,9 @@ Vamos com tudo! 🔥"""
                 with open('historico_consolidado.csv', 'rb') as f: st.download_button("⬇️ Baixar Backup Consolidado", f, "historico_consolidado_backup.csv", "text/csv")
             else: st.warning("Sem histórico para backup.")
             if os.path.exists('historico_operacional.csv'):
-                with open('historico_operacional.csv', 'rb') as f: st.download_button("⬇️ Baixar Backup TMA", f, "historico_operacional_backup.csv", "text/csv")
+                with open('historico_operacional.csv', 'rb') as f: st.download_button("⬇️ Baixar Backup TMA Chat", f, "historico_operacional_backup.csv", "text/csv")
+            if os.path.exists('historico_voz.csv'):
+                with open('historico_voz.csv', 'rb') as f: st.download_button("⬇️ Baixar Backup TMA Voz", f, "historico_voz_backup.csv", "text/csv")
             if os.path.exists('feedbacks_gb.csv'):
                 with open('feedbacks_gb.csv', 'rb') as f: st.download_button("⬇️ Baixar Banco de Feedbacks", f, "feedbacks_gb_backup.csv", "text/csv")
         with st4:
@@ -1502,16 +1580,38 @@ else:
                 with cols[i]: st.metric(label, f"{val:.2%}", "✅ Meta Batida" if round(val, 4) >= meta else f"🔻 Meta {meta:.0%}", delta_color="normal" if round(val, 4) >= meta else "inverse")
             st.markdown("---")
             
-            # --- DADOS DE PRODUTIVIDADE DO OPERADOR (NOVO) ---
+            # --- DADOS DE PRODUTIVIDADE DO OPERADOR (CHAT E VOZ) ---
+            st.markdown("#### ⏱️ Sua Produtividade")
             df_op_hist = carregar_historico_operacional()
+            df_voz_hist = carregar_historico_voz()
+            
+            c_p1, c_p2, c_p3, c_p4 = st.columns(4)
+            
             if df_op_hist is not None:
                 df_op_user = df_op_hist[(df_op_hist['Periodo'] == periodo_label) & (df_op_hist['Colaborador'].apply(normalizar_chave) == normalizar_chave(nome_logado))]
                 if not df_op_user.empty:
-                    st.markdown("#### 💬 Sua Produtividade no Chat")
-                    c_v1, c_v2 = st.columns(2)
-                    c_v1.metric("💬 Chats Atendidos", int(df_op_user.iloc[0]['Atendimentos']))
-                    c_v2.metric("⏱️ Seu TMA Chat", df_op_user.iloc[0]['TMA_Formatado'])
-                    st.markdown("---")
+                    c_p1.metric("💬 Chats Atendidos", int(df_op_user.iloc[0]['Atendimentos']))
+                    c_p2.metric("⏱️ TMA Chat", df_op_user.iloc[0]['TMA_Formatado'])
+                else:
+                    c_p1.metric("💬 Chats Atendidos", "-")
+                    c_p2.metric("⏱️ TMA Chat", "-")
+            else:
+                c_p1.metric("💬 Chats Atendidos", "-")
+                c_p2.metric("⏱️ TMA Chat", "-")
+
+            if df_voz_hist is not None:
+                df_voz_user = df_voz_hist[(df_voz_hist['Periodo'] == periodo_label) & (df_voz_hist['Colaborador'].apply(normalizar_chave) == normalizar_chave(nome_logado))]
+                if not df_voz_user.empty:
+                    c_p3.metric("📞 Ligações Atendidas", int(df_voz_user.iloc[0]['Atendimentos']))
+                    c_p4.metric("⏱️ TMA Voz", df_voz_user.iloc[0]['TMA_Formatado'])
+                else:
+                    c_p3.metric("📞 Ligações Atendidas", "-")
+                    c_p4.metric("⏱️ TMA Voz", "-")
+            else:
+                c_p3.metric("📞 Ligações Atendidas", "-")
+                c_p4.metric("⏱️ TMA Voz", "-")
+
+            st.markdown("---")
             
             # --- DEVOLVENDO O RAIO-X RADAR CHART ---
             media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
