@@ -4,3 +4,4 @@ plotly
 matplotlib
 jinja2
 openpyxl
+requests
