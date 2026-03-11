@@ -987,21 +987,60 @@ Vamos com tudo! 🔥"""
 
     # ------------------ EVOLUÇÃO TEMPORAL ------------------
     with tabs[3]:
-        st.markdown("### ⏳ Evolução Temporal")
+        st.markdown("### ⏳ Evolução Temporal (Qualidade)")
         df_hist = carregar_historico_completo()
+        
+        # Carregar históricos de produtividade para os gráficos de linha
+        df_op_hist = carregar_historico_operacional()
+        df_voz_hist = carregar_historico_voz()
+        
         if df_hist is not None:
             if df_users_cadastrados is not None: df_hist = filtrar_por_usuarios_cadastrados(df_hist, df_users_cadastrados)
             df_hist['Colaborador'] = df_hist['Colaborador'].str.title()
             lista_colabs = sorted(df_hist['Colaborador'].unique())
             if lista_colabs:
-                colab_sel = st.selectbox("Selecione o Colaborador:", lista_colabs)
+                colab_sel = st.selectbox("Selecione o Colaborador para análise histórica:", lista_colabs)
+                
+                # Gráfico de Qualidade (Mapa de Calor)
                 df_hist_user = df_hist[df_hist['Colaborador'] == colab_sel].copy()
                 if not df_hist_user.empty:
                     df_hist_user['Indicador'] = df_hist_user['Indicador'].apply(formatar_nome_visual)
-                    fig_heat = px.density_heatmap(df_hist_user, x="Periodo", y="Indicador", z="% Atingimento", text_auto=False, title=f"Mapa de Calor: {colab_sel}", color_continuous_scale="RdYlGn", range_color=[0.6, 1.0])
+                    fig_heat = px.density_heatmap(df_hist_user, x="Periodo", y="Indicador", z="% Atingimento", text_auto=False, title=f"Mapa de Calor de Qualidade: {colab_sel}", color_continuous_scale="RdYlGn", range_color=[0.6, 1.0])
                     fig_heat.update_traces(texttemplate="%{z:.1%}", textfont={"size":12})
                     st.plotly_chart(fig_heat, use_container_width=True)
-                else: st.warning("Sem dados.")
+                else: st.warning("Sem dados de qualidade.")
+                
+                st.markdown("---")
+                st.markdown("### 📈 Evolução Histórica de Produtividade (TMA)")
+                c_line1, c_line2 = st.columns(2)
+                
+                # Linha TMA Chat
+                if df_op_hist is not None:
+                    df_op_user_hist = df_op_hist[df_op_hist['Colaborador'].apply(normalizar_chave) == normalizar_chave(colab_sel)].copy()
+                    if not df_op_user_hist.empty:
+                        # Ordenar cronologicamente os períodos (ajuste simples baseado no mês/ano)
+                        df_op_user_hist['Data_Ord'] = pd.to_datetime(df_op_user_hist['Periodo'], format='%m/%Y', errors='coerce')
+                        df_op_user_hist = df_op_user_hist.sort_values(by='Data_Ord')
+                        
+                        with c_line1:
+                            fig_line_chat = px.line(df_op_user_hist, x='Periodo', y='TMA_seg', title='Evolução TMA Chat', markers=True, text='TMA_Formatado')
+                            fig_line_chat.update_traces(textposition="top center")
+                            fig_line_chat.update_yaxes(visible=False)
+                            st.plotly_chart(fig_line_chat, use_container_width=True)
+                
+                # Linha TMA Voz
+                if df_voz_hist is not None:
+                    df_voz_user_hist = df_voz_hist[df_voz_hist['Colaborador'].apply(normalizar_chave) == normalizar_chave(colab_sel)].copy()
+                    if not df_voz_user_hist.empty:
+                        df_voz_user_hist['Data_Ord'] = pd.to_datetime(df_voz_user_hist['Periodo'], format='%m/%Y', errors='coerce')
+                        df_voz_user_hist = df_voz_user_hist.sort_values(by='Data_Ord')
+                        
+                        with c_line2:
+                            fig_line_voz = px.line(df_voz_user_hist, x='Periodo', y='TMA_seg', title='Evolução TMA Voz', markers=True, text='TMA_Formatado', color_discrete_sequence=['#8e44ad'])
+                            fig_line_voz.update_traces(textposition="top center")
+                            fig_line_voz.update_yaxes(visible=False)
+                            st.plotly_chart(fig_line_voz, use_container_width=True)
+
             else: st.warning("Histórico vazio após filtro.")
         else: st.info("Histórico vazio.")
 
@@ -1018,7 +1057,7 @@ Vamos com tudo! 🔥"""
                     fig_rank.add_vline(x=0.8, line_dash="dash", line_color="black")
                     st.plotly_chart(fig_rank, use_container_width=True, key=f"chart_rank_{kpi}")
                     
-    # ------------------ PRODUTIVIDADE (CHAT & VOZ) ------------------
+    # ------------------ PRODUTIVIDADE (CHAT E VOZ) ------------------
     with tabs[5]:
         st.markdown("### ⏱️ Produtividade Operacional")
         
@@ -1635,14 +1674,37 @@ else:
                         st.plotly_chart(fig, use_container_width=True)
             st.markdown("---")
             
-            # --- HISTÓRICO INDIVIDUAL ---
+            # --- HISTÓRICO INDIVIDUAL E PRODUTIVIDADE ---
             st.markdown("### ⏳ Sua Evolução Histórica")
             df_hist_full = carregar_historico_completo()
             if df_hist_full is not None:
                 hist_user = df_hist_full[df_hist_full['Colaborador'].astype(str).str.upper().apply(normalizar_chave) == normalizar_chave(nome_logado)].copy()
                 if not hist_user.empty:
                     hist_user['Indicador'] = hist_user['Indicador'].apply(formatar_nome_visual)
-                    st.plotly_chart(px.line(hist_user, x='Periodo', y='% Atingimento', color='Indicador', markers=True), use_container_width=True)
+                    st.plotly_chart(px.line(hist_user, x='Periodo', y='% Atingimento', color='Indicador', markers=True, title="Evolução de Qualidade"), use_container_width=True)
+
+            c_lin1, c_lin2 = st.columns(2)
+            if df_op_hist is not None:
+                df_op_user_hist = df_op_hist[df_op_hist['Colaborador'].apply(normalizar_chave) == normalizar_chave(nome_logado)].copy()
+                if not df_op_user_hist.empty:
+                    df_op_user_hist['Data_Ord'] = pd.to_datetime(df_op_user_hist['Periodo'], format='%m/%Y', errors='coerce')
+                    df_op_user_hist = df_op_user_hist.sort_values(by='Data_Ord')
+                    with c_lin1:
+                        fig_line_chat = px.line(df_op_user_hist, x='Periodo', y='TMA_seg', title='Sua Evolução TMA Chat', markers=True, text='TMA_Formatado')
+                        fig_line_chat.update_traces(textposition="top center")
+                        fig_line_chat.update_yaxes(visible=False)
+                        st.plotly_chart(fig_line_chat, use_container_width=True)
+
+            if df_voz_hist is not None:
+                df_voz_user_hist = df_voz_hist[df_voz_hist['Colaborador'].apply(normalizar_chave) == normalizar_chave(nome_logado)].copy()
+                if not df_voz_user_hist.empty:
+                    df_voz_user_hist['Data_Ord'] = pd.to_datetime(df_voz_user_hist['Periodo'], format='%m/%Y', errors='coerce')
+                    df_voz_user_hist = df_voz_user_hist.sort_values(by='Data_Ord')
+                    with c_lin2:
+                        fig_line_voz = px.line(df_voz_user_hist, x='Periodo', y='TMA_seg', title='Sua Evolução TMA Voz', markers=True, text='TMA_Formatado', color_discrete_sequence=['#8e44ad'])
+                        fig_line_voz.update_traces(textposition="top center")
+                        fig_line_voz.update_yaxes(visible=False)
+                        st.plotly_chart(fig_line_voz, use_container_width=True)
 
     # --- NOVA ABA: VISÃO DO TIME (OPERADOR) ---
     with tab_time:
