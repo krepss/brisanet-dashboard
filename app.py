@@ -152,12 +152,64 @@ def limpar_base_dados_completa():
         if f.endswith('.csv'): os.remove(f)
 
 def faxina_arquivos_temporarios():
-    protegidos = ['historico_consolidado.csv', 'usuarios.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv', 'feedbacks_gb_backup.csv']
+    protegidos = ['historico_consolidado.csv', 'usuarios.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv', 'feedbacks_gb_backup.csv', 'historico_operacional.csv']
     for f in os.listdir('.'):
         if f.endswith('.csv') and f not in protegidos:
             try: os.remove(f)
             except: pass
 
+# --- FUNÇÕES DE TMA (NOVO) ---
+def processar_desempenho_agente(df):
+    df.columns = [str(c).strip().lower() for c in df.columns]
+    col_nome = next((c for c in df.columns if 'nome' in c and 'agente' in c), None)
+    col_vol = next((c for c in df.columns if 'atendidas' in c), None)
+    col_tma = next((c for c in df.columns if 'tratamento médio' in c or 'tma' in c), None)
+
+    if col_nome and col_tma:
+        df_op = df[[col_nome]].copy()
+        df_op.rename(columns={col_nome: 'Colaborador'}, inplace=True)
+        df_op['Colaborador'] = df_op['Colaborador'].apply(normalizar_chave)
+        
+        if col_vol:
+            df_op['Atendimentos'] = pd.to_numeric(df[col_vol], errors='coerce').fillna(0)
+        else:
+            df_op['Atendimentos'] = 0
+            
+        df_op['TMA_ms'] = pd.to_numeric(df[col_tma], errors='coerce').fillna(0)
+        # O arquivo do Genesys vem em milissegundos
+        df_op['TMA_seg'] = df_op['TMA_ms'] / 1000.0
+        
+        def formata_tma(segs):
+            if pd.isna(segs) or segs <= 0: return "00:00"
+            m = int(segs // 60)
+            s = int(segs % 60)
+            return f"{m:02d}:{s:02d}"
+            
+        df_op['TMA_Formatado'] = df_op['TMA_seg'].apply(formata_tma)
+        return df_op[['Colaborador', 'Atendimentos', 'TMA_seg', 'TMA_Formatado']]
+    return None
+
+def atualizar_historico_operacional(df_novo, periodo):
+    ARQ = 'historico_operacional.csv'
+    df_save = df_novo.copy()
+    df_save['Periodo'] = str(periodo).strip()
+    if os.path.exists(ARQ):
+        try:
+            df_hist = pd.read_csv(ARQ)
+            df_hist['Periodo'] = df_hist['Periodo'].astype(str).str.strip()
+            df_hist = df_hist[df_hist['Periodo'] != str(periodo).strip()]
+            df_final = pd.concat([df_hist, df_save], ignore_index=True)
+        except: df_final = df_save
+    else: df_final = df_save
+    df_final.to_csv(ARQ, index=False)
+
+def carregar_historico_operacional():
+    if os.path.exists('historico_operacional.csv'):
+        try: return pd.read_csv('historico_operacional.csv')
+        except: return None
+    return None
+
+# --- FUNÇÕES DE KPI (ANTIGAS) ---
 def atualizar_historico(df_atual, periodo):
     ARQUIVO_HIST = 'historico_consolidado.csv'
     df_save = df_atual.copy()
@@ -346,7 +398,7 @@ def classificar_farol(val):
 def carregar_dados_completo_debug():
     lista_final = []
     log_debug = []
-    arquivos_ignorar = ['usuarios.csv', 'historico_consolidado.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv', 'feedbacks_gb_backup.csv']
+    arquivos_ignorar = ['usuarios.csv', 'historico_consolidado.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv', 'feedbacks_gb_backup.csv', 'historico_operacional.csv']
     arquivos = [f for f in os.listdir('.') if f.endswith('.csv') and f.lower() not in arquivos_ignorar]
     for arquivo in arquivos:
         try:
@@ -404,14 +456,12 @@ def filtrar_por_usuarios_cadastrados(df_dados, df_users):
 def salvar_feedback_gb(dados_fb):
     ARQUIVO_FB = 'feedbacks_gb.csv'
     df_novo = pd.DataFrame([dados_fb])
-    # Tenta salvar no principal
     if os.path.exists(ARQUIVO_FB):
         try:
             df_hist = pd.read_csv(ARQUIVO_FB)
             df_final = pd.concat([df_hist, df_novo], ignore_index=True)
         except: df_final = df_novo
     else: 
-        # Se não existe, verifica se existe o backup e cria o principal a partir dele
         if os.path.exists('feedbacks_gb_backup.csv'):
             try:
                 df_hist = pd.read_csv('feedbacks_gb_backup.csv')
@@ -419,23 +469,17 @@ def salvar_feedback_gb(dados_fb):
             except: df_final = df_novo
         else:
             df_final = df_novo
-    
     df_final.to_csv(ARQUIVO_FB, index=False)
 
 def carregar_feedbacks_gb():
-    # Estratégia de Força Bruta para achar o arquivo
     nomes_possiveis = ['feedbacks_gb.csv', 'feedbacks_gb_backup.csv']
-    
     for nome in nomes_possiveis:
         if os.path.exists(nome):
             try:
-                # Tenta ler com o leitor inteligente
                 df = ler_csv_inteligente(nome)
                 if df is not None: return df
-                # Se falhar, tenta leitura padrão
                 return pd.read_csv(nome)
             except: continue
-            
     return None
 
 # --- 4. LOGIN RENOVADO ---
@@ -554,7 +598,7 @@ if df_dados is None and perfil == 'user':
 # --- 6. GESTOR ---
 # ==========================================
 if perfil == 'admin':
-    tabs = st.tabs(["🚦 Semáforo", "📈 Resumo Executivo", "🏆 Ranking Geral", "⏳ Evolução", "🔍 Indicadores", "💰 Comissões", "📋 Tabela Geral", "🏖️ Férias Equipe", "⚙️ Admin", "⏰ Banco de Horas", "📝 Feedbacks GB"])
+    tabs = st.tabs(["🚦 Semáforo", "📈 Resumo Executivo", "🏆 Ranking Geral", "⏳ Evolução", "🔍 Indicadores", "💬 Produtividade Chat", "💰 Comissões", "📋 Tabela Geral", "🏖️ Férias Equipe", "⚙️ Admin", "⏰ Banco de Horas", "📝 Feedbacks GB"])
 
     # ------------------ SEMÁFORO ------------------
     with tabs[0]: 
@@ -910,9 +954,38 @@ Vamos com tudo! 🔥"""
                     fig_rank = px.bar(df_kpi, x='% Atingimento', y='Colaborador', orientation='h', text_auto='.1%', color='% Atingimento', color_continuous_scale=['#e74c3c', '#f1c40f', '#2ecc71'])
                     fig_rank.add_vline(x=0.8, line_dash="dash", line_color="black")
                     st.plotly_chart(fig_rank, use_container_width=True, key=f"chart_rank_{kpi}")
+                    
+    # ------------------ PRODUTIVIDADE (NOVO) ------------------
+    with tabs[5]:
+        st.markdown("### 💬 Produtividade Operacional (Chat)")
+        df_op_hist = carregar_historico_operacional()
+        if df_op_hist is not None:
+            df_op_atual = df_op_hist[df_op_hist['Periodo'] == periodo_label].copy()
+            if not df_op_atual.empty:
+                if df_users_cadastrados is not None:
+                    lista_vip = df_users_cadastrados['nome'].unique()
+                    df_op_atual = df_op_atual[df_op_atual['Colaborador'].apply(normalizar_chave).isin(lista_vip)]
+                
+                df_op_atual['Colaborador'] = df_op_atual['Colaborador'].str.title()
+                
+                c1, c2 = st.columns(2)
+                with c1:
+                    fig_vol = px.bar(df_op_atual.sort_values('Atendimentos', ascending=True), x='Atendimentos', y='Colaborador', orientation='h', title='💬 Volume de Chats Atendidos', text='Atendimentos')
+                    st.plotly_chart(fig_vol, use_container_width=True)
+                with c2:
+                    fig_tma = px.bar(df_op_atual.sort_values('TMA_seg', ascending=False), x='TMA_seg', y='Colaborador', orientation='h', title='⏱️ Tempo Médio de Atendimento (TMA Chat)', text='TMA_Formatado')
+                    fig_tma.update_xaxes(title="Segundos")
+                    st.plotly_chart(fig_tma, use_container_width=True)
+                    
+                st.markdown("#### 📋 Tabela de Produtividade (Chat)")
+                st.dataframe(df_op_atual[['Colaborador', 'Atendimentos', 'TMA_Formatado']].rename(columns={'Atendimentos': 'Chats Atendidos', 'TMA_Formatado': 'TMA Chat (mm:ss)'}), use_container_width=True, hide_index=True)
+            else:
+                st.info("Nenhum dado de produtividade de Chat para este período. Faça o upload na aba Admin.")
+        else:
+            st.info("Nenhum histórico de produtividade de Chat encontrado. Faça o upload na aba Admin.")
 
     # ------------------ COMISSÕES ------------------
-    with tabs[5]:
+    with tabs[6]:
         st.markdown(f"### 💰 Relatório de Comissões")
         if df_dados is not None:
             st.info("ℹ️ Regra: R$ 0,50 por Diamante. **Trava:** Conformidade >= 92%.")
@@ -965,7 +1038,7 @@ Vamos com tudo! 🔥"""
             st.download_button("⬇️ Baixar CSV", df_comissao.to_csv(index=False).encode('utf-8'), "comissoes.csv", "text/csv")
 
     # ------------------ MAPA DE RESULTADOS ------------------
-    with tabs[6]: 
+    with tabs[7]: 
         if df_dados is not None:
             c1, c2 = st.columns([3, 1])
             with c1: st.markdown(f"### Mapa de Resultados: {periodo_label}")
@@ -977,17 +1050,15 @@ Vamos com tudo! 🔥"""
             st.dataframe(pivot.style.background_gradient(cmap='RdYlGn', vmin=0.7, vmax=1.0).format("{:.2%}"), use_container_width=True, height=600)
 
     # ------------------ FÉRIAS ------------------
-    with tabs[7]:
+    with tabs[8]:
         st.markdown("### 🏖️ Férias da Equipe")
         if df_users_cadastrados is not None:
-            # Lógica para mostrar quem está de férias no mês selecionado
             mapa_meses = {
                 '01': 'Janeiro', '02': 'Fevereiro', '03': 'Março', '04': 'Abril',
                 '05': 'Maio', '06': 'Junho', '07': 'Julho', '08': 'Agosto',
                 '09': 'Setembro', '10': 'Outubro', '11': 'Novembro', '12': 'Dezembro'
             }
             
-            # Tenta pegar o mês do seletor (ex: "03" de "03/2026")
             try:
                 mes_num = periodo_selecionado.split('/')[0]
                 nome_mes = mapa_meses.get(mes_num, "")
@@ -998,10 +1069,8 @@ Vamos com tudo! 🔥"""
             df_f = df_users_cadastrados[['nome', 'ferias']].copy()
             df_f['nome'] = df_f['nome'].str.title()
             
-            # Filtro Inteligente
             def esta_de_ferias(texto_ferias, mes_num, nome_mes):
                 t = str(texto_ferias).lower()
-                # Verifica se tem o nome do mês (ex: "março", "marco") ou o número (ex: "/03")
                 termos = []
                 if nome_mes: 
                     termos.append(nome_mes.lower())
@@ -1029,7 +1098,7 @@ Vamos com tudo! 🔥"""
             st.dataframe(df_f, use_container_width=True)
 
     # ------------------ ADMIN ------------------
-    with tabs[8]:
+    with tabs[9]:
         st.markdown("### 📂 Gestão e Diagnóstico")
         st1, st2, st3, st4 = st.tabs(["📤 Upload", "🗑️ Limpeza", "💾 Backup", "🔍 Diagnóstico"])
         with st1:
@@ -1039,9 +1108,52 @@ Vamos com tudo! 🔥"""
             if up_u: 
                 with open("usuarios.csv", "wb") as w: w.write(up_u.getbuffer())
                 st.success("Usuarios OK!")
+            
+            st.markdown("---")
+            st.markdown("#### 💎 Arquivos de Indicadores (Qualidade, Aderência, etc)")
             up_k = st.file_uploader("Indicadores (CSVs)", accept_multiple_files=True, key="k")
+            
+            st.markdown("#### 💬 Arquivo de Produtividade Chat (Opcional)")
+            up_op = st.file_uploader("Relatório de Desempenho (Volume / TMA Chat)", type=['csv'], key="up_op")
+
+            if st.button("💾 Salvar e Atualizar Histórico", type="primary"): 
+                if not nova_data.strip():
+                    st.error("⚠️ O campo 'Mês/Ano' não pode estar vazio!")
+                    st.stop()
+                
+                sucesso_kpi = False
+                sucesso_op = False
+
+                try:
+                    if up_k:
+                        faxina_arquivos_temporarios()
+                        salvar_arquivos_padronizados(up_k)
+                        salvar_config(nova_data)
+                        df_debug, log = carregar_dados_completo_debug() 
+                        if df_debug is not None:
+                            atualizar_historico(df_debug, nova_data)
+                            sucesso_kpi = True
+                            st.success("✅ Histórico de Diamantes atualizado com sucesso!")
+                        else: st.error("❌ Erro ao processar arquivos de indicadores.")
+                    
+                    if up_op:
+                        df_op_raw = ler_csv_inteligente(up_op)
+                        if df_op_raw is not None:
+                            df_op_tratado = processar_desempenho_agente(df_op_raw)
+                            if df_op_tratado is not None:
+                                atualizar_historico_operacional(df_op_tratado, nova_data)
+                                sucesso_op = True
+                                st.success("✅ Dados de Produtividade (TMA/Volume) atualizados!")
+                            else: st.error("❌ Erro ao ler colunas de TMA. Certifique-se de ser o arquivo padrão do sistema.")
+                    
+                    if sucesso_kpi or sucesso_op:
+                        time.sleep(1.5)
+                        st.rerun()
+
+                except Exception as e: st.error(f"Erro salvamento: {e}")
+
             if up_k:
-                st.markdown("**🔎 Pré-visualização:**")
+                st.markdown("**🔎 Pré-visualização KPIs:**")
                 lista_diag = []
                 for f in up_k:
                     try:
@@ -1054,22 +1166,7 @@ Vamos com tudo! 🔥"""
                             else: lista_diag.append({"Arquivo": f.name, "Status": "❌ Erro", "Detalhe": msg})
                     except Exception as e: lista_diag.append({"Arquivo": f.name, "Status": "❌ Erro", "Detalhe": str(e)})
                 st.dataframe(pd.DataFrame(lista_diag))
-                if st.button("💾 Salvar e Atualizar Histórico"): 
-                    if not nova_data.strip():
-                        st.error("⚠️ O campo 'Mês/Ano' não pode estar vazio!")
-                        st.stop()
-                    try:
-                        faxina_arquivos_temporarios()
-                        salvar_arquivos_padronizados(up_k)
-                        salvar_config(nova_data)
-                        df_debug, log = carregar_dados_completo_debug() 
-                        if df_debug is not None:
-                            atualizar_historico(df_debug, nova_data)
-                            st.success("✅ Atualizado com Sucesso!")
-                            time.sleep(1)
-                            st.rerun()
-                        else: st.error("Erro ao processar arquivos.")
-                    except Exception as e: st.error(f"Erro salvamento: {e}")
+
         with st2:
             st.markdown("#### 🗑️ Gerenciar Meses")
             df_atual_hist = carregar_historico_completo()
@@ -1093,6 +1190,8 @@ Vamos com tudo! 🔥"""
             if os.path.exists('historico_consolidado.csv'):
                 with open('historico_consolidado.csv', 'rb') as f: st.download_button("⬇️ Baixar Backup Consolidado", f, "historico_consolidado_backup.csv", "text/csv")
             else: st.warning("Sem histórico para backup.")
+            if os.path.exists('historico_operacional.csv'):
+                with open('historico_operacional.csv', 'rb') as f: st.download_button("⬇️ Baixar Backup TMA", f, "historico_operacional_backup.csv", "text/csv")
             if os.path.exists('feedbacks_gb.csv'):
                 with open('feedbacks_gb.csv', 'rb') as f: st.download_button("⬇️ Baixar Banco de Feedbacks", f, "feedbacks_gb_backup.csv", "text/csv")
         with st4:
@@ -1101,7 +1200,7 @@ Vamos com tudo! 🔥"""
                 st.dataframe(log_df)
 
     # ------------------ BANCO DE HORAS ------------------
-    with tabs[9]:
+    with tabs[10]:
         st.markdown("### ⏰ Análise de Folha de Ponto")
         st.info("Faça o upload do arquivo .xlsx ou .csv.")
         uploaded_ponto = st.file_uploader("Carregar Planilha de Ponto", type=['xlsx', 'csv'])
@@ -1142,7 +1241,7 @@ Vamos com tudo! 🔥"""
             except Exception as e: st.error(f"Erro: {e}")
 
     # ------------------ FEEDBACKS GB ------------------
-    with tabs[10]:
+    with tabs[11]:
         st.markdown("### 📝 Controle de Feedbacks (GB)")
         
         # --- DIAGNÓSTICO DE ARQUIVO ---
@@ -1341,6 +1440,17 @@ else:
                 meta = 0.92 if row['Indicador'] in ['CONFORMIDADE', 'ADERENCIA'] else 0.80
                 with cols[i]: st.metric(label, f"{val:.2%}", "✅ Meta Batida" if round(val, 4) >= meta else f"🔻 Meta {meta:.0%}", delta_color="normal" if round(val, 4) >= meta else "inverse")
             st.markdown("---")
+            
+            # --- DADOS DE PRODUTIVIDADE DO OPERADOR (NOVO) ---
+            df_op_hist = carregar_historico_operacional()
+            if df_op_hist is not None:
+                df_op_user = df_op_hist[(df_op_hist['Periodo'] == periodo_label) & (df_op_hist['Colaborador'].apply(normalizar_chave) == normalizar_chave(nome_logado))]
+                if not df_op_user.empty:
+                    st.markdown("#### 💬 Sua Produtividade no Chat")
+                    c_v1, c_v2 = st.columns(2)
+                    c_v1.metric("💬 Chats Atendidos", int(df_op_user.iloc[0]['Atendimentos']))
+                    c_v2.metric("⏱️ Seu TMA Chat", df_op_user.iloc[0]['TMA_Formatado'])
+                    st.markdown("---")
             
             # --- DEVOLVENDO O RAIO-X RADAR CHART ---
             media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
