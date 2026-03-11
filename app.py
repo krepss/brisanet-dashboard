@@ -99,7 +99,7 @@ def sincronizar_com_github(nome_arquivo, mensagem="Atualização via Painel Gest
             "Accept": "application/vnd.github.v3+json"
         }
         
-        # 1. Pede o SHA atual do ficheiro no GitHub
+        # 1. Pede o SHA atual do arquivo no GitHub
         r = requests.get(url, headers=headers, params={"ref": branch})
         sha = r.json().get("sha") if r.status_code == 200 else None
         
@@ -109,7 +109,7 @@ def sincronizar_com_github(nome_arquivo, mensagem="Atualização via Painel Gest
             
         # 3. Prepara o pacote de envio
         payload = {
-            "message": f"🤖 {mensagem} - Ficheiro: {nome_arquivo}",
+            "message": f"🤖 {mensagem} - Arquivo: {nome_arquivo}",
             "content": content_b64,
             "branch": branch
         }
@@ -1154,7 +1154,7 @@ Vamos com tudo! 🔥"""
             up_u = st.file_uploader("usuarios.csv", key="u")
             if up_u: 
                 with open("usuarios.csv", "wb") as w: w.write(up_u.getbuffer())
-                sincronizar_com_github("usuarios.csv", "Atualizando base de utilizadores")
+                sincronizar_com_github("usuarios.csv", "Atualizando base de usuários")
                 st.success("Usuarios OK!")
             
             st.markdown("---")
@@ -1567,11 +1567,11 @@ else:
             if not user_share_row.empty and total_dia_team > 0:
                 user_dia = user_share_row.iloc[0]['Diamantes']
                 share = (user_dia / total_dia_team)
-                msg_share = f"Representa **{share:.1%}** do resultado da equipa."
+                msg_share = f"Você representa **{share:.1%}** do resultado da equipe."
 
             # Display
             c1, c2 = st.columns(2)
-            c1.markdown(f"#### 🦁 Média Global da Equipa: **{perc_team:.1%}**")
+            c1.markdown(f"#### 🦁 Média Global da Equipe: **{perc_team:.1%}**")
             c2.success(msg_share)
             
             # Gauge Chart
@@ -1587,8 +1587,8 @@ else:
             st.plotly_chart(fig_team, use_container_width=True)
 
     with tab_ferias:
-        st.markdown("### 🗓️ Planeamento de Férias")
-        st.markdown(f"<div class='vacation-card'><p class='vacation-title'>As suas próximas férias estão programadas para:</p><div class='vacation-date'>{minhas_ferias}</div><p class='vacation-note'>*Sujeito a alteração.</p></div>", unsafe_allow_html=True)
+        st.markdown("### 🗓️ Planejamento de Férias")
+        st.markdown(f"<div class='vacation-card'><p class='vacation-title'>Suas próximas férias estão programadas para:</p><div class='vacation-date'>{minhas_ferias}</div><p class='vacation-note'>*Sujeito a alteração.</p></div>", unsafe_allow_html=True)
 
     with tab_feedbacks:
         st.markdown("### 📝 Histórico de Feedbacks")
@@ -1600,8 +1600,8 @@ else:
                 for _, row in meus_fbs.iloc[::-1].iterrows():
                     with st.expander(f"📅 {row['Periodo_Ref']} | 🎯 Resultado TAM: {row['TAM']} {row.get('Faixa', '')}"):
                         st.markdown(f"**🎯 Motivos:**\n> {row['Motivo']}\n\n**🚀 Plano de Ação:**\n> {row['Acao_GB']}\n\n**💡 Feedback:**\n> {row['Feedback_Valor']}")
-            else: st.info("Ainda não possui registos de feedback no sistema.")
-        else: st.info("Nenhum feedback registado no sistema até ao momento.")
+            else: st.info("Você ainda não possui registros de feedback no sistema.")
+        else: st.info("Nenhum feedback registrado no sistema até o momento.")
 
 st.markdown("---")
 st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
