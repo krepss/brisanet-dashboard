@@ -916,7 +916,7 @@ Queria agradecer o empenho de cada um. Sabemos que a operação é dinâmica, ma
 
 Parabéns aos destaques! Vocês mandaram muito bem! 👏
 
-Para quem não chegou lá dessa vez: o jogo reinicia agora. Vamos ajustar os ponteiros, focar na qualidade (CSAT/Conformidade) e buscar esse topo no próximo ciclo. Conto com vocês!
+Para quem não chegaram lá dessa vez: o jogo reinicia agora. Vamos ajustar os ponteiros, focar na qualidade (CSAT/Conformidade) e buscar esse topo no próximo ciclo. Conto com vocês!
 
 O detalhe individual já está atualizado no painel.
 Vamos com tudo! 🔥"""
@@ -1017,11 +1017,24 @@ Vamos com tudo! 🔥"""
                 
                 c1, c2 = st.columns(2)
                 with c1:
-                    fig_vol = px.bar(df_op_atual.sort_values('Atendimentos', ascending=True), x='Atendimentos', y='Colaborador', orientation='h', title='💬 Volume de Chats Atendidos', text='Atendimentos')
+                    df_vol = df_op_atual.sort_values('Atendimentos', ascending=True)
+                    fig_vol = px.bar(df_vol, x='Atendimentos', y='Colaborador', orientation='h', 
+                                     title='💬 Volume de Chats Atendidos', text='Atendimentos',
+                                     color='Atendimentos', color_continuous_scale='Blues')
+                    fig_vol.update_traces(textposition='outside', textfont_size=12)
+                    fig_vol.update_layout(coloraxis_showscale=False, margin=dict(l=10, r=50, t=40, b=20))
+                    fig_vol.update_xaxes(visible=False) # Remove o eixo X para limpar o visual
+                    fig_vol.update_yaxes(title="")
                     st.plotly_chart(fig_vol, use_container_width=True)
                 with c2:
-                    fig_tma = px.bar(df_op_atual.sort_values('TMA_seg', ascending=False), x='TMA_seg', y='Colaborador', orientation='h', title='⏱️ Tempo Médio de Atendimento (TMA Chat)', text='TMA_Formatado')
-                    fig_tma.update_xaxes(title="Segundos")
+                    df_tma = df_op_atual.sort_values('TMA_seg', ascending=False)
+                    fig_tma = px.bar(df_tma, x='TMA_seg', y='Colaborador', orientation='h', 
+                                     title='⏱️ Tempo Médio de Atendimento (TMA Chat)', text='TMA_Formatado',
+                                     color='TMA_seg', color_continuous_scale=['#2ecc71', '#f1c40f', '#e74c3c'])
+                    fig_tma.update_traces(textposition='outside', textfont_size=12)
+                    fig_tma.update_layout(coloraxis_showscale=False, margin=dict(l=10, r=50, t=40, b=20))
+                    fig_tma.update_xaxes(visible=False) # Remove o eixo X numérico
+                    fig_tma.update_yaxes(title="")
                     st.plotly_chart(fig_tma, use_container_width=True)
                     
                 st.markdown("#### 📋 Tabela de Produtividade (Chat)")
