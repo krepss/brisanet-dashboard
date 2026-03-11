@@ -11,7 +11,7 @@ from datetime import datetime, timezone, timedelta
 import unicodedata
 
 # --- CONFIGURAÇÃO DA LOGO E ACESSOS ---
-LOGO_FILE = "logo.png"
+LOGO_FILE = "logo.PNG"
 SENHA_ADMIN = "admin123"
 USUARIOS_ADMIN = ['gestor', 'admin']
 
@@ -267,7 +267,6 @@ def carregar_historico_voz():
         try: return pd.read_csv('historico_voz.csv')
         except: return None
     return None
-
 
 # --- FUNÇÕES DE KPI (ANTIGAS) ---
 def atualizar_historico(df_atual, periodo):
@@ -990,7 +989,6 @@ Vamos com tudo! 🔥"""
         st.markdown("### ⏳ Evolução Temporal (Qualidade)")
         df_hist = carregar_historico_completo()
         
-        # Carregar históricos de produtividade para os gráficos de linha
         df_op_hist = carregar_historico_operacional()
         df_voz_hist = carregar_historico_voz()
         
@@ -1001,7 +999,6 @@ Vamos com tudo! 🔥"""
             if lista_colabs:
                 colab_sel = st.selectbox("Selecione o Colaborador para análise histórica:", lista_colabs)
                 
-                # Gráfico de Qualidade (Mapa de Calor)
                 df_hist_user = df_hist[df_hist['Colaborador'] == colab_sel].copy()
                 if not df_hist_user.empty:
                     df_hist_user['Indicador'] = df_hist_user['Indicador'].apply(formatar_nome_visual)
@@ -1014,21 +1011,19 @@ Vamos com tudo! 🔥"""
                 st.markdown("### 📈 Evolução Histórica de Produtividade (TMA)")
                 c_line1, c_line2 = st.columns(2)
                 
-                # Linha TMA Chat
                 if df_op_hist is not None:
                     df_op_user_hist = df_op_hist[df_op_hist['Colaborador'].apply(normalizar_chave) == normalizar_chave(colab_sel)].copy()
                     if not df_op_user_hist.empty:
-                        # Ordenar cronologicamente os períodos (ajuste simples baseado no mês/ano)
                         df_op_user_hist['Data_Ord'] = pd.to_datetime(df_op_user_hist['Periodo'], format='%m/%Y', errors='coerce')
                         df_op_user_hist = df_op_user_hist.sort_values(by='Data_Ord')
                         
                         with c_line1:
                             fig_line_chat = px.line(df_op_user_hist, x='Periodo', y='TMA_seg', title='Evolução TMA Chat', markers=True, text='TMA_Formatado')
+                            fig_line_chat.add_hline(y=1200, line_dash="dash", line_color="red", annotation_text="Meta (20m)")
                             fig_line_chat.update_traces(textposition="top center")
                             fig_line_chat.update_yaxes(visible=False)
                             st.plotly_chart(fig_line_chat, use_container_width=True)
                 
-                # Linha TMA Voz
                 if df_voz_hist is not None:
                     df_voz_user_hist = df_voz_hist[df_voz_hist['Colaborador'].apply(normalizar_chave) == normalizar_chave(colab_sel)].copy()
                     if not df_voz_user_hist.empty:
@@ -1037,6 +1032,7 @@ Vamos com tudo! 🔥"""
                         
                         with c_line2:
                             fig_line_voz = px.line(df_voz_user_hist, x='Periodo', y='TMA_seg', title='Evolução TMA Voz', markers=True, text='TMA_Formatado', color_discrete_sequence=['#8e44ad'])
+                            fig_line_voz.add_hline(y=420, line_dash="dash", line_color="red", annotation_text="Meta (7m)")
                             fig_line_voz.update_traces(textposition="top center")
                             fig_line_voz.update_yaxes(visible=False)
                             st.plotly_chart(fig_line_voz, use_container_width=True)
@@ -1091,6 +1087,7 @@ Vamos com tudo! 🔥"""
                         fig_tma = px.bar(df_tma, x='TMA_seg', y='Colaborador', orientation='h', 
                                          title='⏱️ Tempo Médio de Atendimento (TMA Chat)', text='TMA_Formatado',
                                          color='TMA_seg', color_continuous_scale=['#2ecc71', '#f1c40f', '#e74c3c'])
+                        fig_tma.add_vline(x=1200, line_dash="dash", line_color="red", annotation_text="Meta (20m)", annotation_position="top right")
                         fig_tma.update_traces(textposition='outside', textfont_size=12)
                         fig_tma.update_layout(coloraxis_showscale=False, margin=dict(l=10, r=50, t=40, b=20))
                         fig_tma.update_xaxes(visible=False)
@@ -1132,6 +1129,7 @@ Vamos com tudo! 🔥"""
                         fig_tma_v = px.bar(df_tma_v, x='TMA_seg', y='Colaborador', orientation='h', 
                                          title='⏱️ Tempo Médio de Atendimento (TMA Voz)', text='TMA_Formatado',
                                          color='TMA_seg', color_continuous_scale=['#2ecc71', '#f1c40f', '#e74c3c'])
+                        fig_tma_v.add_vline(x=420, line_dash="dash", line_color="red", annotation_text="Meta (7m)", annotation_position="top right")
                         fig_tma_v.update_traces(textposition='outside', textfont_size=12)
                         fig_tma_v.update_layout(coloraxis_showscale=False, margin=dict(l=10, r=50, t=40, b=20))
                         fig_tma_v.update_xaxes(visible=False)
@@ -1619,7 +1617,7 @@ else:
                 with cols[i]: st.metric(label, f"{val:.2%}", "✅ Meta Batida" if round(val, 4) >= meta else f"🔻 Meta {meta:.0%}", delta_color="normal" if round(val, 4) >= meta else "inverse")
             st.markdown("---")
             
-            # --- DADOS DE PRODUTIVIDADE DO OPERADOR (CHAT E VOZ) ---
+            # --- DADOS DE PRODUTIVIDADE DO OPERADOR (NOVO CÁLCULO) ---
             st.markdown("#### ⏱️ Sua Produtividade")
             df_op_hist = carregar_historico_operacional()
             df_voz_hist = carregar_historico_voz()
@@ -1629,8 +1627,20 @@ else:
             if df_op_hist is not None:
                 df_op_user = df_op_hist[(df_op_hist['Periodo'] == periodo_label) & (df_op_hist['Colaborador'].apply(normalizar_chave) == normalizar_chave(nome_logado))]
                 if not df_op_user.empty:
-                    c_p1.metric("💬 Chats Atendidos", int(df_op_user.iloc[0]['Atendimentos']))
-                    c_p2.metric("⏱️ TMA Chat", df_op_user.iloc[0]['TMA_Formatado'])
+                    vol_chat = int(df_op_user.iloc[0]['Atendimentos'])
+                    tma_chat_seg = df_op_user.iloc[0]['TMA_seg']
+                    tma_chat_fmt = df_op_user.iloc[0]['TMA_Formatado']
+                    
+                    media_chat_dia = vol_chat / 22.0
+                    delta_vol_c = f"~{media_chat_dia:.0f} por dia (base 22d)"
+                    
+                    if tma_chat_seg <= 1200: # 1200 seg = 20 min
+                        delta_tma_c = "- Dentro da Meta (20m)"
+                    else:
+                        delta_tma_c = "+ Acima da Meta (20m)"
+                        
+                    c_p1.metric("💬 Chats Atendidos", vol_chat, delta_vol_c, delta_color="off")
+                    c_p2.metric("⏱️ TMA Chat", tma_chat_fmt, delta_tma_c, delta_color="inverse")
                 else:
                     c_p1.metric("💬 Chats Atendidos", "-")
                     c_p2.metric("⏱️ TMA Chat", "-")
@@ -1641,8 +1651,20 @@ else:
             if df_voz_hist is not None:
                 df_voz_user = df_voz_hist[(df_voz_hist['Periodo'] == periodo_label) & (df_voz_hist['Colaborador'].apply(normalizar_chave) == normalizar_chave(nome_logado))]
                 if not df_voz_user.empty:
-                    c_p3.metric("📞 Ligações Atendidas", int(df_voz_user.iloc[0]['Atendimentos']))
-                    c_p4.metric("⏱️ TMA Voz", df_voz_user.iloc[0]['TMA_Formatado'])
+                    vol_voz = int(df_voz_user.iloc[0]['Atendimentos'])
+                    tma_voz_seg = df_voz_user.iloc[0]['TMA_seg']
+                    tma_voz_fmt = df_voz_user.iloc[0]['TMA_Formatado']
+                    
+                    media_voz_dia = vol_voz / 22.0
+                    delta_vol_v = f"~{media_voz_dia:.0f} por dia (base 22d)"
+                    
+                    if tma_voz_seg <= 420: # 420 seg = 7 min
+                        delta_tma_v = "- Dentro da Meta (7m)"
+                    else:
+                        delta_tma_v = "+ Acima da Meta (7m)"
+                        
+                    c_p3.metric("📞 Ligações Atendidas", vol_voz, delta_vol_v, delta_color="off")
+                    c_p4.metric("⏱️ TMA Voz", tma_voz_fmt, delta_tma_v, delta_color="inverse")
                 else:
                     c_p3.metric("📞 Ligações Atendidas", "-")
                     c_p4.metric("⏱️ TMA Voz", "-")
@@ -1674,7 +1696,7 @@ else:
                         st.plotly_chart(fig, use_container_width=True)
             st.markdown("---")
             
-            # --- HISTÓRICO INDIVIDUAL E PRODUTIVIDADE ---
+            # --- HISTÓRICO INDIVIDUAL ---
             st.markdown("### ⏳ Sua Evolução Histórica")
             df_hist_full = carregar_historico_completo()
             if df_hist_full is not None:
@@ -1691,6 +1713,7 @@ else:
                     df_op_user_hist = df_op_user_hist.sort_values(by='Data_Ord')
                     with c_lin1:
                         fig_line_chat = px.line(df_op_user_hist, x='Periodo', y='TMA_seg', title='Sua Evolução TMA Chat', markers=True, text='TMA_Formatado')
+                        fig_line_chat.add_hline(y=1200, line_dash="dash", line_color="red", annotation_text="Meta (20m)")
                         fig_line_chat.update_traces(textposition="top center")
                         fig_line_chat.update_yaxes(visible=False)
                         st.plotly_chart(fig_line_chat, use_container_width=True)
@@ -1702,6 +1725,7 @@ else:
                     df_voz_user_hist = df_voz_user_hist.sort_values(by='Data_Ord')
                     with c_lin2:
                         fig_line_voz = px.line(df_voz_user_hist, x='Periodo', y='TMA_seg', title='Sua Evolução TMA Voz', markers=True, text='TMA_Formatado', color_discrete_sequence=['#8e44ad'])
+                        fig_line_voz.add_hline(y=420, line_dash="dash", line_color="red", annotation_text="Meta (7m)")
                         fig_line_voz.update_traces(textposition="top center")
                         fig_line_voz.update_yaxes(visible=False)
                         st.plotly_chart(fig_line_voz, use_container_width=True)
