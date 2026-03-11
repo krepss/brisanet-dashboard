@@ -6,6 +6,7 @@ import os
 import json
 import time
 import base64
+import requests # NOVO: Necessário para comunicar com o GitHub
 from datetime import datetime, timezone, timedelta
 import unicodedata
 
@@ -83,6 +84,45 @@ st.markdown("""
 
 # --- 3. FUNÇÕES DE BACKEND ---
 
+def sincronizar_com_github(nome_arquivo, mensagem="Atualização via Painel Gestor"):
+    """Envia silenciosamente as atualizações locais para o repositório remoto do GitHub"""
+    if "GITHUB_TOKEN" not in st.secrets or "GITHUB_REPO" not in st.secrets:
+        return False # Executa apenas localmente se as chaves não existirem
+    try:
+        token = st.secrets["GITHUB_TOKEN"]
+        repo = st.secrets["GITHUB_REPO"]
+        branch = st.secrets.get("GITHUB_BRANCH", "main")
+        
+        url = f"https://api.github.com/repos/{repo}/contents/{nome_arquivo}"
+        headers = {
+            "Authorization": f"token {token}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        
+        # 1. Pede o SHA atual do ficheiro no GitHub
+        r = requests.get(url, headers=headers, params={"ref": branch})
+        sha = r.json().get("sha") if r.status_code == 200 else None
+        
+        # 2. Lê o novo conteúdo
+        with open(nome_arquivo, "rb") as f:
+            content_b64 = base64.b64encode(f.read()).decode("utf-8")
+            
+        # 3. Prepara o pacote de envio
+        payload = {
+            "message": f"🤖 {mensagem} - Ficheiro: {nome_arquivo}",
+            "content": content_b64,
+            "branch": branch
+        }
+        if sha: 
+            payload["sha"] = sha
+            
+        # 4. Grava na nuvem
+        requests.put(url, headers=headers, json=payload)
+        return True
+    except Exception as e:
+        print(f"Aviso - Falha ao sincronizar com GitHub: {e}")
+        return False
+
 def formatar_nome_visual(nome_cru):
     nome = str(nome_cru).strip().upper()
     if "ADER" in nome: return "Aderência"
@@ -140,6 +180,7 @@ def obter_data_atualizacao():
 def salvar_config(data_texto):
     try:
         with open('config.json', 'w') as f: json.dump({'periodo': data_texto}, f)
+        sincronizar_com_github('config.json', "Atualizando configuração global")
     except: pass
 
 def ler_config():
@@ -149,7 +190,9 @@ def ler_config():
 
 def limpar_base_dados_completa():
     for f in os.listdir('.'): 
-        if f.endswith('.csv'): os.remove(f)
+        if f.endswith('.csv'): 
+            os.remove(f)
+            sincronizar_com_github(f, "Reset de base de dados")
 
 def faxina_arquivos_temporarios():
     protegidos = ['historico_consolidado.csv', 'usuarios.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv', 'feedbacks_gb_backup.csv', 'historico_operacional.csv']
@@ -202,6 +245,7 @@ def atualizar_historico_operacional(df_novo, periodo):
         except: df_final = df_save
     else: df_final = df_save
     df_final.to_csv(ARQ, index=False)
+    sincronizar_com_github(ARQ, f"Atualizando Produtividade Chat - {periodo}")
 
 def carregar_historico_operacional():
     if os.path.exists('historico_operacional.csv'):
@@ -230,6 +274,7 @@ def atualizar_historico(df_atual, periodo):
         if c in existing_cols: df_final[c] = df_final[c].fillna(0.0)
             
     df_final[existing_cols].to_csv(ARQUIVO_HIST, index=False)
+    sincronizar_com_github(ARQUIVO_HIST, f"Atualizando Indicadores Mensais - {periodo}")
 
 def excluir_periodo_historico(periodo_alvo):
     if os.path.exists('historico_consolidado.csv'):
@@ -238,6 +283,7 @@ def excluir_periodo_historico(periodo_alvo):
             df_hist['Periodo'] = df_hist['Periodo'].astype(str).str.strip()
             df_novo = df_hist[df_hist['Periodo'] != str(periodo_alvo).strip()]
             df_novo.to_csv('historico_consolidado.csv', index=False)
+            sincronizar_com_github('historico_consolidado.csv', f"Exclusão de mês: {periodo_alvo}")
             return True
         except: return False
     return False
@@ -470,6 +516,7 @@ def salvar_feedback_gb(dados_fb):
         else:
             df_final = df_novo
     df_final.to_csv(ARQUIVO_FB, index=False)
+    sincronizar_com_github(ARQUIVO_FB, "Novo Feedback GB Registrado")
 
 def carregar_feedbacks_gb():
     nomes_possiveis = ['feedbacks_gb.csv', 'feedbacks_gb_backup.csv']
@@ -1107,6 +1154,7 @@ Vamos com tudo! 🔥"""
             up_u = st.file_uploader("usuarios.csv", key="u")
             if up_u: 
                 with open("usuarios.csv", "wb") as w: w.write(up_u.getbuffer())
+                sincronizar_com_github("usuarios.csv", "Atualizando base de utilizadores")
                 st.success("Usuarios OK!")
             
             st.markdown("---")
@@ -1474,7 +1522,7 @@ else:
                         st.plotly_chart(fig, use_container_width=True)
             st.markdown("---")
             
-            # --- HISTÓRICO INDIVIDUAL (VOLTANDO PARA CÁ) ---
+            # --- HISTÓRICO INDIVIDUAL ---
             st.markdown("### ⏳ Sua Evolução Histórica")
             df_hist_full = carregar_historico_completo()
             if df_hist_full is not None:
@@ -1519,11 +1567,11 @@ else:
             if not user_share_row.empty and total_dia_team > 0:
                 user_dia = user_share_row.iloc[0]['Diamantes']
                 share = (user_dia / total_dia_team)
-                msg_share = f"Você representa **{share:.1%}** do resultado da equipe."
+                msg_share = f"Representa **{share:.1%}** do resultado da equipa."
 
             # Display
             c1, c2 = st.columns(2)
-            c1.markdown(f"#### 🦁 Média Global da Equipe: **{perc_team:.1%}**")
+            c1.markdown(f"#### 🦁 Média Global da Equipa: **{perc_team:.1%}**")
             c2.success(msg_share)
             
             # Gauge Chart
@@ -1539,8 +1587,8 @@ else:
             st.plotly_chart(fig_team, use_container_width=True)
 
     with tab_ferias:
-        st.markdown("### 🗓️ Planejamento de Férias")
-        st.markdown(f"<div class='vacation-card'><p class='vacation-title'>Suas próximas férias estão programadas para:</p><div class='vacation-date'>{minhas_ferias}</div><p class='vacation-note'>*Sujeito a alteração.</p></div>", unsafe_allow_html=True)
+        st.markdown("### 🗓️ Planeamento de Férias")
+        st.markdown(f"<div class='vacation-card'><p class='vacation-title'>As suas próximas férias estão programadas para:</p><div class='vacation-date'>{minhas_ferias}</div><p class='vacation-note'>*Sujeito a alteração.</p></div>", unsafe_allow_html=True)
 
     with tab_feedbacks:
         st.markdown("### 📝 Histórico de Feedbacks")
@@ -1552,8 +1600,8 @@ else:
                 for _, row in meus_fbs.iloc[::-1].iterrows():
                     with st.expander(f"📅 {row['Periodo_Ref']} | 🎯 Resultado TAM: {row['TAM']} {row.get('Faixa', '')}"):
                         st.markdown(f"**🎯 Motivos:**\n> {row['Motivo']}\n\n**🚀 Plano de Ação:**\n> {row['Acao_GB']}\n\n**💡 Feedback:**\n> {row['Feedback_Valor']}")
-            else: st.info("Você ainda não possui registros de feedback no sistema.")
-        else: st.info("Nenhum feedback registrado no sistema até o momento.")
+            else: st.info("Ainda não possui registos de feedback no sistema.")
+        else: st.info("Nenhum feedback registado no sistema até ao momento.")
 
 st.markdown("---")
 st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
