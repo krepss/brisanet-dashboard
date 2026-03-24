@@ -1423,7 +1423,7 @@ Vamos com tudo! 🔥"""
             colab_list = sorted(df_users_cadastrados['nome'].str.title().unique()) if df_users_cadastrados is not None else ["Nenhum usuário cadastrado"]
             c_f1, c_f2 = st.columns(2)
             sel_colab = c_f1.selectbox("Colaborador:", colab_list)
-            unidade_gerencial = c_f2.text_input("Unidade Gerencial:", value="Suporte Técnico")
+            unidade_gerencial = c_f2.text_input("Unidade Gerencial:", value="MU_SUPORTE_VAREJO")
             
             tipo_agendamento = st.radio("Tipo de Solicitação:", ["Pagamento (Horas Negativas - Trabalhar a mais)", "Retirada (Horas Positivas - Folga/Sair cedo)"])
             
