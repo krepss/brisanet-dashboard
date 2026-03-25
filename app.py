@@ -409,7 +409,7 @@ def tratar_arquivo_especial(df, nome_arquivo):
     df.rename(columns={col_agente: 'Colaborador'}, inplace=True)
     df['Colaborador'] = df['Colaborador'].apply(normalizar_chave)
     
-    # 1. Identifica as colunas cravando no símbolo "%"
+    # 1. Busca Agressiva pelas colunas
     col_ad = next((c for c in df.columns if 'ader' in c and ('%' in c or 'perc' in c)), None)
     if not col_ad: 
         col_ad = next((c for c in df.columns if 'ader' in c and 'duração' not in c and 'programado' not in c and c != 'colaborador'), None)
@@ -418,6 +418,7 @@ def tratar_arquivo_especial(df, nome_arquivo):
     if not col_conf: 
         col_conf = next((c for c in df.columns if 'conform' in c and c != 'colaborador'), None)
     
+    # Extração Dupla (Se o arquivo tiver as duas colunas na mesma planilha)
     if col_ad and col_conf:
         lista_retorno = []
         df_ad = df[['Colaborador', col_ad]].copy()
@@ -437,6 +438,54 @@ def tratar_arquivo_especial(df, nome_arquivo):
         lista_retorno.append(df_conf[['Colaborador', 'Indicador', '% Atingimento', 'Diamantes', 'Max. Diamantes']])
         
         return pd.concat(lista_retorno, ignore_index=True), "Extração Dupla Segura"
+    
+    # Extração Simples (Arquivos separados)
+    col_valor = None
+    nome_kpi_limpo = nome_arquivo.split('.')[0].lower()
+    nome_indicador = normalizar_nome_indicador(nome_arquivo)
+    
+    # NOVO: Se o nome do arquivo for genérico, mas a coluna gritar o que é, a gente força!
+    if col_conf and nome_indicador not in ['CONFORMIDADE', 'ADERENCIA']:
+        nome_indicador = 'CONFORMIDADE'
+    elif col_ad and nome_indicador not in ['CONFORMIDADE', 'ADERENCIA']:
+        nome_indicador = 'ADERENCIA'
+
+    # Força a coluna correta baseada no indicador detectado
+    if nome_indicador == 'CONFORMIDADE' and col_conf:
+        col_valor = col_conf
+    elif nome_indicador == 'ADERENCIA' and col_ad:
+        col_valor = col_ad
+    else:
+        prioridades = ['% atingimento', 'atingimento', 'resultado', 'nota final', 'score', 'nota', 'valor']
+        for p in prioridades + [nome_kpi_limpo]:
+            for c in df.columns:
+                if p in c and c != 'colaborador': 
+                    col_valor = c
+                    break
+            if col_valor: break
+            
+        if not col_valor:
+            cols_restantes = [c for c in df.columns if c != 'colaborador' and 'diamante' not in c]
+            if cols_restantes: col_valor = cols_restantes[0]
+            else: return None, f"Nenhuma coluna de nota identificada."
+            
+    df.rename(columns={col_valor: '% Atingimento'}, inplace=True)
+    
+    for c in df.columns:
+        if 'diamantes' in c and 'max' not in c: df.rename(columns={c: 'Diamantes'}, inplace=True)
+        if 'max' in c and 'diamantes' in c: df.rename(columns={c: 'Max. Diamantes'}, inplace=True)
+    
+    df['% Atingimento'] = df['% Atingimento'].apply(processar_porcentagem_br)
+    
+    if 'Diamantes' not in df.columns: df['Diamantes'] = 0.0
+    if 'Max. Diamantes' not in df.columns: df['Max. Diamantes'] = 0.0
+    
+    df['Diamantes'] = pd.to_numeric(df['Diamantes'], errors='coerce').fillna(0)
+    df['Max. Diamantes'] = pd.to_numeric(df['Max. Diamantes'], errors='coerce').fillna(0)
+    
+    df['Indicador'] = nome_indicador
+    cols_to_keep = ['Colaborador', 'Indicador', '% Atingimento', 'Diamantes', 'Max. Diamantes']
+    return df[cols_to_keep], f"Extração Simples ({nome_indicador})"
     
     col_valor = None
     nome_kpi_limpo = nome_arquivo.split('.')[0].lower()
