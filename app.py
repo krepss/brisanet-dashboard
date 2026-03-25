@@ -11,7 +11,7 @@ from datetime import datetime, timezone, timedelta
 import unicodedata
 
 # --- CONFIGURAÇÃO DA LOGO E ACESSOS ---
-LOGO_FILE = "logo.ico"
+LOGO_FILE = "logo.png"
 SENHA_ADMIN = "admin123"
 USUARIOS_ADMIN = ['gestor', 'admin']
 
@@ -190,9 +190,10 @@ def limpar_base_dados_completa():
             sincronizar_com_github(f, "Reset de base de dados")
 
 def faxina_arquivos_temporarios():
-    protegidos = ['historico_consolidado.csv', 'usuarios.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv', 'feedbacks_gb_backup.csv', 'historico_operacional.csv', 'historico_voz.csv']
+    protegidos = ['historico_consolidado.csv', 'usuarios.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv', 'feedbacks_gb_backup.csv', 'historico_operacional.csv', 'historico_voz.csv', 'escalas_banco_horas.csv', 'saldo_banco_horas.csv']
     for f in os.listdir('.'):
-        if f.endswith('.csv') and f not in protegidos:
+        # Limpa restos de CSV e Excel para não encavalar os meses
+        if (f.endswith('.csv') or f.endswith('.xlsx') or f.endswith('.xls')) and f not in protegidos:
             try: os.remove(f)
             except: pass
 
@@ -227,7 +228,7 @@ def processar_desempenho_agente(df):
     return None
 
 def atualizar_historico_operacional(df_novo, periodo):
-    ARQ = 'historico_operacional.csv' # BANCO DE CHAT
+    ARQ = 'historico_operacional.csv' 
     df_save = df_novo.copy()
     df_save['Periodo'] = str(periodo).strip()
     if os.path.exists(ARQ):
@@ -248,7 +249,7 @@ def carregar_historico_operacional():
     return None
 
 def atualizar_historico_voz(df_novo, periodo):
-    ARQ = 'historico_voz.csv' # BANCO DE VOZ
+    ARQ = 'historico_voz.csv' 
     df_save = df_novo.copy()
     df_save['Periodo'] = str(periodo).strip()
     if os.path.exists(ARQ):
@@ -268,20 +269,53 @@ def carregar_historico_voz():
         except: return None
     return None
 
-# --- FUNÇÕES DE KPI (ANTIGAS) ---
+# --- FUNÇÕES BANCO DE HORAS E SALDOS ---
+def salvar_escala_banco(dados):
+    ARQ = 'escalas_banco_horas.csv'
+    df_novo = pd.DataFrame([dados])
+    if os.path.exists(ARQ):
+        try:
+            df_hist = pd.read_csv(ARQ)
+            df_final = pd.concat([df_hist, df_novo], ignore_index=True)
+        except: df_final = df_novo
+    else: df_final = df_novo
+    df_final.to_csv(ARQ, index=False)
+    sincronizar_com_github(ARQ, "Novo agendamento de banco de horas")
+
+def carregar_escalas_banco():
+    if os.path.exists('escalas_banco_horas.csv'):
+        try: return pd.read_csv('escalas_banco_horas.csv')
+        except: return None
+    return None
+
+def carregar_saldos_banco():
+    if os.path.exists('saldo_banco_horas.csv'):
+        try: return pd.read_csv('saldo_banco_horas.csv')
+        except: return None
+    return None
+
+# --- FUNÇÕES DE KPI (INTELIGENTES / ATUALIZADAS) ---
 def atualizar_historico(df_atual, periodo):
     ARQUIVO_HIST = 'historico_consolidado.csv'
     df_save = df_atual.copy()
     df_save['Periodo'] = str(periodo).strip()
     df_save['Colaborador'] = df_save['Colaborador'].astype(str).str.strip().str.upper()
+    
     if os.path.exists(ARQUIVO_HIST):
         try:
             df_hist = pd.read_csv(ARQUIVO_HIST)
             df_hist['Periodo'] = df_hist['Periodo'].astype(str).str.strip()
-            df_hist = df_hist[df_hist['Periodo'] != str(periodo).strip()]
+            
+            # Remove do histórico APENAS o período atual E os indicadores que estamos subindo agora.
+            indicadores_novos = df_save['Indicador'].unique()
+            mask_to_drop = (df_hist['Periodo'] == str(periodo).strip()) & (df_hist['Indicador'].isin(indicadores_novos))
+            df_hist = df_hist[~mask_to_drop]
+            
             df_final = pd.concat([df_hist, df_save], ignore_index=True)
-        except: df_final = df_save
-    else: df_final = df_save
+        except: 
+            df_final = df_save
+    else: 
+        df_final = df_save
     
     cols_order = ['Periodo', 'Colaborador', 'Indicador', '% Atingimento', 'Diamantes', 'Max. Diamantes']
     existing_cols = [c for c in cols_order if c in df_final.columns]
@@ -289,7 +323,7 @@ def atualizar_historico(df_atual, periodo):
         if c in existing_cols: df_final[c] = df_final[c].fillna(0.0)
             
     df_final[existing_cols].to_csv(ARQUIVO_HIST, index=False)
-    sincronizar_com_github(ARQUIVO_HIST, f"Atualizando Indicadores Mensais - {periodo}")
+    sincronizar_com_github(ARQUIVO_HIST, f"Atualizando Indicadores Mensais Inteligente - {periodo}")
 
 def excluir_periodo_historico(periodo_alvo):
     if os.path.exists('historico_consolidado.csv'):
@@ -343,15 +377,44 @@ def processar_porcentagem_br(valor):
         return float(valor)
     return 0.0
 
+# --- LEITOR INTELIGENTE / TRATOR (Lê CSV, Excel e pula Lixo no Cabeçalho) ---
 def ler_csv_inteligente(arquivo_ou_caminho):
-    for sep in [',', ';']:
-        for enc in ['utf-8-sig', 'latin1', 'cp1252']:
-            try:
-                if hasattr(arquivo_ou_caminho, 'seek'): arquivo_ou_caminho.seek(0)
-                df = pd.read_csv(arquivo_ou_caminho, sep=sep, encoding=enc, dtype=str)
-                if len(df.columns) > 1: return df
-            except: continue
-    return None
+    import pandas as pd
+    df = None
+    nome_arq = getattr(arquivo_ou_caminho, 'name', str(arquivo_ou_caminho)).lower()
+    
+    # 1. Tenta ler Excel ou CSV ignorando o cabeçalho temporariamente
+    if nome_arq.endswith('.xlsx') or nome_arq.endswith('.xls'):
+        try:
+            if hasattr(arquivo_ou_caminho, 'seek'): arquivo_ou_caminho.seek(0)
+            df = pd.read_excel(arquivo_ou_caminho, header=None, dtype=str)
+        except: pass
+    else:
+        for sep in [',', ';', '\t']:
+            for enc in ['utf-8-sig', 'latin1', 'cp1252', 'utf-8']:
+                try:
+                    if hasattr(arquivo_ou_caminho, 'seek'): arquivo_ou_caminho.seek(0)
+                    df = pd.read_csv(arquivo_ou_caminho, sep=sep, encoding=enc, header=None, dtype=str)
+                    if df is not None and len(df.columns) > 1: break
+                except: continue
+            if df is not None and len(df.columns) > 1: break
+            
+    if df is None or df.empty: return None
+    
+    # 2. Busca a linha real do cabeçalho (pula até 15 linhas de lixo no topo)
+    header_idx = 0
+    palavras_chave = ['colaborador', 'agente', 'nome', 'operador', 'login', 'ader', 'conform', 'resultado', 'nota', 'atingimento']
+    for i in range(min(15, len(df))):
+        linha = df.iloc[i].astype(str).str.lower().tolist()
+        if any(any(kw in cell for kw in palavras_chave) for cell in linha):
+            header_idx = i
+            break
+            
+    # Define o cabeçalho real e apaga as linhas de cima
+    df.columns = df.iloc[header_idx].astype(str).str.strip()
+    df = df.iloc[header_idx+1:].reset_index(drop=True)
+    df = df.loc[:, df.columns.notna() & (df.columns != 'nan')]
+    return df
 
 def normalizar_chave(texto):
     if pd.isna(texto): return ""
@@ -371,30 +434,31 @@ def normalizar_nome_indicador(nome_arquivo):
     if 'TAM' in nome: return 'TAM'
     return nome.split('.')[0].upper()
 
+# --- TRATAMENTO AGRESSIVO + EXTRAÇÃO DUPLA ---
 def tratar_arquivo_especial(df, nome_arquivo):
     df.columns = [str(c).strip().lower() for c in df.columns]
     
     col_agente = None
-    possiveis_nomes = ['colaborador', 'agente', 'nome', 'employee', 'funcionario', 'operador']
+    possiveis_nomes = ['colaborador', 'agente', 'nome', 'employee', 'funcionario', 'operador', 'login', 'atendente']
     for c in df.columns:
-        if any(p == c or p in c for p in possiveis_nomes):
+        if any(p in c for p in possiveis_nomes):
             col_agente = c
             break
-    if not col_agente: return None, "Coluna de Nome não encontrada"
+            
+    if not col_agente: 
+        return None, f"Nome não achado. Colunas lidas: {list(df.columns)}"
+        
     df.rename(columns={col_agente: 'Colaborador'}, inplace=True)
     df['Colaborador'] = df['Colaborador'].apply(normalizar_chave)
     
-    # 1. Identifica as colunas cravando no símbolo "%"
-    col_ad = next((c for c in df.columns if 'ader' in c and ('%' in c or 'perc' in c)), None)
-    if not col_ad: 
-        col_ad = next((c for c in df.columns if 'ader' in c and 'duração' not in c and 'programado' not in c and c != 'colaborador'), None)
-        
-    col_conf = next((c for c in df.columns if 'conform' in c and ('%' in c or 'perc' in c)), None)
-    if not col_conf: 
-        col_conf = next((c for c in df.columns if 'conform' in c and c != 'colaborador'), None)
+    col_ad = next((c for c in df.columns if 'ader' in c and 'dura' not in c and 'prog' not in c and c != 'colaborador'), None)
+    col_conf = next((c for c in df.columns if 'conform' in c and c != 'colaborador'), None)
     
+    lista_retorno = []
+    
+    # 1. SE O ARQUIVO TEM OS DOIS JUNTOS
     if col_ad and col_conf:
-        lista_retorno = []
+        # Puxa Aderência
         df_ad = df[['Colaborador', col_ad]].copy()
         df_ad.rename(columns={col_ad: '% Atingimento'}, inplace=True)
         df_ad['% Atingimento'] = df_ad['% Atingimento'].apply(processar_porcentagem_br)
@@ -403,53 +467,54 @@ def tratar_arquivo_especial(df, nome_arquivo):
         df_ad['Max. Diamantes'] = 0.0
         lista_retorno.append(df_ad[['Colaborador', 'Indicador', '% Atingimento', 'Diamantes', 'Max. Diamantes']])
         
-        df_conf = df[['Colaborador', col_conf]].copy()
-        df_conf.rename(columns={col_conf: '% Atingimento'}, inplace=True)
-        df_conf['% Atingimento'] = df_conf['% Atingimento'].apply(processar_porcentagem_br)
-        df_conf['Indicador'] = 'CONFORMIDADE'
-        df_conf['Diamantes'] = 0.0
-        df_conf['Max. Diamantes'] = 0.0
-        lista_retorno.append(df_conf[['Colaborador', 'Indicador', '% Atingimento', 'Diamantes', 'Max. Diamantes']])
+        # Puxa Conformidade
+        df_conf_df = df[['Colaborador', col_conf]].copy()
+        df_conf_df.rename(columns={col_conf: '% Atingimento'}, inplace=True)
+        df_conf_df['% Atingimento'] = df_conf_df['% Atingimento'].apply(processar_porcentagem_br)
+        df_conf_df['Indicador'] = 'CONFORMIDADE'
+        df_conf_df['Diamantes'] = 0.0
+        df_conf_df['Max. Diamantes'] = 0.0
+        lista_retorno.append(df_conf_df[['Colaborador', 'Indicador', '% Atingimento', 'Diamantes', 'Max. Diamantes']])
         
-        return pd.concat(lista_retorno, ignore_index=True), "Extração Dupla Segura"
-    
+        return pd.concat(lista_retorno, ignore_index=True), "Extração Dupla (Aderência e Conformidade)"
+        
+    # 2. SE O ARQUIVO TEM SÓ UM INDICADOR
+    nome_upper = str(nome_arquivo).upper()
+    if 'ADER' in nome_upper: nome_indicador = 'ADERENCIA'
+    elif 'CONFORM' in nome_upper: nome_indicador = 'CONFORMIDADE'
+    else: nome_indicador = normalizar_nome_indicador(nome_arquivo)
+
     col_valor = None
-    nome_kpi_limpo = nome_arquivo.split('.')[0].lower()
+    if nome_indicador == 'CONFORMIDADE' and col_conf: col_valor = col_conf
+    elif nome_indicador == 'ADERENCIA' and col_ad: col_valor = col_ad
     
-    prioridades = ['% atingimento', 'atingimento', 'resultado', 'nota final', 'score', 'nota', 'valor']
-    for p in prioridades + [nome_kpi_limpo]:
-        for c in df.columns:
-            if p in c and c != 'colaborador': 
-                col_valor = c
-                break
-        if col_valor: break
-        
     if not col_valor:
-        cols_restantes = [c for c in df.columns if c != 'colaborador' and 'diamante' not in c]
-        if cols_restantes: col_valor = cols_restantes[0]
-        else: return None, f"Nenhuma coluna de nota identificada."
+        prioridades = ['% atingimento', 'atingimento', 'resultado', 'nota', 'score', 'valor', 'realizado', '%']
+        for p in prioridades:
+            col_valor = next((c for c in df.columns if p in c and c != 'colaborador'), None)
+            if col_valor: break
             
+    if not col_valor:
+        restantes = [c for c in df.columns if c != 'colaborador' and 'diamante' not in c and 'matr' not in c]
+        if restantes: col_valor = restantes[-1]
+        else: return None, f"Sem coluna de valor. Colunas lidas: {list(df.columns)}"
+
     df.rename(columns={col_valor: '% Atingimento'}, inplace=True)
     
     for c in df.columns:
         if 'diamantes' in c and 'max' not in c: df.rename(columns={c: 'Diamantes'}, inplace=True)
         if 'max' in c and 'diamantes' in c: df.rename(columns={c: 'Max. Diamantes'}, inplace=True)
-    
+        
     df['% Atingimento'] = df['% Atingimento'].apply(processar_porcentagem_br)
-    
     if 'Diamantes' not in df.columns: df['Diamantes'] = 0.0
     if 'Max. Diamantes' not in df.columns: df['Max. Diamantes'] = 0.0
     
     df['Diamantes'] = pd.to_numeric(df['Diamantes'], errors='coerce').fillna(0)
     df['Max. Diamantes'] = pd.to_numeric(df['Max. Diamantes'], errors='coerce').fillna(0)
-    
-    nome_indicador = normalizar_nome_indicador(nome_arquivo)
-    if col_conf and 'conform' in col_valor: nome_indicador = 'CONFORMIDADE'
-    if col_ad and 'ader' in col_valor: nome_indicador = 'ADERENCIA'
-    
     df['Indicador'] = nome_indicador
+    
     cols_to_keep = ['Colaborador', 'Indicador', '% Atingimento', 'Diamantes', 'Max. Diamantes']
-    return df[cols_to_keep], "Extração Simples"
+    return df[cols_to_keep], f"Extraído {nome_indicador} (Coluna: '{col_valor}')"
 
 def classificar_farol(val):
     if val >= 0.90: return '💎 Excelência' 
@@ -459,17 +524,20 @@ def classificar_farol(val):
 def carregar_dados_completo_debug():
     lista_final = []
     log_debug = []
-    arquivos_ignorar = ['usuarios.csv', 'historico_consolidado.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv', 'feedbacks_gb_backup.csv', 'historico_operacional.csv', 'historico_voz.csv']
-    arquivos = [f for f in os.listdir('.') if f.endswith('.csv') and f.lower() not in arquivos_ignorar]
+    arquivos_ignorar = ['usuarios.csv', 'historico_consolidado.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv', 'feedbacks_gb_backup.csv', 'historico_operacional.csv', 'historico_voz.csv', 'escalas_banco_horas.csv', 'saldo_banco_horas.csv']
+    
+    # Lê arquivos CSV e Excel disponíveis na pasta
+    arquivos = [f for f in os.listdir('.') if (f.endswith('.csv') or f.endswith('.xlsx') or f.endswith('.xls')) and f.lower() not in arquivos_ignorar]
+    
     for arquivo in arquivos:
         try:
             df_bruto = ler_csv_inteligente(arquivo)
             if df_bruto is not None:
                 df_tratado, msg = tratar_arquivo_especial(df_bruto, arquivo)
-                log_debug.append({"Arquivo": arquivo, "Status": "OK" if df_tratado is not None else "Erro", "Detalhe": msg})
+                log_debug.append({"Arquivo": arquivo, "Status": "✅ OK" if df_tratado is not None else "❌ Erro", "Detalhe": msg})
                 if df_tratado is not None: lista_final.append(df_tratado)
-            else: log_debug.append({"Arquivo": arquivo, "Status": "Erro", "Detalhe": "Não conseguiu ler CSV"})
-        except Exception as e: log_debug.append({"Arquivo": arquivo, "Status": "Erro Crítico", "Detalhe": str(e)})
+            else: log_debug.append({"Arquivo": arquivo, "Status": "❌ Erro", "Detalhe": "Não conseguiu ler o arquivo (Formato Inválido)"})
+        except Exception as e: log_debug.append({"Arquivo": arquivo, "Status": "❌ Erro Crítico", "Detalhe": str(e)})
             
     df_final = None
     if lista_final: 
@@ -814,7 +882,6 @@ if perfil == 'admin':
                 media_ad = df_dados[df_dados['Indicador'] == 'ADERENCIA']['% Atingimento'].mean() if 'ADERENCIA' in df_dados['Indicador'].unique() else 0.0
                 media_conf = df_dados[df_dados['Indicador'] == 'CONFORMIDADE']['% Atingimento'].mean() if 'CONFORMIDADE' in df_dados['Indicador'].unique() else 0.0
                 
-                # --- AGORA A BUSCA POR PONTO FORTE E GARGALO ANALISA TODOS OS INDICADORES SUBIDOS ---
                 df_medias_kpis = df_dados[df_dados['Indicador'] != 'TAM'].groupby('Indicador')['% Atingimento'].mean().reset_index()
                 melhor_kpi = df_medias_kpis.loc[df_medias_kpis['% Atingimento'].idxmax()] if not df_medias_kpis.empty else None
                 pior_kpi = df_medias_kpis.loc[df_medias_kpis['% Atingimento'].idxmin()] if not df_medias_kpis.empty else None
@@ -847,7 +914,6 @@ if perfil == 'admin':
                                 else:
                                     texto_comparacao = f" Em comparação ao mês anterior ({periodo_anterior}), mantivemos a performance estável (era {media_anterior_tam:.1%}). ⚖️"
 
-                # Identificação de Operadores Específicos
                 try:
                     top_operador = df_media_pessoas.loc[df_media_pessoas['% Atingimento'].idxmax()]
                     nome_top = top_operador['Colaborador'].title()
@@ -877,7 +943,6 @@ if perfil == 'admin':
                 nome_top_formatado = nome_top.split(" ")[0] if nome_top != "Indisponível" else "foco"
                 pior_kpi_str = formatar_nome_visual(pior_kpi['Indicador']) if pior_kpi is not None else "gargalos"
 
-                # Geração da String Formatada
                 texto_resumo = f"""📊 *RESUMO EXECUTIVO | {periodo_label} - TEAM SOFISTAS* 📊
 
 *1️⃣ VISÃO GERAL DA OPERAÇÃO*
@@ -908,12 +973,10 @@ O foco da liderança para o próximo ciclo será atuar diretamente na base crít
                 st.info("💡 **Dica de Ouro:** O texto abaixo foi gerado automaticamente e já está **formatado para o WhatsApp**. Copie e cole na sua janela de conversa com a sua coordenação!")
                 st.code(texto_resumo, language="markdown")
                 
-                # --- NOVO: MURAL DO TIME (GTALK) ---
                 st.markdown("---")
                 st.markdown("#### 📢 Mural do Time (GTalk/WhatsApp)")
                 st.caption("Copie e cole no grupo da equipe para celebrar os resultados!")
                 
-                # Top 3
                 df_rank = df_media_pessoas.sort_values(by='% Atingimento', ascending=False).reset_index(drop=True)
                 top1 = df_rank.iloc[0]['Colaborador'] if len(df_rank) > 0 else "N/A"
                 top2 = df_rank.iloc[1]['Colaborador'] if len(df_rank) > 1 else "N/A"
@@ -1271,15 +1334,16 @@ Vamos com tudo! 🔥"""
             
             st.markdown("---")
             st.markdown("#### 💎 Arquivos de Indicadores (Qualidade, Aderência, etc)")
-            up_k = st.file_uploader("Indicadores (CSVs)", accept_multiple_files=True, key="k")
+            # NOVO: Permite subir Excel
+            up_k = st.file_uploader("Indicadores (CSV ou Excel)", type=['csv', 'xlsx', 'xls'], accept_multiple_files=True, key="k")
             
             c_up1, c_up2 = st.columns(2)
             with c_up1:
                 st.markdown("#### 💬 Arquivo Chat (Opcional)")
-                up_op = st.file_uploader("Relatório (Volume / TMA Chat)", type=['csv'], key="up_op")
+                up_op = st.file_uploader("Relatório (Volume / TMA Chat)", type=['csv', 'xlsx', 'xls'], key="up_op")
             with c_up2:
                 st.markdown("#### 📞 Arquivo Voz (Opcional)")
-                up_voz = st.file_uploader("Relatório (Volume / TMA Voz)", type=['csv'], key="up_voz")
+                up_voz = st.file_uploader("Relatório (Volume / TMA Voz)", type=['csv', 'xlsx', 'xls'], key="up_voz")
 
             if st.button("💾 Salvar e Atualizar Histórico", type="primary"): 
                 if not nova_data.strip():
@@ -1354,7 +1418,16 @@ Vamos com tudo! 🔥"""
                         excluir_periodo_historico(row['Periodo'])
                         st.rerun()
             st.divider()
-            if st.button("🔥 Limpar TUDO (Reset Completo)", type="primary"):
+            st.markdown("#### 🧹 Reset de Agendamentos (Banco de Horas)")
+            if st.button("Limpar Histórico de Agendamentos de Horas"):
+                if os.path.exists("escalas_banco_horas.csv"):
+                    os.remove("escalas_banco_horas.csv")
+                    sincronizar_com_github("escalas_banco_horas.csv", "Limpando agendamentos antigos")
+                    st.success("Histórico limpo!")
+                    time.sleep(1)
+                    st.rerun()
+            st.divider()
+            if st.button("🔥 Limpar TUDO (Reset Completo do Sistema)", type="primary"):
                 limpar_base_dados_completa()
                 st.success("Limpo!")
                 time.sleep(1)
@@ -1370,6 +1443,10 @@ Vamos com tudo! 🔥"""
                 with open('historico_voz.csv', 'rb') as f: st.download_button("⬇️ Baixar Backup TMA Voz", f, "historico_voz_backup.csv", "text/csv")
             if os.path.exists('feedbacks_gb.csv'):
                 with open('feedbacks_gb.csv', 'rb') as f: st.download_button("⬇️ Baixar Banco de Feedbacks", f, "feedbacks_gb_backup.csv", "text/csv")
+            if os.path.exists('escalas_banco_horas.csv'):
+                with open('escalas_banco_horas.csv', 'rb') as f: st.download_button("⬇️ Baixar Agendamentos (Banco de Horas)", f, "escalas_banco_horas.csv", "text/csv")
+            if os.path.exists('saldo_banco_horas.csv'):
+                with open('saldo_banco_horas.csv', 'rb') as f: st.download_button("⬇️ Baixar Saldos (Banco de Horas)", f, "saldo_banco_horas.csv", "text/csv")
         with st4:
             if st.button("Rodar Diagnóstico"):
                 _, log_df = carregar_dados_completo_debug()
@@ -1377,44 +1454,120 @@ Vamos com tudo! 🔥"""
 
     # ------------------ BANCO DE HORAS ------------------
     with tabs[10]:
-        st.markdown("### ⏰ Análise de Folha de Ponto")
-        st.info("Faça o upload do arquivo .xlsx ou .csv.")
-        uploaded_ponto = st.file_uploader("Carregar Planilha de Ponto", type=['xlsx', 'csv'])
-        if uploaded_ponto is not None:
-            try:
-                if uploaded_ponto.name.endswith('.xlsx'): df_ponto = pd.read_excel(uploaded_ponto, skiprows=4)
-                else: df_ponto = pd.read_csv(uploaded_ponto, skiprows=4)
-                col_nome = next((c for c in df_ponto.columns if "Nome" in str(c)), None)
-                col_saldo = next((c for c in df_ponto.columns if "Total Banco" in str(c) or "Saldo Atual" in str(c)), None)
-                
-                if col_nome and col_saldo:
-                    df_ponto = df_ponto[[col_nome, col_saldo]].dropna()
-                    df_ponto.rename(columns={col_nome: 'Colaborador', col_saldo: 'Saldo String'}, inplace=True)
+        st.markdown("### ⏰ Banco de Horas e Agendamentos")
+        
+        # Formulário de Agendamento Novo
+        st.markdown("#### 📅 Agendar Retirada / Pagamento de Horas")
+        with st.form("form_banco_horas"):
+            colab_list = sorted(df_users_cadastrados['nome'].str.title().unique()) if df_users_cadastrados is not None else ["Nenhum usuário cadastrado"]
+            c_f1, c_f2 = st.columns(2)
+            sel_colab = c_f1.selectbox("Colaborador:", colab_list)
+            unidade_gerencial = c_f2.text_input("Unidade Gerencial:", value="Suporte Técnico")
+            
+            tipo_agendamento = st.radio("Tipo de Solicitação:", ["Pagamento (Horas Negativas - Trabalhar a mais)", "Retirada (Horas Positivas - Folga/Sair cedo)"])
+            
+            c_d1, c_d2 = st.columns(2)
+            data_ini = c_d1.date_input("Data de Início")
+            data_fim = c_d2.date_input("Data de Fim")
+            
+            c_h1, c_h2, c_h3 = st.columns(3)
+            qtd_horas = c_h1.text_input("Quantidade (HH:MM)", placeholder="Ex: 02:00")
+            hora_ini = c_h2.time_input("Horário Inicial")
+            hora_fim = c_h3.time_input("Horário Final")
+            
+            submit_agendamento = st.form_submit_button("Salvar e Gerar Solicitação 🚀")
+            
+            if submit_agendamento:
+                if not qtd_horas:
+                    st.error("Por favor, preencha a Quantidade de Horas.")
+                else:
+                    tipo_curto = "Pagamento" if "Pagamento" in tipo_agendamento else "Retirada"
+                    texto_gerado = f"UNIDADE GERENCIAL | DATA DE INICIO E FIM | COLABORADOR | TIPO (Retirada/Pagamento) | QUANTIDADE (HH:MM) | HORÁRIO INICIAL | HORÁRIO FINAL\n"
+                    texto_gerado += f"{unidade_gerencial} | {data_ini.strftime('%d/%m/%Y')} a {data_fim.strftime('%d/%m/%Y')} | {str(sel_colab).upper()} | {tipo_curto} | {qtd_horas} | {hora_ini.strftime('%H:%M')} | {hora_fim.strftime('%H:%M')}"
                     
-                    if df_users_cadastrados is not None:
-                        df_ponto['TEMP_NOME_NORM'] = df_ponto['Colaborador'].apply(normalizar_chave)
-                        lista_ativos = df_users_cadastrados['nome'].unique()
-                        df_ponto = df_ponto[df_ponto['TEMP_NOME_NORM'].isin(lista_ativos)]
-                        df_ponto.drop(columns=['TEMP_NOME_NORM'], inplace=True)
-                    else: st.warning("⚠️ Filtro de ativos não aplicado. Carregue o usuarios.csv no Admin.")
+                    dados_salvar = {
+                        "Periodo_Registro": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                        "Unidade": unidade_gerencial,
+                        "Colaborador": sel_colab,
+                        "Data_Inicio": data_ini.strftime('%d/%m/%Y'),
+                        "Data_Fim": data_fim.strftime('%d/%m/%Y'),
+                        "Tipo": tipo_curto,
+                        "Quantidade": qtd_horas,
+                        "Horario_Inicial": hora_ini.strftime('%H:%M'),
+                        "Horario_Final": hora_fim.strftime('%H:%M')
+                    }
+                    salvar_escala_banco(dados_salvar)
+                    
+                    st.success("✅ Agendamento salvo com sucesso!")
+                    st.info("Copie o texto abaixo e envie para o setor de WFM/RH:")
+                    st.code(texto_gerado, language="text")
 
-                    df_ponto['Saldo (h)'] = df_ponto['Saldo String'].apply(converter_hora_para_float)
-                    df_ponto['Status'] = df_ponto['Saldo (h)'].apply(lambda x: '🔴 Crítico (Negativo)' if x < 0 else '🟢 Positivo')
-                    total_neg = df_ponto[df_ponto['Saldo (h)'] < 0]['Saldo (h)'].sum()
-                    total_pos = df_ponto[df_ponto['Saldo (h)'] > 0]['Saldo (h)'].sum()
-                    qtd_neg = len(df_ponto[df_ponto['Saldo (h)'] < 0])
+        st.markdown("---")
+        # Visualização do Histórico e Upload Antigo
+        st_t1, st_t2 = st.tabs(["📋 Histórico de Agendamentos", "📊 Análise de Saldo (Upload)"])
+        
+        with st_t1:
+            df_agendamentos = carregar_escalas_banco()
+            if df_agendamentos is not None and not df_agendamentos.empty:
+                st.info("💡 **Dica:** Você pode dar dois cliques em qualquer célula para **EDITAR** o agendamento, ou selecionar uma linha e apertar a tecla **'Delete'** do teclado para **EXCLUIR**.")
+                
+                # O Data Editor mágico do Streamlit
+                df_editado = st.data_editor(df_agendamentos, num_rows="dynamic", use_container_width=True, key="editor_agendamentos")
+                
+                if st.button("💾 Salvar Alterações na Tabela", type="primary"):
+                    df_editado.to_csv('escalas_banco_horas.csv', index=False)
+                    sincronizar_com_github('escalas_banco_horas.csv', "Atualização/Exclusão de Agendamento de Horas")
+                    st.success("✅ Alterações salvas com sucesso! (A tabela do operador já foi atualizada).")
+                    time.sleep(1.5)
+                    st.rerun()
+            else:
+                st.info("Nenhum agendamento registrado até o momento.")
+
+        with st_t2:
+            st.info("Faça o upload do arquivo .xlsx ou .csv contendo os saldos atuais da equipe.")
+            uploaded_ponto = st.file_uploader("Carregar Planilha de Ponto (Saldos)", type=['xlsx', 'csv'])
+            if uploaded_ponto is not None:
+                try:
+                    if uploaded_ponto.name.endswith('.xlsx'): df_ponto = pd.read_excel(uploaded_ponto, skiprows=4)
+                    else: df_ponto = pd.read_csv(uploaded_ponto, skiprows=4)
+                    col_nome = next((c for c in df_ponto.columns if "Nome" in str(c)), None)
+                    col_saldo = next((c for c in df_ponto.columns if "Total Banco" in str(c) or "Saldo Atual" in str(c)), None)
                     
-                    m1, m2, m3 = st.columns(3)
-                    m1.metric("🔴 Pessoas Negativas", f"{qtd_neg}")
-                    m2.metric("📉 Total Horas Devidas", formatar_saldo_decimal(total_neg))
-                    m3.metric("📈 Total Horas Crédito", formatar_saldo_decimal(total_pos))
-                    
-                    st.markdown("---")
-                    fig_ponto = px.bar(df_ponto.sort_values(by='Saldo (h)'), x='Saldo (h)', y='Colaborador', orientation='h', color='Status', color_discrete_map={'🔴 Crítico (Negativo)': '#e74c3c', '🟢 Positivo': '#2ecc71'}, text='Saldo String')
-                    st.plotly_chart(fig_ponto, use_container_width=True)
-                    st.dataframe(df_ponto.style.background_gradient(subset=['Saldo (h)'], cmap='RdYlGn'), use_container_width=True)
-                else: st.error("Colunas não identificadas.")
-            except Exception as e: st.error(f"Erro: {e}")
+                    if col_nome and col_saldo:
+                        df_ponto = df_ponto[[col_nome, col_saldo]].dropna()
+                        df_ponto.rename(columns={col_nome: 'Colaborador', col_saldo: 'Saldo String'}, inplace=True)
+                        
+                        if df_users_cadastrados is not None:
+                            df_ponto['TEMP_NOME_NORM'] = df_ponto['Colaborador'].apply(normalizar_chave)
+                            lista_ativos = df_users_cadastrados['nome'].unique()
+                            df_ponto = df_ponto[df_ponto['TEMP_NOME_NORM'].isin(lista_ativos)]
+                            df_ponto.drop(columns=['TEMP_NOME_NORM'], inplace=True)
+
+                        df_ponto['Saldo (h)'] = df_ponto['Saldo String'].apply(converter_hora_para_float)
+                        df_ponto['Status'] = df_ponto['Saldo (h)'].apply(lambda x: '🔴 Crítico (Negativo)' if x < 0 else '🟢 Positivo')
+                        total_neg = df_ponto[df_ponto['Saldo (h)'] < 0]['Saldo (h)'].sum()
+                        total_pos = df_ponto[df_ponto['Saldo (h)'] > 0]['Saldo (h)'].sum()
+                        qtd_neg = len(df_ponto[df_ponto['Saldo (h)'] < 0])
+                        
+                        m1, m2, m3 = st.columns(3)
+                        m1.metric("🔴 Pessoas Negativas", f"{qtd_neg}")
+                        m2.metric("📉 Total Horas Devidas", formatar_saldo_decimal(total_neg))
+                        m3.metric("📈 Total Horas Crédito", formatar_saldo_decimal(total_pos))
+                        
+                        st.markdown("---")
+                        fig_ponto = px.bar(df_ponto.sort_values(by='Saldo (h)'), x='Saldo (h)', y='Colaborador', orientation='h', color='Status', color_discrete_map={'🔴 Crítico (Negativo)': '#e74c3c', '🟢 Positivo': '#2ecc71'}, text='Saldo String')
+                        st.plotly_chart(fig_ponto, use_container_width=True)
+                        st.dataframe(df_ponto.style.background_gradient(subset=['Saldo (h)'], cmap='RdYlGn'), use_container_width=True)
+                        
+                        # --- BOTÃO NOVO PARA SALVAR PARA A EQUIPE ---
+                        st.markdown("---")
+                        if st.button("💾 Publicar Saldos para a Equipe", type="primary"):
+                            df_ponto[['Colaborador', 'Saldo String', 'Saldo (h)', 'Status']].to_csv('saldo_banco_horas.csv', index=False)
+                            sincronizar_com_github('saldo_banco_horas.csv', "Atualizando saldos do banco de horas da equipe")
+                            st.success("✅ Saldos publicados com sucesso! A equipe já pode visualizar seus saldos individuais na aba 'Meu Banco de Horas'.")
+                            
+                    else: st.error("Colunas não identificadas.")
+                except Exception as e: st.error(f"Erro: {e}")
 
     # ------------------ FEEDBACKS GB ------------------
     with tabs[11]:
@@ -1518,7 +1671,7 @@ else:
             if not user_info.empty: minhas_ferias = user_info.iloc[0]['ferias']
         except: pass
 
-    tab_results, tab_time, tab_ferias, tab_feedbacks = st.tabs(["📊 Meus Resultados", "🦁 Visão do Time", "🏖️ Minhas Férias", "📝 Meus Feedbacks"])
+    tab_results, tab_time, tab_ferias, tab_feedbacks, tab_banco = st.tabs(["📊 Meus Resultados", "🦁 Visão do Time", "🏖️ Minhas Férias", "📝 Meus Feedbacks", "⏰ Meu Banco de Horas"])
 
     with tab_results:
         ranking_msg = "Não classificado"
@@ -1617,7 +1770,7 @@ else:
                 with cols[i]: st.metric(label, f"{val:.2%}", "✅ Meta Batida" if round(val, 4) >= meta else f"🔻 Meta {meta:.0%}", delta_color="normal" if round(val, 4) >= meta else "inverse")
             st.markdown("---")
             
-            # --- DADOS DE PRODUTIVIDADE DO OPERADOR (NOVO CÁLCULO) ---
+            # --- DADOS DE PRODUTIVIDADE DO OPERADOR ---
             st.markdown("#### ⏱️ Sua Produtividade")
             df_op_hist = carregar_historico_operacional()
             df_voz_hist = carregar_historico_voz()
@@ -1696,7 +1849,7 @@ else:
                         st.plotly_chart(fig, use_container_width=True)
             st.markdown("---")
             
-            # --- HISTÓRICO INDIVIDUAL ---
+            # --- HISTÓRICO INDIVIDUAL E PRODUTIVIDADE ---
             st.markdown("### ⏳ Sua Evolução Histórica")
             df_hist_full = carregar_historico_completo()
             if df_hist_full is not None:
@@ -1801,6 +1954,65 @@ else:
                         st.markdown(f"**🎯 Motivos:**\n> {row['Motivo']}\n\n**🚀 Plano de Ação:**\n> {row['Acao_GB']}\n\n**💡 Feedback:**\n> {row['Feedback_Valor']}")
             else: st.info("Você ainda não possui registros de feedback no sistema.")
         else: st.info("Nenhum feedback registrado no sistema até o momento.")
+
+    with tab_banco:
+        st.markdown("### ⏰ Meu Banco de Horas")
+        
+        # --- NOVO: SALDO ATUAL DO OPERADOR ---
+        df_saldos = carregar_saldos_banco()
+        if df_saldos is not None and not df_saldos.empty:
+            df_saldos['Colaborador_Norm'] = df_saldos['Colaborador'].apply(normalizar_chave)
+            meu_saldo_row = df_saldos[df_saldos['Colaborador_Norm'] == normalizar_chave(nome_logado)]
+            
+            if not meu_saldo_row.empty:
+                saldo_str = meu_saldo_row.iloc[0]['Saldo String']
+                saldo_h = meu_saldo_row.iloc[0]['Saldo (h)']
+                
+                if saldo_h < 0:
+                    cor_delta = "inverse"
+                    st_delta = "Devendo Horas"
+                else:
+                    cor_delta = "normal"
+                    st_delta = "Horas Positivas"
+                    
+                st.markdown("#### ⚖️ Seu Saldo Atual")
+                c_s1, c_s2 = st.columns([1, 3])
+                c_s1.metric("Saldo de Horas", saldo_str, st_delta, delta_color=cor_delta)
+                
+                if saldo_h < 0:
+                    c_s2.error(f"⚠️ **Atenção!** Você está com **{saldo_str}** negativas. Fique de olho na aba de Agendamentos para alinhar o pagamento com a gestão.")
+                else:
+                    c_s2.success(f"🎉 **Parabéns!** Você tem **{saldo_str}** positivas. Caso deseje, alinhe com seu gestor para retirar essas horas (folga ou sair mais cedo).")
+                st.markdown("---")
+
+        # --- AGENDAMENTOS (HISTÓRICO) ---
+        st.markdown("#### 📅 Seus Agendamentos")
+        df_banco = carregar_escalas_banco()
+        if df_banco is not None and not df_banco.empty:
+            df_banco['Colaborador_Norm'] = df_banco['Colaborador'].apply(normalizar_chave)
+            meus_agendamentos = df_banco[df_banco['Colaborador_Norm'] == normalizar_chave(nome_logado)].copy()
+            
+            if not meus_agendamentos.empty:
+                st.info("Abaixo estão as suas solicitações de folgas/retiradas ou dias de pagamento de horas já alinhadas com a coordenação.")
+                
+                # Exibir cada agendamento num card organizado
+                for _, row in meus_agendamentos.iloc[::-1].iterrows():
+                    cor_borda = "#2ecc71" if "Retirada" in row['Tipo'] else "#e74c3c"
+                    icone = "🏖️" if "Retirada" in row['Tipo'] else "💼"
+                    
+                    st.markdown(f"""
+                    <div style="border-left: 5px solid {cor_borda}; padding: 15px; background-color: #FFF; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 15px;">
+                        <h4 style="margin-top: 0; color: #003366;">{icone} {row['Tipo'].upper()}</h4>
+                        <p style="margin: 5px 0;"><b>Data:</b> {row['Data_Inicio']} até {row['Data_Fim']}</p>
+                        <p style="margin: 5px 0;"><b>Horário:</b> {row['Horario_Inicial']} às {row['Horario_Final']}</p>
+                        <p style="margin: 5px 0; color: #666;"><b>Total de Horas:</b> {row['Quantidade']}</p>
+                        <p style="margin: 5px 0; font-size: 12px; color: #999;">Registrado em: {row.get('Periodo_Registro', 'N/A')}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.success("Você não possui agendamentos futuros no momento.")
+        else:
+            st.success("Você não possui agendamentos futuros no momento.")
 
 st.markdown("---")
 st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
