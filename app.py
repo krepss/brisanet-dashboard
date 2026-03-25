@@ -287,27 +287,11 @@ def carregar_escalas_banco():
         except: return None
     return None
 
-def atualizar_saldos_banco(df_novo, periodo):
-    ARQ = 'saldo_banco_horas.csv'
-    df_save = df_novo.copy()
-    df_save['Periodo'] = str(periodo).strip()
-    if os.path.exists(ARQ):
-        try:
-            df_hist = pd.read_csv(ARQ)
-            df_hist['Periodo'] = df_hist['Periodo'].astype(str).str.strip()
-            df_hist = df_hist[df_hist['Periodo'] != str(periodo).strip()]
-            df_final = pd.concat([df_hist, df_save], ignore_index=True)
-        except: df_final = df_save
-    else: df_final = df_save
-    df_final.to_csv(ARQ, index=False)
-    sincronizar_com_github(ARQ, f"Atualizando saldos de banco de horas - {periodo}")
-
 def carregar_saldos_banco():
     if os.path.exists('saldo_banco_horas.csv'):
         try: return pd.read_csv('saldo_banco_horas.csv')
         except: return None
     return None
-
 
 # --- FUNÇÕES DE KPI (ANTIGAS) ---
 def atualizar_historico(df_atual, periodo):
@@ -1486,17 +1470,15 @@ Vamos com tudo! 🔥"""
         with st_t1:
             df_agendamentos = carregar_escalas_banco()
             if df_agendamentos is not None and not df_agendamentos.empty:
-                st.info("💡 **Dica:** Você pode dar dois cliques em qualquer célula para **EDITAR** o agendamento, ou selecionar uma linha (na caixinha à esquerda) e apertar a tecla **'Delete'** do teclado para **EXCLUIR**.")
+                st.info("💡 **Dica:** Você pode dar dois cliques em qualquer célula para **EDITAR** o agendamento, ou selecionar uma linha e apertar a tecla **'Delete'** do teclado para **EXCLUIR**.")
                 
-                # Tabela interativa para editar e excluir
-                df_editado = st.data_editor(df_agendamentos.iloc[::-1], num_rows="dynamic", use_container_width=True, key="editor_agendamentos")
+                # O Data Editor mágico do Streamlit
+                df_editado = st.data_editor(df_agendamentos, num_rows="dynamic", use_container_width=True, key="editor_agendamentos")
                 
                 if st.button("💾 Salvar Alterações na Tabela", type="primary"):
-                    # Reverter a ordem antes de salvar para manter a consistência do banco
-                    df_final_salvar = df_editado.iloc[::-1].reset_index(drop=True)
-                    df_final_salvar.to_csv('escalas_banco_horas.csv', index=False)
-                    sincronizar_com_github('escalas_banco_horas.csv', "Atualização/Exclusão manual de Agendamentos")
-                    st.success("✅ Alterações salvas com sucesso! A tabela do operador já foi atualizada.")
+                    df_editado.to_csv('escalas_banco_horas.csv', index=False)
+                    sincronizar_com_github('escalas_banco_horas.csv', "Atualização/Exclusão de Agendamento de Horas")
+                    st.success("✅ Alterações salvas com sucesso! (A tabela do operador já foi atualizada).")
                     time.sleep(1.5)
                     st.rerun()
             else:
@@ -1538,10 +1520,11 @@ Vamos com tudo! 🔥"""
                         st.plotly_chart(fig_ponto, use_container_width=True)
                         st.dataframe(df_ponto.style.background_gradient(subset=['Saldo (h)'], cmap='RdYlGn'), use_container_width=True)
                         
-                        # --- BOTÃO PARA SALVAR PARA A EQUIPE ---
+                        # --- BOTÃO NOVO PARA SALVAR PARA A EQUIPE ---
                         st.markdown("---")
                         if st.button("💾 Publicar Saldos para a Equipe", type="primary"):
-                            atualizar_saldos_banco(df_ponto[['Colaborador', 'Saldo String', 'Saldo (h)', 'Status']], periodo_label)
+                            df_ponto[['Colaborador', 'Saldo String', 'Saldo (h)', 'Status']].to_csv('saldo_banco_horas.csv', index=False)
+                            sincronizar_com_github('saldo_banco_horas.csv', "Atualizando saldos do banco de horas da equipe")
                             st.success("✅ Saldos publicados com sucesso! A equipe já pode visualizar seus saldos individuais na aba 'Meu Banco de Horas'.")
                             
                     else: st.error("Colunas não identificadas.")
@@ -1936,37 +1919,32 @@ else:
     with tab_banco:
         st.markdown("### ⏰ Meu Banco de Horas")
         
-        # --- SALDO ATUAL DO OPERADOR ---
+        # --- NOVO: SALDO ATUAL DO OPERADOR ---
         df_saldos = carregar_saldos_banco()
         if df_saldos is not None and not df_saldos.empty:
-            # Filtrar pelo período selecionado na barra superior
-            df_saldos_atual = df_saldos[df_saldos['Periodo'] == periodo_label].copy()
-            if not df_saldos_atual.empty:
-                df_saldos_atual['Colaborador_Norm'] = df_saldos_atual['Colaborador'].apply(normalizar_chave)
-                meu_saldo_row = df_saldos_atual[df_saldos_atual['Colaborador_Norm'] == normalizar_chave(nome_logado)]
+            df_saldos['Colaborador_Norm'] = df_saldos['Colaborador'].apply(normalizar_chave)
+            meu_saldo_row = df_saldos[df_saldos['Colaborador_Norm'] == normalizar_chave(nome_logado)]
+            
+            if not meu_saldo_row.empty:
+                saldo_str = meu_saldo_row.iloc[0]['Saldo String']
+                saldo_h = meu_saldo_row.iloc[0]['Saldo (h)']
                 
-                if not meu_saldo_row.empty:
-                    saldo_str = meu_saldo_row.iloc[0]['Saldo String']
-                    saldo_h = meu_saldo_row.iloc[0]['Saldo (h)']
+                if saldo_h < 0:
+                    cor_delta = "inverse"
+                    st_delta = "Devendo Horas"
+                else:
+                    cor_delta = "normal"
+                    st_delta = "Horas Positivas"
                     
-                    if saldo_h < 0:
-                        cor_delta = "inverse"
-                        st_delta = "Devendo Horas"
-                    else:
-                        cor_delta = "normal"
-                        st_delta = "Horas Positivas"
-                        
-                    st.markdown("#### ⚖️ Seu Saldo Atual")
-                    c_s1, c_s2 = st.columns([1, 3])
-                    c_s1.metric("Saldo de Horas", saldo_str, st_delta, delta_color=cor_delta)
-                    
-                    if saldo_h < 0:
-                        c_s2.error(f"⚠️ **Atenção!** Você está com **{saldo_str}** negativas. Fique de olho na aba de Agendamentos para alinhar o pagamento com a gestão.")
-                    else:
-                        c_s2.success(f"🎉 **Parabéns!** Você tem **{saldo_str}** positivas. Caso deseje, alinhe com seu gestor para retirar essas horas (folga ou sair mais cedo).")
-                    st.markdown("---")
-            else:
-                st.info(f"Nenhum saldo publicado para você em {periodo_label}.")
+                st.markdown("#### ⚖️ Seu Saldo Atual")
+                c_s1, c_s2 = st.columns([1, 3])
+                c_s1.metric("Saldo de Horas", saldo_str, st_delta, delta_color=cor_delta)
+                
+                if saldo_h < 0:
+                    c_s2.error(f"⚠️ **Atenção!** Você está com **{saldo_str}** negativas. Fique de olho na aba de Agendamentos para alinhar o pagamento com a gestão.")
+                else:
+                    c_s2.success(f"🎉 **Parabéns!** Você tem **{saldo_str}** positivas. Caso deseje, alinhe com seu gestor para retirar essas horas (folga ou sair mais cedo).")
+                st.markdown("---")
 
         # --- AGENDAMENTOS (HISTÓRICO) ---
         st.markdown("#### 📅 Seus Agendamentos")
