@@ -541,6 +541,7 @@ def carregar_usuarios():
     return None
 
 # --- CONCILIAÇÃO INTELIGENTE DE NOMES E ALERTA VISUAL (RAIO-X) ---
+# --- CONCILIAÇÃO INTELIGENTE DE NOMES E ALERTA VISUAL (RAIO-X) ---
 def filtrar_por_usuarios_cadastrados(df_dados, df_users):
     if df_dados is None or df_dados.empty: return df_dados
     if df_users is None or df_users.empty: return df_dados
@@ -550,32 +551,40 @@ def filtrar_por_usuarios_cadastrados(df_dados, df_users):
     df_filtrado['TEMP_NOME_UPPER'] = df_filtrado['Colaborador'].apply(normalizar_chave)
     
     def reconciliar_nomes(nome_planilha):
-        if pd.isna(nome_planilha) or not str(nome_planilha).strip(): return "⚠️ NOME VAZIO"
+        if pd.isna(nome_planilha) or not str(nome_planilha).strip(): return "LIXO"
         if nome_planilha in lista_vip: return nome_planilha
         
-        # Tenta arrumar casos como "jamile.rocha"
+        # 1. Tenta arrumar casos de login (ex: "jamile.rocha")
         nome_limpo = str(nome_planilha).replace('.', ' ').replace('_', ' ').strip()
         if nome_limpo in lista_vip: return nome_limpo
         
-        # Tenta conectar pelo 1º e Último nome (Ex: Jamile Rocha = Jamile Bernardo Rocha)
-        partes = nome_limpo.split()
-        if len(partes) >= 1:
-            pri = partes[0]
-            ult = partes[-1] if len(partes) > 1 else ""
-            for vip in lista_vip:
-                vip_partes = vip.split()
-                if vip_partes[0] == pri:
-                    if ult and ult in vip_partes: return vip
-                    elif not ult: return vip
+        # 2. MATCH AGRESSIVO (Fatia o nome e conta as palavras iguais)
+        import re
+        apenas_letras = re.sub(r'[^A-Z ]', ' ', nome_limpo) # Tira números e matrículas
+        partes_planilha = [p for p in apenas_letras.split() if len(p) > 1]
+        
+        melhor_vip = None
+        max_matches = 0
+        
+        for vip in lista_vip:
+            vip_partes = vip.split()
+            # Conta quantas palavras o nome da planilha tem em comum com o nome oficial
+            matches = sum(1 for p in partes_planilha if p in vip_partes)
+            
+            if matches > max_matches:
+                # Se achou pelo menos 2 palavras (Ex: Primeiro e Último nome) 
+                # OU se só tem 1 palavra, mas é exatamente o primeiro nome da pessoa
+                if matches >= 2 or (len(partes_planilha) == 1 and partes_planilha[0] == vip_partes[0]):
+                    max_matches = matches
+                    melhor_vip = vip
                     
-        # Se não achar, coloca um alerta para mostrar na tela ao invés de apagar o dado!
-        return f"⚠️ {nome_planilha}"
+        if melhor_vip: return melhor_vip
+        return nome_planilha
 
     df_filtrado['TEMP_NOME_UPPER'] = df_filtrado['TEMP_NOME_UPPER'].apply(reconciliar_nomes)
     
-    # Permite passar tanto quem foi reconhecido quanto quem tem a tag de Erro (⚠️)
-    mask = df_filtrado['TEMP_NOME_UPPER'].isin(lista_vip) | df_filtrado['TEMP_NOME_UPPER'].str.startswith('⚠️')
-    df_final = df_filtrado[mask].copy()
+    # 3. RESTAURA A BARREIRA: Bloqueia o resto da empresa e deixa só o seu time passar
+    df_final = df_filtrado[df_filtrado['TEMP_NOME_UPPER'].isin(lista_vip)].copy()
     
     df_final['Colaborador'] = df_final['TEMP_NOME_UPPER']
     df_final.drop(columns=['TEMP_NOME_UPPER'], inplace=True)
