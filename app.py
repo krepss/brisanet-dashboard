@@ -11,7 +11,7 @@ from datetime import datetime, timezone, timedelta
 import unicodedata
 
 # --- CONFIGURAÇÃO DA LOGO E ACESSOS ---
-LOGO_FILE = "logo.png"
+LOGO_FILE = "logo.ico"
 SENHA_ADMIN = "admin123"
 USUARIOS_ADMIN = ['gestor', 'admin']
 
@@ -268,7 +268,7 @@ def carregar_historico_voz():
         except: return None
     return None
 
-# --- FUNÇÕES BANCO DE HORAS E SALDOS ---
+# --- FUNÇÕES BANCO DE HORAS E SALDOS (NOVO) ---
 def salvar_escala_banco(dados):
     ARQ = 'escalas_banco_horas.csv'
     df_novo = pd.DataFrame([dados])
@@ -293,23 +293,17 @@ def carregar_saldos_banco():
         except: return None
     return None
 
-# --- ATUALIZAÇÃO SEGURA DE HISTÓRICO ---
+# --- FUNÇÕES DE KPI (ANTIGAS) ---
 def atualizar_historico(df_atual, periodo):
     ARQUIVO_HIST = 'historico_consolidado.csv'
     df_save = df_atual.copy()
     df_save['Periodo'] = str(periodo).strip()
     df_save['Colaborador'] = df_save['Colaborador'].astype(str).str.strip().str.upper()
-    
     if os.path.exists(ARQUIVO_HIST):
         try:
             df_hist = pd.read_csv(ARQUIVO_HIST)
             df_hist['Periodo'] = df_hist['Periodo'].astype(str).str.strip()
-            
-            # Remove apenas os indicadores que estamos subindo agora para aquele mês (Blindagem)
-            indicadores_novos = df_save['Indicador'].unique()
-            mask_to_drop = (df_hist['Periodo'] == str(periodo).strip()) & (df_hist['Indicador'].isin(indicadores_novos))
-            df_hist = df_hist[~mask_to_drop]
-            
+            df_hist = df_hist[df_hist['Periodo'] != str(periodo).strip()]
             df_final = pd.concat([df_hist, df_save], ignore_index=True)
         except: df_final = df_save
     else: df_final = df_save
@@ -352,18 +346,12 @@ def listar_periodos_disponiveis():
         return periodos
     return []
 
-# --- SALVAMENTO SEGURO (CORREÇÃO DE BUG DE LEITURA DO SISTEMA) ---
 def salvar_arquivos_padronizados(files):
-    import unicodedata
-    import time
-    for i, f in enumerate(files):
-        # Remove caracteres problemáticos que o Linux/Streamlit tem dificuldade em encontrar via os.listdir
-        nome_limpo = unicodedata.normalize('NFKD', f.name).encode('ASCII', 'ignore').decode('utf-8')
-        nome_seguro = f"upload_{int(time.time())}_{i}_{nome_limpo.replace(' ', '_')}"
-        with open(nome_seguro, "wb") as w: w.write(f.getbuffer())
+    for f in files:
+        with open(f.name, "wb") as w: w.write(f.getbuffer())
     return True
 
-# --- LÊ A PORCENTAGEM ---
+# --- LÊ A PORCENTAGEM (Blindada) ---
 def processar_porcentagem_br(valor):
     if pd.isna(valor) or str(valor).strip() == '': return 0.0
     if isinstance(valor, str):
@@ -382,7 +370,7 @@ def processar_porcentagem_br(valor):
 
 def ler_csv_inteligente(arquivo_ou_caminho):
     for sep in [',', ';']:
-        for enc in ['utf-8-sig', 'latin1', 'cp1252', 'utf-8']:
+        for enc in ['utf-8-sig', 'latin1', 'cp1252']:
             try:
                 if hasattr(arquivo_ou_caminho, 'seek'): arquivo_ou_caminho.seek(0)
                 df = pd.read_csv(arquivo_ou_caminho, sep=sep, encoding=enc, dtype=str)
@@ -421,6 +409,7 @@ def tratar_arquivo_especial(df, nome_arquivo):
     df.rename(columns={col_agente: 'Colaborador'}, inplace=True)
     df['Colaborador'] = df['Colaborador'].apply(normalizar_chave)
     
+    # 1. Identifica as colunas cravando no símbolo "%"
     col_ad = next((c for c in df.columns if 'ader' in c and ('%' in c or 'perc' in c)), None)
     if not col_ad: 
         col_ad = next((c for c in df.columns if 'ader' in c and 'duração' not in c and 'programado' not in c and c != 'colaborador'), None)
@@ -540,55 +529,15 @@ def carregar_usuarios():
                 return df
     return None
 
-# --- CONCILIAÇÃO INTELIGENTE DE NOMES E ALERTA VISUAL (RAIO-X) ---
-# --- CONCILIAÇÃO INTELIGENTE DE NOMES E ALERTA VISUAL (RAIO-X) ---
 def filtrar_por_usuarios_cadastrados(df_dados, df_users):
     if df_dados is None or df_dados.empty: return df_dados
     if df_users is None or df_users.empty: return df_dados
-    
-    lista_vip = df_users['nome'].apply(normalizar_chave).unique()
+    lista_vip = df_users['nome'].unique()
     df_filtrado = df_dados.copy()
     df_filtrado['TEMP_NOME_UPPER'] = df_filtrado['Colaborador'].apply(normalizar_chave)
-    
-    def reconciliar_nomes(nome_planilha):
-        if pd.isna(nome_planilha) or not str(nome_planilha).strip(): return "LIXO"
-        if nome_planilha in lista_vip: return nome_planilha
-        
-        # 1. Tenta arrumar casos de login (ex: "jamile.rocha")
-        nome_limpo = str(nome_planilha).replace('.', ' ').replace('_', ' ').strip()
-        if nome_limpo in lista_vip: return nome_limpo
-        
-        # 2. MATCH AGRESSIVO (Fatia o nome e conta as palavras iguais)
-        import re
-        apenas_letras = re.sub(r'[^A-Z ]', ' ', nome_limpo) # Tira números e matrículas
-        partes_planilha = [p for p in apenas_letras.split() if len(p) > 1]
-        
-        melhor_vip = None
-        max_matches = 0
-        
-        for vip in lista_vip:
-            vip_partes = vip.split()
-            # Conta quantas palavras o nome da planilha tem em comum com o nome oficial
-            matches = sum(1 for p in partes_planilha if p in vip_partes)
-            
-            if matches > max_matches:
-                # Se achou pelo menos 2 palavras (Ex: Primeiro e Último nome) 
-                # OU se só tem 1 palavra, mas é exatamente o primeiro nome da pessoa
-                if matches >= 2 or (len(partes_planilha) == 1 and partes_planilha[0] == vip_partes[0]):
-                    max_matches = matches
-                    melhor_vip = vip
-                    
-        if melhor_vip: return melhor_vip
-        return nome_planilha
-
-    df_filtrado['TEMP_NOME_UPPER'] = df_filtrado['TEMP_NOME_UPPER'].apply(reconciliar_nomes)
-    
-    # 3. RESTAURA A BARREIRA: Bloqueia o resto da empresa e deixa só o seu time passar
-    df_final = df_filtrado[df_filtrado['TEMP_NOME_UPPER'].isin(lista_vip)].copy()
-    
-    df_final['Colaborador'] = df_final['TEMP_NOME_UPPER']
-    df_final.drop(columns=['TEMP_NOME_UPPER'], inplace=True)
-    return df_final
+    df_filtrado = df_filtrado[df_filtrado['TEMP_NOME_UPPER'].isin(lista_vip)]
+    df_filtrado.drop(columns=['TEMP_NOME_UPPER'], inplace=True)
+    return df_filtrado
 
 def salvar_feedback_gb(dados_fb):
     ARQUIVO_FB = 'feedbacks_gb.csv'
@@ -877,7 +826,7 @@ if perfil == 'admin':
                 df_media_pessoas = df_dados.groupby('Colaborador').agg({'Diamantes': 'sum', 'Max. Diamantes': 'sum'}).reset_index()
                 df_media_pessoas['% Atingimento'] = df_media_pessoas.apply(lambda row: row['Diamantes'] / row['Max. Diamantes'] if row['Max. Diamantes'] > 0 else 0, axis=1)
 
-            total_pessoas = len(df_media_pessoas[~df_media_pessoas['Colaborador'].str.startswith('⚠️')])
+            total_pessoas = len(df_media_pessoas)
             
             if total_pessoas > 0:
                 media_geral_tam = df_media_pessoas['% Atingimento'].mean()
@@ -890,10 +839,12 @@ if perfil == 'admin':
                 media_ad = df_dados[df_dados['Indicador'] == 'ADERENCIA']['% Atingimento'].mean() if 'ADERENCIA' in df_dados['Indicador'].unique() else 0.0
                 media_conf = df_dados[df_dados['Indicador'] == 'CONFORMIDADE']['% Atingimento'].mean() if 'CONFORMIDADE' in df_dados['Indicador'].unique() else 0.0
                 
+                # --- AGORA A BUSCA POR PONTO FORTE E GARGALO ANALISA TODOS OS INDICADORES SUBIDOS ---
                 df_medias_kpis = df_dados[df_dados['Indicador'] != 'TAM'].groupby('Indicador')['% Atingimento'].mean().reset_index()
                 melhor_kpi = df_medias_kpis.loc[df_medias_kpis['% Atingimento'].idxmax()] if not df_medias_kpis.empty else None
                 pior_kpi = df_medias_kpis.loc[df_medias_kpis['% Atingimento'].idxmin()] if not df_medias_kpis.empty else None
 
+                # --- COMPARAÇÃO HISTÓRICA DO MÊS ANTERIOR ---
                 texto_comparacao = ""
                 periodos_ord = listar_periodos_disponiveis()
                 if periodo_label in periodos_ord:
@@ -921,9 +872,9 @@ if perfil == 'admin':
                                 else:
                                     texto_comparacao = f" Em comparação ao mês anterior ({periodo_anterior}), mantivemos a performance estável (era {media_anterior_tam:.1%}). ⚖️"
 
+                # Identificação de Operadores Específicos
                 try:
-                    df_validos = df_media_pessoas[~df_media_pessoas['Colaborador'].str.startswith('⚠️')]
-                    top_operador = df_validos.loc[df_validos['% Atingimento'].idxmax()]
+                    top_operador = df_media_pessoas.loc[df_media_pessoas['% Atingimento'].idxmax()]
                     nome_top = top_operador['Colaborador'].title()
                     nota_top = top_operador['% Atingimento']
                 except:
@@ -931,8 +882,7 @@ if perfil == 'admin':
                     nota_top = 0.0
 
                 try:
-                    df_validos = df_media_pessoas[~df_media_pessoas['Colaborador'].str.startswith('⚠️')]
-                    pior_operador = df_validos.loc[df_validos['% Atingimento'].idxmin()]
+                    pior_operador = df_media_pessoas.loc[df_media_pessoas['% Atingimento'].idxmin()]
                     nome_pior = pior_operador['Colaborador'].title()
                     nota_pior = pior_operador['% Atingimento']
                 except:
@@ -942,7 +892,7 @@ if perfil == 'admin':
                 nome_ofensor_kpi = "N/A"
                 nota_ofensor_kpi = 0.0
                 if pior_kpi is not None:
-                    df_pior_kpi = df_dados[(df_dados['Indicador'] == pior_kpi['Indicador']) & (~df_dados['Colaborador'].str.startswith('⚠️'))]
+                    df_pior_kpi = df_dados[df_dados['Indicador'] == pior_kpi['Indicador']]
                     if not df_pior_kpi.empty:
                         ofensor_kpi = df_pior_kpi.loc[df_pior_kpi['% Atingimento'].idxmin()]
                         nome_ofensor_kpi = ofensor_kpi['Colaborador'].title()
@@ -952,6 +902,7 @@ if perfil == 'admin':
                 nome_top_formatado = nome_top.split(" ")[0] if nome_top != "Indisponível" else "foco"
                 pior_kpi_str = formatar_nome_visual(pior_kpi['Indicador']) if pior_kpi is not None else "gargalos"
 
+                # Geração da String Formatada
                 texto_resumo = f"""📊 *RESUMO EXECUTIVO | {periodo_label} - TEAM SOFISTAS* 📊
 
 *1️⃣ VISÃO GERAL DA OPERAÇÃO*
@@ -982,11 +933,13 @@ O foco da liderança para o próximo ciclo será atuar diretamente na base crít
                 st.info("💡 **Dica de Ouro:** O texto abaixo foi gerado automaticamente e já está **formatado para o WhatsApp**. Copie e cole na sua janela de conversa com a sua coordenação!")
                 st.code(texto_resumo, language="markdown")
                 
+                # --- NOVO: MURAL DO TIME (GTALK) ---
                 st.markdown("---")
                 st.markdown("#### 📢 Mural do Time (GTalk/WhatsApp)")
                 st.caption("Copie e cole no grupo da equipe para celebrar os resultados!")
                 
-                df_rank = df_media_pessoas[~df_media_pessoas['Colaborador'].str.startswith('⚠️')].sort_values(by='% Atingimento', ascending=False).reset_index(drop=True)
+                # Top 3
+                df_rank = df_media_pessoas.sort_values(by='% Atingimento', ascending=False).reset_index(drop=True)
                 top1 = df_rank.iloc[0]['Colaborador'] if len(df_rank) > 0 else "N/A"
                 top2 = df_rank.iloc[1]['Colaborador'] if len(df_rank) > 1 else "N/A"
                 top3 = df_rank.iloc[2]['Colaborador'] if len(df_rank) > 2 else "N/A"
@@ -1038,8 +991,7 @@ Vamos com tudo! 🔥"""
             
             medalhas = []
             for i in range(len(df_rank)):
-                if str(df_rank.iloc[i]['Colaborador']).startswith('⚠️'): medalhas.append("⚠️ Não Identificado")
-                elif i == 0: medalhas.append("🥇 1º Lugar")
+                if i == 0: medalhas.append("🥇 1º Lugar")
                 elif i == 1: medalhas.append("🥈 2º Lugar")
                 elif i == 2: medalhas.append("🥉 3º Lugar")
                 else: medalhas.append(f"🏅 {i+1}º Lugar")
@@ -1068,7 +1020,7 @@ Vamos com tudo! 🔥"""
         if df_hist is not None:
             if df_users_cadastrados is not None: df_hist = filtrar_por_usuarios_cadastrados(df_hist, df_users_cadastrados)
             df_hist['Colaborador'] = df_hist['Colaborador'].str.title()
-            lista_colabs = sorted(df_hist[~df_hist['Colaborador'].str.startswith('⚠️')]['Colaborador'].unique())
+            lista_colabs = sorted(df_hist['Colaborador'].unique())
             if lista_colabs:
                 colab_sel = st.selectbox("Selecione o Colaborador para análise histórica:", lista_colabs)
                 
@@ -1219,14 +1171,8 @@ Vamos com tudo! 🔥"""
     # ------------------ COMISSÕES ------------------
     with tabs[6]:
         st.markdown(f"### 💰 Relatório de Comissões")
-        st.info("ℹ️ Regra: R$ 0,50 por Diamante. **Trava:** Conformidade >= 92%.")
-        
         if df_dados is not None:
-            # Mostra o botão para corrigir os nomes caso existam pessoas com ⚠️
-            colaboradores_com_erro = df_dados[df_dados['Colaborador'].str.startswith('⚠️')]['Colaborador'].unique()
-            if len(colaboradores_com_erro) > 0:
-                st.error("🚨 **Atenção:** Os usuários marcados com **⚠️** tiveram seus resultados carregados, mas o nome do arquivo não bateu com a base de usuários do sistema. Eles precisam ter o nome corrigido na planilha para visualizar o painel do operador.")
-
+            st.info("ℹ️ Regra: R$ 0,50 por Diamante. **Trava:** Conformidade >= 92%.")
             lista_comissoes = []
             df_calc = df_dados.copy()
             df_calc['Colaborador_Key'] = df_calc['Colaborador'].str.upper()
@@ -1524,17 +1470,7 @@ Vamos com tudo! 🔥"""
         with st_t1:
             df_agendamentos = carregar_escalas_banco()
             if df_agendamentos is not None and not df_agendamentos.empty:
-                st.info("💡 **Dica:** Você pode dar dois cliques em qualquer célula para **EDITAR** o agendamento, ou selecionar uma linha e apertar a tecla **'Delete'** do teclado para **EXCLUIR**.")
-                
-                # O Data Editor mágico do Streamlit
-                df_editado = st.data_editor(df_agendamentos, num_rows="dynamic", use_container_width=True, key="editor_agendamentos")
-                
-                if st.button("💾 Salvar Alterações na Tabela", type="primary"):
-                    df_editado.to_csv('escalas_banco_horas.csv', index=False)
-                    sincronizar_com_github('escalas_banco_horas.csv', "Atualização/Exclusão de Agendamento de Horas")
-                    st.success("✅ Alterações salvas com sucesso! (A tabela do operador já foi atualizada).")
-                    time.sleep(1.5)
-                    st.rerun()
+                st.dataframe(df_agendamentos.iloc[::-1], use_container_width=True, hide_index=True)
             else:
                 st.info("Nenhum agendamento registrado até o momento.")
 
