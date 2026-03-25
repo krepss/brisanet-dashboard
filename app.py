@@ -268,7 +268,7 @@ def carregar_historico_voz():
         except: return None
     return None
 
-# --- FUNÇÕES BANCO DE HORAS E SALDOS (NOVO) ---
+# --- FUNÇÕES BANCO DE HORAS E SALDOS ---
 def salvar_escala_banco(dados):
     ARQ = 'escalas_banco_horas.csv'
     df_novo = pd.DataFrame([dados])
@@ -1423,7 +1423,7 @@ Vamos com tudo! 🔥"""
             colab_list = sorted(df_users_cadastrados['nome'].str.title().unique()) if df_users_cadastrados is not None else ["Nenhum usuário cadastrado"]
             c_f1, c_f2 = st.columns(2)
             sel_colab = c_f1.selectbox("Colaborador:", colab_list)
-            unidade_gerencial = c_f2.text_input("Unidade Gerencial:", value="Suporte Técnico")
+            unidade_gerencial = c_f2.text_input("Unidade Gerencial:", value="MU_SUPORTE_VAREJO")
             
             tipo_agendamento = st.radio("Tipo de Solicitação:", ["Pagamento (Horas Negativas - Trabalhar a mais)", "Retirada (Horas Positivas - Folga/Sair cedo)"])
             
@@ -1470,7 +1470,17 @@ Vamos com tudo! 🔥"""
         with st_t1:
             df_agendamentos = carregar_escalas_banco()
             if df_agendamentos is not None and not df_agendamentos.empty:
-                st.dataframe(df_agendamentos.iloc[::-1], use_container_width=True, hide_index=True)
+                st.info("💡 **Dica:** Você pode dar dois cliques em qualquer célula para **EDITAR** o agendamento, ou selecionar uma linha e apertar a tecla **'Delete'** do teclado para **EXCLUIR**.")
+                
+                # O Data Editor mágico do Streamlit
+                df_editado = st.data_editor(df_agendamentos, num_rows="dynamic", use_container_width=True, key="editor_agendamentos")
+                
+                if st.button("💾 Salvar Alterações na Tabela", type="primary"):
+                    df_editado.to_csv('escalas_banco_horas.csv', index=False)
+                    sincronizar_com_github('escalas_banco_horas.csv', "Atualização/Exclusão de Agendamento de Horas")
+                    st.success("✅ Alterações salvas com sucesso! (A tabela do operador já foi atualizada).")
+                    time.sleep(1.5)
+                    st.rerun()
             else:
                 st.info("Nenhum agendamento registrado até o momento.")
 
