@@ -192,8 +192,7 @@ def limpar_base_dados_completa():
 def faxina_arquivos_temporarios():
     protegidos = ['historico_consolidado.csv', 'usuarios.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv', 'feedbacks_gb_backup.csv', 'historico_operacional.csv', 'historico_voz.csv', 'escalas_banco_horas.csv', 'saldo_banco_horas.csv']
     for f in os.listdir('.'):
-        # Limpa restos de CSV e Excel para não encavalar os meses
-        if (f.endswith('.csv') or f.endswith('.xlsx') or f.endswith('.xls')) and f not in protegidos:
+        if f.endswith('.csv') and f not in protegidos:
             try: os.remove(f)
             except: pass
 
@@ -294,28 +293,20 @@ def carregar_saldos_banco():
         except: return None
     return None
 
-# --- FUNÇÕES DE KPI (INTELIGENTES / ATUALIZADAS) ---
+# --- FUNÇÕES DE KPI (ANTIGAS) ---
 def atualizar_historico(df_atual, periodo):
     ARQUIVO_HIST = 'historico_consolidado.csv'
     df_save = df_atual.copy()
     df_save['Periodo'] = str(periodo).strip()
     df_save['Colaborador'] = df_save['Colaborador'].astype(str).str.strip().str.upper()
-    
     if os.path.exists(ARQUIVO_HIST):
         try:
             df_hist = pd.read_csv(ARQUIVO_HIST)
             df_hist['Periodo'] = df_hist['Periodo'].astype(str).str.strip()
-            
-            # Remove do histórico APENAS o período atual E os indicadores que estamos subindo agora.
-            indicadores_novos = df_save['Indicador'].unique()
-            mask_to_drop = (df_hist['Periodo'] == str(periodo).strip()) & (df_hist['Indicador'].isin(indicadores_novos))
-            df_hist = df_hist[~mask_to_drop]
-            
+            df_hist = df_hist[df_hist['Periodo'] != str(periodo).strip()]
             df_final = pd.concat([df_hist, df_save], ignore_index=True)
-        except: 
-            df_final = df_save
-    else: 
-        df_final = df_save
+        except: df_final = df_save
+    else: df_final = df_save
     
     cols_order = ['Periodo', 'Colaborador', 'Indicador', '% Atingimento', 'Diamantes', 'Max. Diamantes']
     existing_cols = [c for c in cols_order if c in df_final.columns]
@@ -323,7 +314,7 @@ def atualizar_historico(df_atual, periodo):
         if c in existing_cols: df_final[c] = df_final[c].fillna(0.0)
             
     df_final[existing_cols].to_csv(ARQUIVO_HIST, index=False)
-    sincronizar_com_github(ARQUIVO_HIST, f"Atualizando Indicadores Mensais Inteligente - {periodo}")
+    sincronizar_com_github(ARQUIVO_HIST, f"Atualizando Indicadores Mensais - {periodo}")
 
 def excluir_periodo_historico(periodo_alvo):
     if os.path.exists('historico_consolidado.csv'):
@@ -377,44 +368,15 @@ def processar_porcentagem_br(valor):
         return float(valor)
     return 0.0
 
-# --- LEITOR INTELIGENTE / TRATOR (Lê CSV, Excel e pula Lixo no Cabeçalho) ---
 def ler_csv_inteligente(arquivo_ou_caminho):
-    import pandas as pd
-    df = None
-    nome_arq = getattr(arquivo_ou_caminho, 'name', str(arquivo_ou_caminho)).lower()
-    
-    # 1. Tenta ler Excel ou CSV ignorando o cabeçalho temporariamente
-    if nome_arq.endswith('.xlsx') or nome_arq.endswith('.xls'):
-        try:
-            if hasattr(arquivo_ou_caminho, 'seek'): arquivo_ou_caminho.seek(0)
-            df = pd.read_excel(arquivo_ou_caminho, header=None, dtype=str)
-        except: pass
-    else:
-        for sep in [',', ';', '\t']:
-            for enc in ['utf-8-sig', 'latin1', 'cp1252', 'utf-8']:
-                try:
-                    if hasattr(arquivo_ou_caminho, 'seek'): arquivo_ou_caminho.seek(0)
-                    df = pd.read_csv(arquivo_ou_caminho, sep=sep, encoding=enc, header=None, dtype=str)
-                    if df is not None and len(df.columns) > 1: break
-                except: continue
-            if df is not None and len(df.columns) > 1: break
-            
-    if df is None or df.empty: return None
-    
-    # 2. Busca a linha real do cabeçalho (pula até 15 linhas de lixo no topo)
-    header_idx = 0
-    palavras_chave = ['colaborador', 'agente', 'nome', 'operador', 'login', 'ader', 'conform', 'resultado', 'nota', 'atingimento']
-    for i in range(min(15, len(df))):
-        linha = df.iloc[i].astype(str).str.lower().tolist()
-        if any(any(kw in cell for kw in palavras_chave) for cell in linha):
-            header_idx = i
-            break
-            
-    # Define o cabeçalho real e apaga as linhas de cima
-    df.columns = df.iloc[header_idx].astype(str).str.strip()
-    df = df.iloc[header_idx+1:].reset_index(drop=True)
-    df = df.loc[:, df.columns.notna() & (df.columns != 'nan')]
-    return df
+    for sep in [',', ';']:
+        for enc in ['utf-8-sig', 'latin1', 'cp1252']:
+            try:
+                if hasattr(arquivo_ou_caminho, 'seek'): arquivo_ou_caminho.seek(0)
+                df = pd.read_csv(arquivo_ou_caminho, sep=sep, encoding=enc, dtype=str)
+                if len(df.columns) > 1: return df
+            except: continue
+    return None
 
 def normalizar_chave(texto):
     if pd.isna(texto): return ""
@@ -434,31 +396,30 @@ def normalizar_nome_indicador(nome_arquivo):
     if 'TAM' in nome: return 'TAM'
     return nome.split('.')[0].upper()
 
-# --- TRATAMENTO AGRESSIVO + EXTRAÇÃO DUPLA ---
 def tratar_arquivo_especial(df, nome_arquivo):
     df.columns = [str(c).strip().lower() for c in df.columns]
     
     col_agente = None
-    possiveis_nomes = ['colaborador', 'agente', 'nome', 'employee', 'funcionario', 'operador', 'login', 'atendente']
+    possiveis_nomes = ['colaborador', 'agente', 'nome', 'employee', 'funcionario', 'operador']
     for c in df.columns:
-        if any(p in c for p in possiveis_nomes):
+        if any(p == c or p in c for p in possiveis_nomes):
             col_agente = c
             break
-            
-    if not col_agente: 
-        return None, f"Nome não achado. Colunas lidas: {list(df.columns)}"
-        
+    if not col_agente: return None, "Coluna de Nome não encontrada"
     df.rename(columns={col_agente: 'Colaborador'}, inplace=True)
     df['Colaborador'] = df['Colaborador'].apply(normalizar_chave)
     
-    col_ad = next((c for c in df.columns if 'ader' in c and 'dura' not in c and 'prog' not in c and c != 'colaborador'), None)
-    col_conf = next((c for c in df.columns if 'conform' in c and c != 'colaborador'), None)
+    # 1. Identifica as colunas cravando no símbolo "%"
+    col_ad = next((c for c in df.columns if 'ader' in c and ('%' in c or 'perc' in c)), None)
+    if not col_ad: 
+        col_ad = next((c for c in df.columns if 'ader' in c and 'duração' not in c and 'programado' not in c and c != 'colaborador'), None)
+        
+    col_conf = next((c for c in df.columns if 'conform' in c and ('%' in c or 'perc' in c)), None)
+    if not col_conf: 
+        col_conf = next((c for c in df.columns if 'conform' in c and c != 'colaborador'), None)
     
-    lista_retorno = []
-    
-    # 1. SE O ARQUIVO TEM OS DOIS JUNTOS
     if col_ad and col_conf:
-        # Puxa Aderência
+        lista_retorno = []
         df_ad = df[['Colaborador', col_ad]].copy()
         df_ad.rename(columns={col_ad: '% Atingimento'}, inplace=True)
         df_ad['% Atingimento'] = df_ad['% Atingimento'].apply(processar_porcentagem_br)
@@ -467,54 +428,53 @@ def tratar_arquivo_especial(df, nome_arquivo):
         df_ad['Max. Diamantes'] = 0.0
         lista_retorno.append(df_ad[['Colaborador', 'Indicador', '% Atingimento', 'Diamantes', 'Max. Diamantes']])
         
-        # Puxa Conformidade
-        df_conf_df = df[['Colaborador', col_conf]].copy()
-        df_conf_df.rename(columns={col_conf: '% Atingimento'}, inplace=True)
-        df_conf_df['% Atingimento'] = df_conf_df['% Atingimento'].apply(processar_porcentagem_br)
-        df_conf_df['Indicador'] = 'CONFORMIDADE'
-        df_conf_df['Diamantes'] = 0.0
-        df_conf_df['Max. Diamantes'] = 0.0
-        lista_retorno.append(df_conf_df[['Colaborador', 'Indicador', '% Atingimento', 'Diamantes', 'Max. Diamantes']])
+        df_conf = df[['Colaborador', col_conf]].copy()
+        df_conf.rename(columns={col_conf: '% Atingimento'}, inplace=True)
+        df_conf['% Atingimento'] = df_conf['% Atingimento'].apply(processar_porcentagem_br)
+        df_conf['Indicador'] = 'CONFORMIDADE'
+        df_conf['Diamantes'] = 0.0
+        df_conf['Max. Diamantes'] = 0.0
+        lista_retorno.append(df_conf[['Colaborador', 'Indicador', '% Atingimento', 'Diamantes', 'Max. Diamantes']])
         
-        return pd.concat(lista_retorno, ignore_index=True), "Extração Dupla (Aderência e Conformidade)"
-        
-    # 2. SE O ARQUIVO TEM SÓ UM INDICADOR
-    nome_upper = str(nome_arquivo).upper()
-    if 'ADER' in nome_upper: nome_indicador = 'ADERENCIA'
-    elif 'CONFORM' in nome_upper: nome_indicador = 'CONFORMIDADE'
-    else: nome_indicador = normalizar_nome_indicador(nome_arquivo)
-
-    col_valor = None
-    if nome_indicador == 'CONFORMIDADE' and col_conf: col_valor = col_conf
-    elif nome_indicador == 'ADERENCIA' and col_ad: col_valor = col_ad
+        return pd.concat(lista_retorno, ignore_index=True), "Extração Dupla Segura"
     
+    col_valor = None
+    nome_kpi_limpo = nome_arquivo.split('.')[0].lower()
+    
+    prioridades = ['% atingimento', 'atingimento', 'resultado', 'nota final', 'score', 'nota', 'valor']
+    for p in prioridades + [nome_kpi_limpo]:
+        for c in df.columns:
+            if p in c and c != 'colaborador': 
+                col_valor = c
+                break
+        if col_valor: break
+        
     if not col_valor:
-        prioridades = ['% atingimento', 'atingimento', 'resultado', 'nota', 'score', 'valor', 'realizado', '%']
-        for p in prioridades:
-            col_valor = next((c for c in df.columns if p in c and c != 'colaborador'), None)
-            if col_valor: break
+        cols_restantes = [c for c in df.columns if c != 'colaborador' and 'diamante' not in c]
+        if cols_restantes: col_valor = cols_restantes[0]
+        else: return None, f"Nenhuma coluna de nota identificada."
             
-    if not col_valor:
-        restantes = [c for c in df.columns if c != 'colaborador' and 'diamante' not in c and 'matr' not in c]
-        if restantes: col_valor = restantes[-1]
-        else: return None, f"Sem coluna de valor. Colunas lidas: {list(df.columns)}"
-
     df.rename(columns={col_valor: '% Atingimento'}, inplace=True)
     
     for c in df.columns:
         if 'diamantes' in c and 'max' not in c: df.rename(columns={c: 'Diamantes'}, inplace=True)
         if 'max' in c and 'diamantes' in c: df.rename(columns={c: 'Max. Diamantes'}, inplace=True)
-        
+    
     df['% Atingimento'] = df['% Atingimento'].apply(processar_porcentagem_br)
+    
     if 'Diamantes' not in df.columns: df['Diamantes'] = 0.0
     if 'Max. Diamantes' not in df.columns: df['Max. Diamantes'] = 0.0
     
     df['Diamantes'] = pd.to_numeric(df['Diamantes'], errors='coerce').fillna(0)
     df['Max. Diamantes'] = pd.to_numeric(df['Max. Diamantes'], errors='coerce').fillna(0)
-    df['Indicador'] = nome_indicador
     
+    nome_indicador = normalizar_nome_indicador(nome_arquivo)
+    if col_conf and 'conform' in col_valor: nome_indicador = 'CONFORMIDADE'
+    if col_ad and 'ader' in col_valor: nome_indicador = 'ADERENCIA'
+    
+    df['Indicador'] = nome_indicador
     cols_to_keep = ['Colaborador', 'Indicador', '% Atingimento', 'Diamantes', 'Max. Diamantes']
-    return df[cols_to_keep], f"Extraído {nome_indicador} (Coluna: '{col_valor}')"
+    return df[cols_to_keep], "Extração Simples"
 
 def classificar_farol(val):
     if val >= 0.90: return '💎 Excelência' 
@@ -525,19 +485,16 @@ def carregar_dados_completo_debug():
     lista_final = []
     log_debug = []
     arquivos_ignorar = ['usuarios.csv', 'historico_consolidado.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv', 'feedbacks_gb_backup.csv', 'historico_operacional.csv', 'historico_voz.csv', 'escalas_banco_horas.csv', 'saldo_banco_horas.csv']
-    
-    # Lê arquivos CSV e Excel disponíveis na pasta
-    arquivos = [f for f in os.listdir('.') if (f.endswith('.csv') or f.endswith('.xlsx') or f.endswith('.xls')) and f.lower() not in arquivos_ignorar]
-    
+    arquivos = [f for f in os.listdir('.') if f.endswith('.csv') and f.lower() not in arquivos_ignorar]
     for arquivo in arquivos:
         try:
             df_bruto = ler_csv_inteligente(arquivo)
             if df_bruto is not None:
                 df_tratado, msg = tratar_arquivo_especial(df_bruto, arquivo)
-                log_debug.append({"Arquivo": arquivo, "Status": "✅ OK" if df_tratado is not None else "❌ Erro", "Detalhe": msg})
+                log_debug.append({"Arquivo": arquivo, "Status": "OK" if df_tratado is not None else "Erro", "Detalhe": msg})
                 if df_tratado is not None: lista_final.append(df_tratado)
-            else: log_debug.append({"Arquivo": arquivo, "Status": "❌ Erro", "Detalhe": "Não conseguiu ler o arquivo (Formato Inválido)"})
-        except Exception as e: log_debug.append({"Arquivo": arquivo, "Status": "❌ Erro Crítico", "Detalhe": str(e)})
+            else: log_debug.append({"Arquivo": arquivo, "Status": "Erro", "Detalhe": "Não conseguiu ler CSV"})
+        except Exception as e: log_debug.append({"Arquivo": arquivo, "Status": "Erro Crítico", "Detalhe": str(e)})
             
     df_final = None
     if lista_final: 
@@ -575,49 +532,12 @@ def carregar_usuarios():
 def filtrar_por_usuarios_cadastrados(df_dados, df_users):
     if df_dados is None or df_dados.empty: return df_dados
     if df_users is None or df_users.empty: return df_dados
-    
-    # Puxa a lista oficial de usuários cadastrados
-    lista_vip = df_users['nome'].apply(normalizar_chave).dropna().unique()
+    lista_vip = df_users['nome'].unique()
     df_filtrado = df_dados.copy()
     df_filtrado['TEMP_NOME_UPPER'] = df_filtrado['Colaborador'].apply(normalizar_chave)
-    
-    # --- A MÁGICA DE RECONCILIAÇÃO DE NOMES ---
-    def reconciliar_nomes(nome_planilha):
-        if not nome_planilha: return nome_planilha
-        if nome_planilha in lista_vip: return nome_planilha # Bateu exato, ótimo!
-        
-        # 1. Troca pontos por espaço (caso seja login, ex: "jamile.rocha")
-        nome_limpo = str(nome_planilha).replace('.', ' ').strip()
-        if nome_limpo in lista_vip: return nome_limpo
-        
-        # 2. Busca inteligente (Primeiro e Último nome)
-        partes_planilha = nome_limpo.split()
-        if len(partes_planilha) >= 1:
-            primeiro_nome = partes_planilha[0]
-            ultimo_nome = partes_planilha[-1] if len(partes_planilha) > 1 else ""
-            
-            for nome_oficial in lista_vip:
-                partes_oficial = nome_oficial.split()
-                # Regra de Ouro: O primeiro nome TEM que ser igual
-                if primeiro_nome == partes_oficial[0]:
-                    # Se a planilha tem sobrenome, verifica se ele existe no nome oficial
-                    if ultimo_nome and (ultimo_nome in partes_oficial):
-                        return nome_oficial
-                    # Se a planilha só tem o primeiro nome, arrisca conectar
-                    elif not ultimo_nome:
-                        return nome_oficial
-                        
-        return nome_planilha # Se não achar nada, devolve como estava
-        
-    # Aplica o corretor de nomes em todos os dados
-    df_filtrado['TEMP_NOME_UPPER'] = df_filtrado['TEMP_NOME_UPPER'].apply(reconciliar_nomes)
-    
-    # Filtra apenas quem realmente é da equipe e finaliza
-    df_final = df_filtrado[df_filtrado['TEMP_NOME_UPPER'].isin(lista_vip)].copy()
-    df_final['Colaborador'] = df_final['TEMP_NOME_UPPER']
-    df_final.drop(columns=['TEMP_NOME_UPPER'], inplace=True)
-    
-    return df_final
+    df_filtrado = df_filtrado[df_filtrado['TEMP_NOME_UPPER'].isin(lista_vip)]
+    df_filtrado.drop(columns=['TEMP_NOME_UPPER'], inplace=True)
+    return df_filtrado
 
 def salvar_feedback_gb(dados_fb):
     ARQUIVO_FB = 'feedbacks_gb.csv'
@@ -919,6 +839,7 @@ if perfil == 'admin':
                 media_ad = df_dados[df_dados['Indicador'] == 'ADERENCIA']['% Atingimento'].mean() if 'ADERENCIA' in df_dados['Indicador'].unique() else 0.0
                 media_conf = df_dados[df_dados['Indicador'] == 'CONFORMIDADE']['% Atingimento'].mean() if 'CONFORMIDADE' in df_dados['Indicador'].unique() else 0.0
                 
+                # --- AGORA A BUSCA POR PONTO FORTE E GARGALO ANALISA TODOS OS INDICADORES SUBIDOS ---
                 df_medias_kpis = df_dados[df_dados['Indicador'] != 'TAM'].groupby('Indicador')['% Atingimento'].mean().reset_index()
                 melhor_kpi = df_medias_kpis.loc[df_medias_kpis['% Atingimento'].idxmax()] if not df_medias_kpis.empty else None
                 pior_kpi = df_medias_kpis.loc[df_medias_kpis['% Atingimento'].idxmin()] if not df_medias_kpis.empty else None
@@ -951,6 +872,7 @@ if perfil == 'admin':
                                 else:
                                     texto_comparacao = f" Em comparação ao mês anterior ({periodo_anterior}), mantivemos a performance estável (era {media_anterior_tam:.1%}). ⚖️"
 
+                # Identificação de Operadores Específicos
                 try:
                     top_operador = df_media_pessoas.loc[df_media_pessoas['% Atingimento'].idxmax()]
                     nome_top = top_operador['Colaborador'].title()
@@ -980,6 +902,7 @@ if perfil == 'admin':
                 nome_top_formatado = nome_top.split(" ")[0] if nome_top != "Indisponível" else "foco"
                 pior_kpi_str = formatar_nome_visual(pior_kpi['Indicador']) if pior_kpi is not None else "gargalos"
 
+                # Geração da String Formatada
                 texto_resumo = f"""📊 *RESUMO EXECUTIVO | {periodo_label} - TEAM SOFISTAS* 📊
 
 *1️⃣ VISÃO GERAL DA OPERAÇÃO*
@@ -1010,10 +933,12 @@ O foco da liderança para o próximo ciclo será atuar diretamente na base crít
                 st.info("💡 **Dica de Ouro:** O texto abaixo foi gerado automaticamente e já está **formatado para o WhatsApp**. Copie e cole na sua janela de conversa com a sua coordenação!")
                 st.code(texto_resumo, language="markdown")
                 
+                # --- NOVO: MURAL DO TIME (GTALK) ---
                 st.markdown("---")
                 st.markdown("#### 📢 Mural do Time (GTalk/WhatsApp)")
                 st.caption("Copie e cole no grupo da equipe para celebrar os resultados!")
                 
+                # Top 3
                 df_rank = df_media_pessoas.sort_values(by='% Atingimento', ascending=False).reset_index(drop=True)
                 top1 = df_rank.iloc[0]['Colaborador'] if len(df_rank) > 0 else "N/A"
                 top2 = df_rank.iloc[1]['Colaborador'] if len(df_rank) > 1 else "N/A"
@@ -1371,16 +1296,15 @@ Vamos com tudo! 🔥"""
             
             st.markdown("---")
             st.markdown("#### 💎 Arquivos de Indicadores (Qualidade, Aderência, etc)")
-            # NOVO: Permite subir Excel
-            up_k = st.file_uploader("Indicadores (CSV ou Excel)", type=['csv', 'xlsx', 'xls'], accept_multiple_files=True, key="k")
+            up_k = st.file_uploader("Indicadores (CSVs)", accept_multiple_files=True, key="k")
             
             c_up1, c_up2 = st.columns(2)
             with c_up1:
                 st.markdown("#### 💬 Arquivo Chat (Opcional)")
-                up_op = st.file_uploader("Relatório (Volume / TMA Chat)", type=['csv', 'xlsx', 'xls'], key="up_op")
+                up_op = st.file_uploader("Relatório (Volume / TMA Chat)", type=['csv'], key="up_op")
             with c_up2:
                 st.markdown("#### 📞 Arquivo Voz (Opcional)")
-                up_voz = st.file_uploader("Relatório (Volume / TMA Voz)", type=['csv', 'xlsx', 'xls'], key="up_voz")
+                up_voz = st.file_uploader("Relatório (Volume / TMA Voz)", type=['csv'], key="up_voz")
 
             if st.button("💾 Salvar e Atualizar Histórico", type="primary"): 
                 if not nova_data.strip():
