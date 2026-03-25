@@ -11,7 +11,7 @@ from datetime import datetime, timezone, timedelta
 import unicodedata
 
 # --- CONFIGURAÇÃO DA LOGO E ACESSOS ---
-LOGO_FILE = "logo.png"
+LOGO_FILE = "logo.ico"
 SENHA_ADMIN = "admin123"
 USUARIOS_ADMIN = ['gestor', 'admin']
 
@@ -192,44 +192,9 @@ def limpar_base_dados_completa():
 def faxina_arquivos_temporarios():
     protegidos = ['historico_consolidado.csv', 'usuarios.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv', 'feedbacks_gb_backup.csv', 'historico_operacional.csv', 'historico_voz.csv', 'escalas_banco_horas.csv', 'saldo_banco_horas.csv']
     for f in os.listdir('.'):
-        if (f.endswith('.csv') or f.endswith('.xlsx') or f.endswith('.xls')) and f not in protegidos:
+        if f.endswith('.csv') and f not in protegidos:
             try: os.remove(f)
             except: pass
-
-# --- LEITOR UNIVERSAL BLINDADO COM "SUPER SNIFFER" ---
-def ler_arquivo_inteligente(arquivo_ou_caminho):
-    nome = getattr(arquivo_ou_caminho, 'name', '')
-    if isinstance(arquivo_ou_caminho, str): nome = arquivo_ou_caminho
-        
-    if nome.lower().endswith('.xlsx') or nome.lower().endswith('.xls'):
-        try:
-            if hasattr(arquivo_ou_caminho, 'seek'): arquivo_ou_caminho.seek(0)
-            return pd.read_excel(arquivo_ou_caminho, dtype=str)
-        except Exception as e:
-            print(f"Erro ao ler Excel: {e}")
-            return None
-            
-    # SUPER SNIFFER PARA CSV: Resolve problemas com vírgulas dentro de números no Brasil
-    try:
-        if hasattr(arquivo_ou_caminho, 'seek'): arquivo_ou_caminho.seek(0)
-        df = pd.read_csv(arquivo_ou_caminho, sep=None, engine='python', dtype=str)
-        if len(df.columns) > 1: return df
-    except:
-        pass
-        
-    # Testes sequenciais de separadores (caso o Sniffer falhe)
-    for sep in [';', ',', '\t', '|']:
-        for enc in ['utf-8-sig', 'latin1', 'cp1252', 'utf-8']:
-            try:
-                if hasattr(arquivo_ou_caminho, 'seek'): arquivo_ou_caminho.seek(0)
-                df = pd.read_csv(arquivo_ou_caminho, sep=sep, encoding=enc, dtype=str)
-                if len(df.columns) > 1: return df
-            except: continue
-            
-    try:
-        if hasattr(arquivo_ou_caminho, 'seek'): arquivo_ou_caminho.seek(0)
-        return pd.read_csv(arquivo_ou_caminho, sep=';', encoding='utf-8-sig', dtype=str)
-    except: return None
 
 # --- FUNÇÕES DE TMA (CHAT E VOZ) ---
 def processar_desempenho_agente(df):
@@ -419,6 +384,16 @@ def processar_porcentagem_br(valor):
         return float(valor)
     return 0.0
 
+def ler_csv_inteligente(arquivo_ou_caminho):
+    for sep in [',', ';']:
+        for enc in ['utf-8-sig', 'latin1', 'cp1252']:
+            try:
+                if hasattr(arquivo_ou_caminho, 'seek'): arquivo_ou_caminho.seek(0)
+                df = pd.read_csv(arquivo_ou_caminho, sep=sep, encoding=enc, dtype=str)
+                if len(df.columns) > 1: return df
+            except: continue
+    return None
+
 def normalizar_chave(texto):
     if pd.isna(texto): return ""
     texto = str(texto).strip().upper()
@@ -451,11 +426,11 @@ def tratar_arquivo_especial(df, nome_arquivo):
     df['Colaborador'] = df['Colaborador'].apply(normalizar_chave)
     
     # 1. Identifica as colunas cravando no símbolo "%"
-    col_ad = next((c for c in df.columns if 'ader' in c and ('%' in c or 'perc' in c or 'nota' in c or 'resultado' in c)), None)
+    col_ad = next((c for c in df.columns if 'ader' in c and ('%' in c or 'perc' in c)), None)
     if not col_ad: 
         col_ad = next((c for c in df.columns if 'ader' in c and 'duração' not in c and 'programado' not in c and c != 'colaborador'), None)
         
-    col_conf = next((c for c in df.columns if 'conform' in c and ('%' in c or 'perc' in c or 'nota' in c or 'resultado' in c)), None)
+    col_conf = next((c for c in df.columns if 'conform' in c and ('%' in c or 'perc' in c)), None)
     if not col_conf: 
         col_conf = next((c for c in df.columns if 'conform' in c and c != 'colaborador'), None)
     
@@ -526,15 +501,15 @@ def carregar_dados_completo_debug():
     lista_final = []
     log_debug = []
     arquivos_ignorar = ['usuarios.csv', 'historico_consolidado.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv', 'feedbacks_gb_backup.csv', 'historico_operacional.csv', 'historico_voz.csv', 'escalas_banco_horas.csv', 'saldo_banco_horas.csv']
-    arquivos = [f for f in os.listdir('.') if (f.endswith('.csv') or f.endswith('.xlsx') or f.endswith('.xls')) and f.lower() not in arquivos_ignorar]
+    arquivos = [f for f in os.listdir('.') if f.endswith('.csv') and f.lower() not in arquivos_ignorar]
     for arquivo in arquivos:
         try:
-            df_bruto = ler_arquivo_inteligente(arquivo)
+            df_bruto = ler_csv_inteligente(arquivo)
             if df_bruto is not None:
                 df_tratado, msg = tratar_arquivo_especial(df_bruto, arquivo)
                 log_debug.append({"Arquivo": arquivo, "Status": "OK" if df_tratado is not None else "Erro", "Detalhe": msg})
                 if df_tratado is not None: lista_final.append(df_tratado)
-            else: log_debug.append({"Arquivo": arquivo, "Status": "Erro", "Detalhe": "Não conseguiu ler o arquivo"})
+            else: log_debug.append({"Arquivo": arquivo, "Status": "Erro", "Detalhe": "Não conseguiu ler CSV"})
         except Exception as e: log_debug.append({"Arquivo": arquivo, "Status": "Erro Crítico", "Detalhe": str(e)})
             
     df_final = None
@@ -551,9 +526,9 @@ def carregar_dados_completo():
     return df
 
 def carregar_usuarios():
-    arquivos = [f for f in os.listdir('.') if (f.endswith('.csv') or f.endswith('.xlsx')) and 'usuario' in f.lower()]
+    arquivos = [f for f in os.listdir('.') if f.endswith('.csv') and 'usuario' in f.lower()]
     if arquivos:
-        df = ler_arquivo_inteligente(arquivos[0])
+        df = ler_csv_inteligente(arquivos[0])
         if df is not None:
             df.columns = df.columns.str.lower()
             col_email = next((c for c in df.columns if 'mail' in c), None)
@@ -604,7 +579,7 @@ def carregar_feedbacks_gb():
     for nome in nomes_possiveis:
         if os.path.exists(nome):
             try:
-                df = ler_arquivo_inteligente(nome)
+                df = ler_csv_inteligente(nome)
                 if df is not None: return df
                 return pd.read_csv(nome)
             except: continue
@@ -1336,16 +1311,16 @@ Vamos com tudo! 🔥"""
                 st.success("Usuarios OK!")
             
             st.markdown("---")
-            st.markdown("#### 💎 Arquivos de Indicadores (CSVs ou Excel)")
-            up_k = st.file_uploader("Indicadores", accept_multiple_files=True, key="k")
+            st.markdown("#### 💎 Arquivos de Indicadores (Qualidade, Aderência, etc)")
+            up_k = st.file_uploader("Indicadores (CSVs)", accept_multiple_files=True, key="k")
             
             c_up1, c_up2 = st.columns(2)
             with c_up1:
                 st.markdown("#### 💬 Arquivo Chat (Opcional)")
-                up_op = st.file_uploader("Relatório (Volume / TMA Chat)", key="up_op")
+                up_op = st.file_uploader("Relatório (Volume / TMA Chat)", type=['csv'], key="up_op")
             with c_up2:
                 st.markdown("#### 📞 Arquivo Voz (Opcional)")
-                up_voz = st.file_uploader("Relatório (Volume / TMA Voz)", key="up_voz")
+                up_voz = st.file_uploader("Relatório (Volume / TMA Voz)", type=['csv'], key="up_voz")
 
             if st.button("💾 Salvar e Atualizar Histórico", type="primary"): 
                 if not nova_data.strip():
@@ -1367,7 +1342,7 @@ Vamos com tudo! 🔥"""
                         else: st.error("❌ Erro ao processar arquivos de indicadores.")
                     
                     if up_op:
-                        df_op_raw = ler_arquivo_inteligente(up_op)
+                        df_op_raw = ler_csv_inteligente(up_op)
                         if df_op_raw is not None:
                             df_op_tratado = processar_desempenho_agente(df_op_raw)
                             if df_op_tratado is not None:
@@ -1377,7 +1352,7 @@ Vamos com tudo! 🔥"""
                             else: st.error("❌ Erro ao ler colunas de TMA Chat.")
                             
                     if up_voz:
-                        df_voz_raw = ler_arquivo_inteligente(up_voz)
+                        df_voz_raw = ler_csv_inteligente(up_voz)
                         if df_voz_raw is not None:
                             df_voz_tratado = processar_desempenho_agente(df_voz_raw)
                             if df_voz_tratado is not None:
@@ -1397,7 +1372,7 @@ Vamos com tudo! 🔥"""
                 lista_diag = []
                 for f in up_k:
                     try:
-                        df_chk = ler_arquivo_inteligente(f)
+                        df_chk = ler_csv_inteligente(f)
                         if df_chk is not None:
                             df_p, msg = tratar_arquivo_especial(df_chk, f.name)
                             if df_p is not None:
@@ -1464,7 +1439,7 @@ Vamos com tudo! 🔥"""
             colab_list = sorted(df_users_cadastrados['nome'].str.title().unique()) if df_users_cadastrados is not None else ["Nenhum usuário cadastrado"]
             c_f1, c_f2 = st.columns(2)
             sel_colab = c_f1.selectbox("Colaborador:", colab_list)
-            unidade_gerencial = c_f2.text_input("Unidade Gerencial:", value="MU_SUPORTE_VAREJO")
+            unidade_gerencial = c_f2.text_input("Unidade Gerencial:", value="Suporte Técnico")
             
             tipo_agendamento = st.radio("Tipo de Solicitação:", ["Pagamento (Horas Negativas - Trabalhar a mais)", "Retirada (Horas Positivas - Folga/Sair cedo)"])
             
@@ -1513,9 +1488,11 @@ Vamos com tudo! 🔥"""
             if df_agendamentos is not None and not df_agendamentos.empty:
                 st.info("💡 **Dica:** Você pode dar dois cliques em qualquer célula para **EDITAR** o agendamento, ou selecionar uma linha (na caixinha à esquerda) e apertar a tecla **'Delete'** do teclado para **EXCLUIR**.")
                 
+                # Tabela interativa para editar e excluir
                 df_editado = st.data_editor(df_agendamentos.iloc[::-1], num_rows="dynamic", use_container_width=True, key="editor_agendamentos")
                 
                 if st.button("💾 Salvar Alterações na Tabela", type="primary"):
+                    # Reverter a ordem antes de salvar para manter a consistência do banco
                     df_final_salvar = df_editado.iloc[::-1].reset_index(drop=True)
                     df_final_salvar.to_csv('escalas_banco_horas.csv', index=False)
                     sincronizar_com_github('escalas_banco_horas.csv', "Atualização/Exclusão manual de Agendamentos")
@@ -1794,4 +1771,231 @@ else:
                         delta_tma_c = "+ Acima da Meta (20m)"
                         
                     c_p1.metric("💬 Chats Atendidos", vol_chat, delta_vol_c, delta_color="off")
-                    c_p2.metric("⏱️ TMA Chat", tma_chat_fmt, delta_tma_
+                    c_p2.metric("⏱️ TMA Chat", tma_chat_fmt, delta_tma_c, delta_color="inverse")
+                else:
+                    c_p1.metric("💬 Chats Atendidos", "-")
+                    c_p2.metric("⏱️ TMA Chat", "-")
+            else:
+                c_p1.metric("💬 Chats Atendidos", "-")
+                c_p2.metric("⏱️ TMA Chat", "-")
+
+            if df_voz_hist is not None:
+                df_voz_user = df_voz_hist[(df_voz_hist['Periodo'] == periodo_label) & (df_voz_hist['Colaborador'].apply(normalizar_chave) == normalizar_chave(nome_logado))]
+                if not df_voz_user.empty:
+                    vol_voz = int(df_voz_user.iloc[0]['Atendimentos'])
+                    tma_voz_seg = df_voz_user.iloc[0]['TMA_seg']
+                    tma_voz_fmt = df_voz_user.iloc[0]['TMA_Formatado']
+                    
+                    media_voz_dia = vol_voz / 22.0
+                    delta_vol_v = f"~{media_voz_dia:.0f} por dia (base 22d)"
+                    
+                    if tma_voz_seg <= 420: # 420 seg = 7 min
+                        delta_tma_v = "- Dentro da Meta (7m)"
+                    else:
+                        delta_tma_v = "+ Acima da Meta (7m)"
+                        
+                    c_p3.metric("📞 Ligações Atendidas", vol_voz, delta_vol_v, delta_color="off")
+                    c_p4.metric("⏱️ TMA Voz", tma_voz_fmt, delta_tma_v, delta_color="inverse")
+                else:
+                    c_p3.metric("📞 Ligações Atendidas", "-")
+                    c_p4.metric("⏱️ TMA Voz", "-")
+            else:
+                c_p3.metric("📞 Ligações Atendidas", "-")
+                c_p4.metric("⏱️ TMA Voz", "-")
+
+            st.markdown("---")
+            
+            # --- DEVOLVENDO O RAIO-X RADAR CHART ---
+            media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
+            media_equipe.rename(columns={'% Atingimento': 'Média Equipe'}, inplace=True)
+            if not media_equipe.empty:
+                df_comp = pd.merge(meus_dados, media_equipe, on='Indicador')
+                if not df_comp.empty:
+                    df_comp['Indicador'] = df_comp['Indicador'].apply(formatar_nome_visual)
+                    categorias = df_comp['Indicador'].tolist()
+                    valores_user = df_comp['% Atingimento'].tolist()
+                    valores_media = df_comp['Média Equipe'].tolist()
+                    if categorias:
+                        categorias.append(categorias[0])
+                        valores_user.append(valores_user[0])
+                        valores_media.append(valores_media[0])
+                        fig = go.Figure()
+                        fig.add_trace(go.Scatterpolar(r=valores_media, theta=categorias, fill='toself', name='Média Equipe', line_color='#cccccc', opacity=0.5))
+                        fig.add_trace(go.Scatterpolar(r=valores_user, theta=categorias, fill='toself', name='Você', line_color='#F37021'))
+                        fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1.1])), showlegend=True, height=350, margin=dict(l=40, r=40, t=20, b=20), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                        st.markdown("##### 🕸️ Raio-X de Competências")
+                        st.plotly_chart(fig, use_container_width=True)
+            st.markdown("---")
+            
+            # --- HISTÓRICO INDIVIDUAL E PRODUTIVIDADE ---
+            st.markdown("### ⏳ Sua Evolução Histórica")
+            df_hist_full = carregar_historico_completo()
+            if df_hist_full is not None:
+                hist_user = df_hist_full[df_hist_full['Colaborador'].astype(str).str.upper().apply(normalizar_chave) == normalizar_chave(nome_logado)].copy()
+                if not hist_user.empty:
+                    hist_user['Indicador'] = hist_user['Indicador'].apply(formatar_nome_visual)
+                    st.plotly_chart(px.line(hist_user, x='Periodo', y='% Atingimento', color='Indicador', markers=True, title="Evolução de Qualidade"), use_container_width=True)
+
+            c_lin1, c_lin2 = st.columns(2)
+            if df_op_hist is not None:
+                df_op_user_hist = df_op_hist[df_op_hist['Colaborador'].apply(normalizar_chave) == normalizar_chave(nome_logado)].copy()
+                if not df_op_user_hist.empty:
+                    df_op_user_hist['Data_Ord'] = pd.to_datetime(df_op_user_hist['Periodo'], format='%m/%Y', errors='coerce')
+                    df_op_user_hist = df_op_user_hist.sort_values(by='Data_Ord')
+                    with c_lin1:
+                        fig_line_chat = px.line(df_op_user_hist, x='Periodo', y='TMA_seg', title='Sua Evolução TMA Chat', markers=True, text='TMA_Formatado')
+                        fig_line_chat.add_hline(y=1200, line_dash="dash", line_color="red", annotation_text="Meta (20m)")
+                        fig_line_chat.update_traces(textposition="top center")
+                        fig_line_chat.update_yaxes(visible=False)
+                        st.plotly_chart(fig_line_chat, use_container_width=True)
+
+            if df_voz_hist is not None:
+                df_voz_user_hist = df_voz_hist[df_voz_hist['Colaborador'].apply(normalizar_chave) == normalizar_chave(nome_logado)].copy()
+                if not df_voz_user_hist.empty:
+                    df_voz_user_hist['Data_Ord'] = pd.to_datetime(df_voz_user_hist['Periodo'], format='%m/%Y', errors='coerce')
+                    df_voz_user_hist = df_voz_user_hist.sort_values(by='Data_Ord')
+                    with c_lin2:
+                        fig_line_voz = px.line(df_voz_user_hist, x='Periodo', y='TMA_seg', title='Sua Evolução TMA Voz', markers=True, text='TMA_Formatado', color_discrete_sequence=['#8e44ad'])
+                        fig_line_voz.add_hline(y=420, line_dash="dash", line_color="red", annotation_text="Meta (7m)")
+                        fig_line_voz.update_traces(textposition="top center")
+                        fig_line_voz.update_yaxes(visible=False)
+                        st.plotly_chart(fig_line_voz, use_container_width=True)
+
+    # --- NOVA ABA: VISÃO DO TIME (OPERADOR) ---
+    with tab_time:
+        st.markdown("### 🦁 Visão Geral do Time")
+        st.info("Aqui você acompanha como estamos indo como equipe. Lembre-se: quando o time ganha, todos ganham!")
+
+        if df_dados is not None:
+            # Opção de Ignorar Pontualidade
+            ignorar_pont_op = st.checkbox("Recalcular Visão Global sem Pontualidade", value=False)
+            
+            if tem_tam:
+                df_base = df_dados[df_dados['Indicador'] == 'TAM'][['Colaborador', 'Diamantes', 'Max. Diamantes']].set_index('Colaborador').copy()
+                if ignorar_pont_op:
+                    df_pont = df_dados[df_dados['Indicador'] == 'PONTUALIDADE'][['Colaborador', 'Diamantes', 'Max. Diamantes']].set_index('Colaborador').copy()
+                    df_base = df_base.subtract(df_pont, fill_value=0)
+                df_base['% Atingimento'] = df_base.apply(lambda row: row['Diamantes'] / row['Max. Diamantes'] if row['Max. Diamantes'] > 0 else 0, axis=1)
+                df_media_team = df_base.reset_index()
+            else:
+                if ignorar_pont_op:
+                    df_calc = df_dados[df_dados['Indicador'] != 'PONTUALIDADE']
+                else:
+                    df_calc = df_dados
+                df_media_team = df_calc.groupby('Colaborador').agg({'Diamantes': 'sum', 'Max. Diamantes': 'sum'}).reset_index()
+                df_media_team['% Atingimento'] = df_media_team.apply(lambda row: row['Diamantes'] / row['Max. Diamantes'] if row['Max. Diamantes'] > 0 else 0, axis=1)
+
+            # Cálculo dos Totais
+            total_dia_team = df_media_team['Diamantes'].sum()
+            total_max_team = df_media_team['Max. Diamantes'].sum()
+            perc_team = (total_dia_team / total_max_team) if total_max_team > 0 else 0
+            
+            # --- 🍰 SUA FATIA NO BOLO (CONTRIBUIÇÃO) ---
+            user_share_row = df_media_team[df_media_team['Colaborador'] == nome_logado]
+            msg_share = "Dados insuficientes"
+            
+            if not user_share_row.empty and total_dia_team > 0:
+                user_dia = user_share_row.iloc[0]['Diamantes']
+                share = (user_dia / total_dia_team)
+                msg_share = f"Você representa **{share:.1%}** do resultado da equipe."
+
+            # Display
+            c1, c2 = st.columns(2)
+            c1.markdown(f"#### 🦁 Média Global da Equipe: **{perc_team:.1%}**")
+            c2.success(msg_share)
+            
+            # Gauge Chart
+            fig_team = go.Figure(go.Indicator(
+                mode = "gauge+number", value = perc_team * 100, domain = {'x': [0, 1], 'y': [0, 1]},
+                gauge = {
+                    'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': 'white'}, 'bar': {'color': "#003366"},
+                    'steps': [{'range': [0, 80], 'color': '#ffcccb'},{'range': [80, 90], 'color': '#fff4cc'},{'range': [90, 100], 'color': '#d9f7be'}],
+                    'threshold': {'line': {'color': "red", 'width': 4}, 'thickness': 0.75, 'value': 100}
+                }
+            ))
+            fig_team.update_layout(height=250, margin=dict(l=20, r=20, t=30, b=20))
+            st.plotly_chart(fig_team, use_container_width=True)
+
+    with tab_ferias:
+        st.markdown("### 🗓️ Planejamento de Férias")
+        st.markdown(f"<div class='vacation-card'><p class='vacation-title'>Suas próximas férias estão programadas para:</p><div class='vacation-date'>{minhas_ferias}</div><p class='vacation-note'>*Sujeito a alteração.</p></div>", unsafe_allow_html=True)
+
+    with tab_feedbacks:
+        st.markdown("### 📝 Histórico de Feedbacks")
+        df_fbs = carregar_feedbacks_gb()
+        if df_fbs is not None and not df_fbs.empty:
+            df_fbs['Colaborador_Norm'] = df_fbs['Colaborador'].apply(normalizar_chave)
+            meus_fbs = df_fbs[df_fbs['Colaborador_Norm'] == normalizar_chave(nome_logado)].copy()
+            if not meus_fbs.empty:
+                for _, row in meus_fbs.iloc[::-1].iterrows():
+                    with st.expander(f"📅 {row['Periodo_Ref']} | 🎯 Resultado TAM: {row['TAM']} {row.get('Faixa', '')}"):
+                        st.markdown(f"**🎯 Motivos:**\n> {row['Motivo']}\n\n**🚀 Plano de Ação:**\n> {row['Acao_GB']}\n\n**💡 Feedback:**\n> {row['Feedback_Valor']}")
+            else: st.info("Você ainda não possui registros de feedback no sistema.")
+        else: st.info("Nenhum feedback registrado no sistema até o momento.")
+
+    with tab_banco:
+        st.markdown("### ⏰ Meu Banco de Horas")
+        
+        # --- SALDO ATUAL DO OPERADOR ---
+        df_saldos = carregar_saldos_banco()
+        if df_saldos is not None and not df_saldos.empty:
+            # Filtrar pelo período selecionado na barra superior
+            df_saldos_atual = df_saldos[df_saldos['Periodo'] == periodo_label].copy()
+            if not df_saldos_atual.empty:
+                df_saldos_atual['Colaborador_Norm'] = df_saldos_atual['Colaborador'].apply(normalizar_chave)
+                meu_saldo_row = df_saldos_atual[df_saldos_atual['Colaborador_Norm'] == normalizar_chave(nome_logado)]
+                
+                if not meu_saldo_row.empty:
+                    saldo_str = meu_saldo_row.iloc[0]['Saldo String']
+                    saldo_h = meu_saldo_row.iloc[0]['Saldo (h)']
+                    
+                    if saldo_h < 0:
+                        cor_delta = "inverse"
+                        st_delta = "Devendo Horas"
+                    else:
+                        cor_delta = "normal"
+                        st_delta = "Horas Positivas"
+                        
+                    st.markdown("#### ⚖️ Seu Saldo Atual")
+                    c_s1, c_s2 = st.columns([1, 3])
+                    c_s1.metric("Saldo de Horas", saldo_str, st_delta, delta_color=cor_delta)
+                    
+                    if saldo_h < 0:
+                        c_s2.error(f"⚠️ **Atenção!** Você está com **{saldo_str}** negativas. Fique de olho na aba de Agendamentos para alinhar o pagamento com a gestão.")
+                    else:
+                        c_s2.success(f"🎉 **Parabéns!** Você tem **{saldo_str}** positivas. Caso deseje, alinhe com seu gestor para retirar essas horas (folga ou sair mais cedo).")
+                    st.markdown("---")
+            else:
+                st.info(f"Nenhum saldo publicado para você em {periodo_label}.")
+
+        # --- AGENDAMENTOS (HISTÓRICO) ---
+        st.markdown("#### 📅 Seus Agendamentos")
+        df_banco = carregar_escalas_banco()
+        if df_banco is not None and not df_banco.empty:
+            df_banco['Colaborador_Norm'] = df_banco['Colaborador'].apply(normalizar_chave)
+            meus_agendamentos = df_banco[df_banco['Colaborador_Norm'] == normalizar_chave(nome_logado)].copy()
+            
+            if not meus_agendamentos.empty:
+                st.info("Abaixo estão as suas solicitações de folgas/retiradas ou dias de pagamento de horas já alinhadas com a coordenação.")
+                
+                # Exibir cada agendamento num card organizado
+                for _, row in meus_agendamentos.iloc[::-1].iterrows():
+                    cor_borda = "#2ecc71" if "Retirada" in row['Tipo'] else "#e74c3c"
+                    icone = "🏖️" if "Retirada" in row['Tipo'] else "💼"
+                    
+                    st.markdown(f"""
+                    <div style="border-left: 5px solid {cor_borda}; padding: 15px; background-color: #FFF; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 15px;">
+                        <h4 style="margin-top: 0; color: #003366;">{icone} {row['Tipo'].upper()}</h4>
+                        <p style="margin: 5px 0;"><b>Data:</b> {row['Data_Inicio']} até {row['Data_Fim']}</p>
+                        <p style="margin: 5px 0;"><b>Horário:</b> {row['Horario_Inicial']} às {row['Horario_Final']}</p>
+                        <p style="margin: 5px 0; color: #666;"><b>Total de Horas:</b> {row['Quantidade']}</p>
+                        <p style="margin: 5px 0; font-size: 12px; color: #999;">Registrado em: {row.get('Periodo_Registro', 'N/A')}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.success("Você não possui agendamentos futuros no momento.")
+        else:
+            st.success("Você não possui agendamentos futuros no momento.")
+
+st.markdown("---")
+st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
