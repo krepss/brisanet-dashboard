@@ -11,7 +11,7 @@ from datetime import datetime, timezone, timedelta
 import unicodedata
 
 # --- CONFIGURAÇÃO DA LOGO E ACESSOS ---
-LOGO_FILE = "logo.ico"
+LOGO_FILE = "logo.png"
 SENHA_ADMIN = "admin123"
 USUARIOS_ADMIN = ['gestor', 'admin']
 
