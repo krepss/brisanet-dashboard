@@ -369,14 +369,42 @@ def processar_porcentagem_br(valor):
     return 0.0
 
 def ler_csv_inteligente(arquivo_ou_caminho):
-    for sep in [',', ';']:
-        for enc in ['utf-8-sig', 'latin1', 'cp1252']:
-            try:
-                if hasattr(arquivo_ou_caminho, 'seek'): arquivo_ou_caminho.seek(0)
-                df = pd.read_csv(arquivo_ou_caminho, sep=sep, encoding=enc, dtype=str)
-                if len(df.columns) > 1: return df
-            except: continue
-    return None
+    import pandas as pd
+    df = None
+    nome_arq = getattr(arquivo_ou_caminho, 'name', str(arquivo_ou_caminho)).lower()
+    
+    # Tenta ler Excel ou CSV ignorando o cabeçalho temporariamente
+    if nome_arq.endswith('.xlsx') or nome_arq.endswith('.xls'):
+        try:
+            if hasattr(arquivo_ou_caminho, 'seek'): arquivo_ou_caminho.seek(0)
+            df = pd.read_excel(arquivo_ou_caminho, header=None, dtype=str)
+        except: pass
+    else:
+        for sep in [',', ';', '\t']:
+            for enc in ['utf-8-sig', 'latin1', 'cp1252', 'utf-8']:
+                try:
+                    if hasattr(arquivo_ou_caminho, 'seek'): arquivo_ou_caminho.seek(0)
+                    df = pd.read_csv(arquivo_ou_caminho, sep=sep, encoding=enc, header=None, dtype=str)
+                    if df is not None and len(df.columns) > 1: break
+                except: continue
+            if df is not None and len(df.columns) > 1: break
+            
+    if df is None or df.empty: return None
+    
+    # MÁGICA: Busca a linha real do cabeçalho (pula até 15 linhas de lixo no topo)
+    header_idx = 0
+    palavras_chave = ['colaborador', 'agente', 'nome', 'operador', 'login', 'ader', 'conform', 'resultado', 'nota']
+    for i in range(min(15, len(df))):
+        linha = df.iloc[i].astype(str).str.lower().tolist()
+        if any(any(kw in cell for kw in palavras_chave) for cell in linha):
+            header_idx = i
+            break
+            
+    # Define o cabeçalho real e apaga as linhas de cima
+    df.columns = df.iloc[header_idx].astype(str).str.strip()
+    df = df.iloc[header_idx+1:].reset_index(drop=True)
+    df = df.loc[:, df.columns.notna() & (df.columns != 'nan')]
+    return df
 
 def normalizar_chave(texto):
     if pd.isna(texto): return ""
@@ -400,43 +428,61 @@ def tratar_arquivo_especial(df, nome_arquivo):
     df.columns = [str(c).strip().lower() for c in df.columns]
     
     col_agente = None
-    possiveis_nomes = ['colaborador', 'agente', 'nome', 'employee', 'funcionario', 'operador']
+    possiveis_nomes = ['colaborador', 'agente', 'nome', 'employee', 'funcionario', 'operador', 'login', 'atendente']
     for c in df.columns:
-        if any(p == c or p in c for p in possiveis_nomes):
+        if any(p in c for p in possiveis_nomes):
             col_agente = c
             break
-    if not col_agente: return None, "Coluna de Nome não encontrada"
+            
+    if not col_agente: 
+        return None, f"Nome não achado. Colunas lidas: {list(df.columns)}"
+        
     df.rename(columns={col_agente: 'Colaborador'}, inplace=True)
     df['Colaborador'] = df['Colaborador'].apply(normalizar_chave)
     
-    # 1. Identifica as colunas cravando no símbolo "%"
-    col_ad = next((c for c in df.columns if 'ader' in c and ('%' in c or 'perc' in c)), None)
-    if not col_ad: 
-        col_ad = next((c for c in df.columns if 'ader' in c and 'duração' not in c and 'programado' not in c and c != 'colaborador'), None)
+    # Identifica o que é o arquivo pelo nome dele
+    nome_upper = str(nome_arquivo).upper()
+    if 'ADER' in nome_upper: nome_indicador = 'ADERENCIA'
+    elif 'CONFORM' in nome_upper: nome_indicador = 'CONFORMIDADE'
+    else: nome_indicador = normalizar_nome_indicador(nome_arquivo)
+
+    col_valor = None
+    # Caça a coluna de nota baseado no indicador
+    if nome_indicador == 'CONFORMIDADE':
+        col_valor = next((c for c in df.columns if 'conform' in c), None)
+    elif nome_indicador == 'ADERENCIA':
+        col_valor = next((c for c in df.columns if 'ader' in c and 'dura' not in c), None)
         
-    col_conf = next((c for c in df.columns if 'conform' in c and ('%' in c or 'perc' in c)), None)
-    if not col_conf: 
-        col_conf = next((c for c in df.columns if 'conform' in c and c != 'colaborador'), None)
+    # Se não achou uma coluna com o nome do indicador, procura palavras genéricas
+    if not col_valor:
+        prioridades = ['% atingimento', 'atingimento', 'resultado', 'nota', 'score', 'valor', 'realizado', '%']
+        for p in prioridades:
+            col_valor = next((c for c in df.columns if p in c and c != 'colaborador'), None)
+            if col_valor: break
+            
+    # Último recurso: pega a última coluna disponível
+    if not col_valor:
+        restantes = [c for c in df.columns if c != 'colaborador' and 'diamante' not in c and 'matr' not in c]
+        if restantes: col_valor = restantes[-1]
+        else: return None, f"Sem coluna de valor. Colunas lidas: {list(df.columns)}"
+
+    df.rename(columns={col_valor: '% Atingimento'}, inplace=True)
     
-    if col_ad and col_conf:
-        lista_retorno = []
-        df_ad = df[['Colaborador', col_ad]].copy()
-        df_ad.rename(columns={col_ad: '% Atingimento'}, inplace=True)
-        df_ad['% Atingimento'] = df_ad['% Atingimento'].apply(processar_porcentagem_br)
-        df_ad['Indicador'] = 'ADERENCIA'
-        df_ad['Diamantes'] = 0.0
-        df_ad['Max. Diamantes'] = 0.0
-        lista_retorno.append(df_ad[['Colaborador', 'Indicador', '% Atingimento', 'Diamantes', 'Max. Diamantes']])
+    # Trata diamantes
+    for c in df.columns:
+        if 'diamantes' in c and 'max' not in c: df.rename(columns={c: 'Diamantes'}, inplace=True)
+        if 'max' in c and 'diamantes' in c: df.rename(columns={c: 'Max. Diamantes'}, inplace=True)
         
-        df_conf = df[['Colaborador', col_conf]].copy()
-        df_conf.rename(columns={col_conf: '% Atingimento'}, inplace=True)
-        df_conf['% Atingimento'] = df_conf['% Atingimento'].apply(processar_porcentagem_br)
-        df_conf['Indicador'] = 'CONFORMIDADE'
-        df_conf['Diamantes'] = 0.0
-        df_conf['Max. Diamantes'] = 0.0
-        lista_retorno.append(df_conf[['Colaborador', 'Indicador', '% Atingimento', 'Diamantes', 'Max. Diamantes']])
-        
-        return pd.concat(lista_retorno, ignore_index=True), "Extração Dupla Segura"
+    df['% Atingimento'] = df['% Atingimento'].apply(processar_porcentagem_br)
+    if 'Diamantes' not in df.columns: df['Diamantes'] = 0.0
+    if 'Max. Diamantes' not in df.columns: df['Max. Diamantes'] = 0.0
+    
+    df['Diamantes'] = pd.to_numeric(df['Diamantes'], errors='coerce').fillna(0)
+    df['Max. Diamantes'] = pd.to_numeric(df['Max. Diamantes'], errors='coerce').fillna(0)
+    df['Indicador'] = nome_indicador
+    
+    cols_to_keep = ['Colaborador', 'Indicador', '% Atingimento', 'Diamantes', 'Max. Diamantes']
+    return df[cols_to_keep], f"Extraído {nome_indicador} usando a coluna '{col_valor}'"
     
     col_valor = None
     nome_kpi_limpo = nome_arquivo.split('.')[0].lower()
