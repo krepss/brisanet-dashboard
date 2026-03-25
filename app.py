@@ -190,7 +190,7 @@ def limpar_base_dados_completa():
             sincronizar_com_github(f, "Reset de base de dados")
 
 def faxina_arquivos_temporarios():
-    protegidos = ['historico_consolidado.csv', 'usuarios.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv', 'feedbacks_gb_backup.csv', 'historico_operacional.csv', 'historico_voz.csv']
+    protegidos = ['historico_consolidado.csv', 'usuarios.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv', 'feedbacks_gb_backup.csv', 'historico_operacional.csv', 'historico_voz.csv', 'escalas_banco_horas.csv', 'saldo_banco_horas.csv']
     for f in os.listdir('.'):
         if f.endswith('.csv') and f not in protegidos:
             try: os.remove(f)
@@ -227,7 +227,7 @@ def processar_desempenho_agente(df):
     return None
 
 def atualizar_historico_operacional(df_novo, periodo):
-    ARQ = 'historico_operacional.csv' # BANCO DE CHAT
+    ARQ = 'historico_operacional.csv' 
     df_save = df_novo.copy()
     df_save['Periodo'] = str(periodo).strip()
     if os.path.exists(ARQ):
@@ -248,7 +248,7 @@ def carregar_historico_operacional():
     return None
 
 def atualizar_historico_voz(df_novo, periodo):
-    ARQ = 'historico_voz.csv' # BANCO DE VOZ
+    ARQ = 'historico_voz.csv' 
     df_save = df_novo.copy()
     df_save['Periodo'] = str(periodo).strip()
     if os.path.exists(ARQ):
@@ -265,6 +265,31 @@ def atualizar_historico_voz(df_novo, periodo):
 def carregar_historico_voz():
     if os.path.exists('historico_voz.csv'):
         try: return pd.read_csv('historico_voz.csv')
+        except: return None
+    return None
+
+# --- FUNÇÕES BANCO DE HORAS E SALDOS ---
+def salvar_escala_banco(dados):
+    ARQ = 'escalas_banco_horas.csv'
+    df_novo = pd.DataFrame([dados])
+    if os.path.exists(ARQ):
+        try:
+            df_hist = pd.read_csv(ARQ)
+            df_final = pd.concat([df_hist, df_novo], ignore_index=True)
+        except: df_final = df_novo
+    else: df_final = df_novo
+    df_final.to_csv(ARQ, index=False)
+    sincronizar_com_github(ARQ, "Novo agendamento de banco de horas")
+
+def carregar_escalas_banco():
+    if os.path.exists('escalas_banco_horas.csv'):
+        try: return pd.read_csv('escalas_banco_horas.csv')
+        except: return None
+    return None
+
+def carregar_saldos_banco():
+    if os.path.exists('saldo_banco_horas.csv'):
+        try: return pd.read_csv('saldo_banco_horas.csv')
         except: return None
     return None
 
@@ -459,7 +484,7 @@ def classificar_farol(val):
 def carregar_dados_completo_debug():
     lista_final = []
     log_debug = []
-    arquivos_ignorar = ['usuarios.csv', 'historico_consolidado.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv', 'feedbacks_gb_backup.csv', 'historico_operacional.csv', 'historico_voz.csv']
+    arquivos_ignorar = ['usuarios.csv', 'historico_consolidado.csv', 'config.json', LOGO_FILE, 'feedbacks_gb.csv', 'feedbacks_gb_backup.csv', 'historico_operacional.csv', 'historico_voz.csv', 'escalas_banco_horas.csv', 'saldo_banco_horas.csv']
     arquivos = [f for f in os.listdir('.') if f.endswith('.csv') and f.lower() not in arquivos_ignorar]
     for arquivo in arquivos:
         try:
@@ -1354,7 +1379,16 @@ Vamos com tudo! 🔥"""
                         excluir_periodo_historico(row['Periodo'])
                         st.rerun()
             st.divider()
-            if st.button("🔥 Limpar TUDO (Reset Completo)", type="primary"):
+            st.markdown("#### 🧹 Reset de Agendamentos (Banco de Horas)")
+            if st.button("Limpar Histórico de Agendamentos de Horas"):
+                if os.path.exists("escalas_banco_horas.csv"):
+                    os.remove("escalas_banco_horas.csv")
+                    sincronizar_com_github("escalas_banco_horas.csv", "Limpando agendamentos antigos")
+                    st.success("Histórico limpo!")
+                    time.sleep(1)
+                    st.rerun()
+            st.divider()
+            if st.button("🔥 Limpar TUDO (Reset Completo do Sistema)", type="primary"):
                 limpar_base_dados_completa()
                 st.success("Limpo!")
                 time.sleep(1)
@@ -1370,6 +1404,10 @@ Vamos com tudo! 🔥"""
                 with open('historico_voz.csv', 'rb') as f: st.download_button("⬇️ Baixar Backup TMA Voz", f, "historico_voz_backup.csv", "text/csv")
             if os.path.exists('feedbacks_gb.csv'):
                 with open('feedbacks_gb.csv', 'rb') as f: st.download_button("⬇️ Baixar Banco de Feedbacks", f, "feedbacks_gb_backup.csv", "text/csv")
+            if os.path.exists('escalas_banco_horas.csv'):
+                with open('escalas_banco_horas.csv', 'rb') as f: st.download_button("⬇️ Baixar Agendamentos (Banco de Horas)", f, "escalas_banco_horas.csv", "text/csv")
+            if os.path.exists('saldo_banco_horas.csv'):
+                with open('saldo_banco_horas.csv', 'rb') as f: st.download_button("⬇️ Baixar Saldos (Banco de Horas)", f, "saldo_banco_horas.csv", "text/csv")
         with st4:
             if st.button("Rodar Diagnóstico"):
                 _, log_df = carregar_dados_completo_debug()
@@ -1377,44 +1415,120 @@ Vamos com tudo! 🔥"""
 
     # ------------------ BANCO DE HORAS ------------------
     with tabs[10]:
-        st.markdown("### ⏰ Análise de Folha de Ponto")
-        st.info("Faça o upload do arquivo .xlsx ou .csv.")
-        uploaded_ponto = st.file_uploader("Carregar Planilha de Ponto", type=['xlsx', 'csv'])
-        if uploaded_ponto is not None:
-            try:
-                if uploaded_ponto.name.endswith('.xlsx'): df_ponto = pd.read_excel(uploaded_ponto, skiprows=4)
-                else: df_ponto = pd.read_csv(uploaded_ponto, skiprows=4)
-                col_nome = next((c for c in df_ponto.columns if "Nome" in str(c)), None)
-                col_saldo = next((c for c in df_ponto.columns if "Total Banco" in str(c) or "Saldo Atual" in str(c)), None)
-                
-                if col_nome and col_saldo:
-                    df_ponto = df_ponto[[col_nome, col_saldo]].dropna()
-                    df_ponto.rename(columns={col_nome: 'Colaborador', col_saldo: 'Saldo String'}, inplace=True)
+        st.markdown("### ⏰ Banco de Horas e Agendamentos")
+        
+        # Formulário de Agendamento Novo
+        st.markdown("#### 📅 Agendar Retirada / Pagamento de Horas")
+        with st.form("form_banco_horas"):
+            colab_list = sorted(df_users_cadastrados['nome'].str.title().unique()) if df_users_cadastrados is not None else ["Nenhum usuário cadastrado"]
+            c_f1, c_f2 = st.columns(2)
+            sel_colab = c_f1.selectbox("Colaborador:", colab_list)
+            unidade_gerencial = c_f2.text_input("Unidade Gerencial:", value="Suporte Técnico")
+            
+            tipo_agendamento = st.radio("Tipo de Solicitação:", ["Pagamento (Horas Negativas - Trabalhar a mais)", "Retirada (Horas Positivas - Folga/Sair cedo)"])
+            
+            c_d1, c_d2 = st.columns(2)
+            data_ini = c_d1.date_input("Data de Início")
+            data_fim = c_d2.date_input("Data de Fim")
+            
+            c_h1, c_h2, c_h3 = st.columns(3)
+            qtd_horas = c_h1.text_input("Quantidade (HH:MM)", placeholder="Ex: 02:00")
+            hora_ini = c_h2.time_input("Horário Inicial")
+            hora_fim = c_h3.time_input("Horário Final")
+            
+            submit_agendamento = st.form_submit_button("Salvar e Gerar Solicitação 🚀")
+            
+            if submit_agendamento:
+                if not qtd_horas:
+                    st.error("Por favor, preencha a Quantidade de Horas.")
+                else:
+                    tipo_curto = "Pagamento" if "Pagamento" in tipo_agendamento else "Retirada"
+                    texto_gerado = f"UNIDADE GERENCIAL | DATA DE INICIO E FIM | COLABORADOR | TIPO (Retirada/Pagamento) | QUANTIDADE (HH:MM) | HORÁRIO INICIAL | HORÁRIO FINAL\n"
+                    texto_gerado += f"{unidade_gerencial} | {data_ini.strftime('%d/%m/%Y')} a {data_fim.strftime('%d/%m/%Y')} | {str(sel_colab).upper()} | {tipo_curto} | {qtd_horas} | {hora_ini.strftime('%H:%M')} | {hora_fim.strftime('%H:%M')}"
                     
-                    if df_users_cadastrados is not None:
-                        df_ponto['TEMP_NOME_NORM'] = df_ponto['Colaborador'].apply(normalizar_chave)
-                        lista_ativos = df_users_cadastrados['nome'].unique()
-                        df_ponto = df_ponto[df_ponto['TEMP_NOME_NORM'].isin(lista_ativos)]
-                        df_ponto.drop(columns=['TEMP_NOME_NORM'], inplace=True)
-                    else: st.warning("⚠️ Filtro de ativos não aplicado. Carregue o usuarios.csv no Admin.")
+                    dados_salvar = {
+                        "Periodo_Registro": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                        "Unidade": unidade_gerencial,
+                        "Colaborador": sel_colab,
+                        "Data_Inicio": data_ini.strftime('%d/%m/%Y'),
+                        "Data_Fim": data_fim.strftime('%d/%m/%Y'),
+                        "Tipo": tipo_curto,
+                        "Quantidade": qtd_horas,
+                        "Horario_Inicial": hora_ini.strftime('%H:%M'),
+                        "Horario_Final": hora_fim.strftime('%H:%M')
+                    }
+                    salvar_escala_banco(dados_salvar)
+                    
+                    st.success("✅ Agendamento salvo com sucesso!")
+                    st.info("Copie o texto abaixo e envie para o setor de WFM/RH:")
+                    st.code(texto_gerado, language="text")
 
-                    df_ponto['Saldo (h)'] = df_ponto['Saldo String'].apply(converter_hora_para_float)
-                    df_ponto['Status'] = df_ponto['Saldo (h)'].apply(lambda x: '🔴 Crítico (Negativo)' if x < 0 else '🟢 Positivo')
-                    total_neg = df_ponto[df_ponto['Saldo (h)'] < 0]['Saldo (h)'].sum()
-                    total_pos = df_ponto[df_ponto['Saldo (h)'] > 0]['Saldo (h)'].sum()
-                    qtd_neg = len(df_ponto[df_ponto['Saldo (h)'] < 0])
+        st.markdown("---")
+        # Visualização do Histórico e Upload Antigo
+        st_t1, st_t2 = st.tabs(["📋 Histórico de Agendamentos", "📊 Análise de Saldo (Upload)"])
+        
+        with st_t1:
+            df_agendamentos = carregar_escalas_banco()
+            if df_agendamentos is not None and not df_agendamentos.empty:
+                st.info("💡 **Dica:** Você pode dar dois cliques em qualquer célula para **EDITAR** o agendamento, ou selecionar uma linha e apertar a tecla **'Delete'** do teclado para **EXCLUIR**.")
+                
+                # O Data Editor mágico do Streamlit
+                df_editado = st.data_editor(df_agendamentos, num_rows="dynamic", use_container_width=True, key="editor_agendamentos")
+                
+                if st.button("💾 Salvar Alterações na Tabela", type="primary"):
+                    df_editado.to_csv('escalas_banco_horas.csv', index=False)
+                    sincronizar_com_github('escalas_banco_horas.csv', "Atualização/Exclusão de Agendamento de Horas")
+                    st.success("✅ Alterações salvas com sucesso! (A tabela do operador já foi atualizada).")
+                    time.sleep(1.5)
+                    st.rerun()
+            else:
+                st.info("Nenhum agendamento registrado até o momento.")
+
+        with st_t2:
+            st.info("Faça o upload do arquivo .xlsx ou .csv contendo os saldos atuais da equipe.")
+            uploaded_ponto = st.file_uploader("Carregar Planilha de Ponto (Saldos)", type=['xlsx', 'csv'])
+            if uploaded_ponto is not None:
+                try:
+                    if uploaded_ponto.name.endswith('.xlsx'): df_ponto = pd.read_excel(uploaded_ponto, skiprows=4)
+                    else: df_ponto = pd.read_csv(uploaded_ponto, skiprows=4)
+                    col_nome = next((c for c in df_ponto.columns if "Nome" in str(c)), None)
+                    col_saldo = next((c for c in df_ponto.columns if "Total Banco" in str(c) or "Saldo Atual" in str(c)), None)
                     
-                    m1, m2, m3 = st.columns(3)
-                    m1.metric("🔴 Pessoas Negativas", f"{qtd_neg}")
-                    m2.metric("📉 Total Horas Devidas", formatar_saldo_decimal(total_neg))
-                    m3.metric("📈 Total Horas Crédito", formatar_saldo_decimal(total_pos))
-                    
-                    st.markdown("---")
-                    fig_ponto = px.bar(df_ponto.sort_values(by='Saldo (h)'), x='Saldo (h)', y='Colaborador', orientation='h', color='Status', color_discrete_map={'🔴 Crítico (Negativo)': '#e74c3c', '🟢 Positivo': '#2ecc71'}, text='Saldo String')
-                    st.plotly_chart(fig_ponto, use_container_width=True)
-                    st.dataframe(df_ponto.style.background_gradient(subset=['Saldo (h)'], cmap='RdYlGn'), use_container_width=True)
-                else: st.error("Colunas não identificadas.")
-            except Exception as e: st.error(f"Erro: {e}")
+                    if col_nome and col_saldo:
+                        df_ponto = df_ponto[[col_nome, col_saldo]].dropna()
+                        df_ponto.rename(columns={col_nome: 'Colaborador', col_saldo: 'Saldo String'}, inplace=True)
+                        
+                        if df_users_cadastrados is not None:
+                            df_ponto['TEMP_NOME_NORM'] = df_ponto['Colaborador'].apply(normalizar_chave)
+                            lista_ativos = df_users_cadastrados['nome'].unique()
+                            df_ponto = df_ponto[df_ponto['TEMP_NOME_NORM'].isin(lista_ativos)]
+                            df_ponto.drop(columns=['TEMP_NOME_NORM'], inplace=True)
+
+                        df_ponto['Saldo (h)'] = df_ponto['Saldo String'].apply(converter_hora_para_float)
+                        df_ponto['Status'] = df_ponto['Saldo (h)'].apply(lambda x: '🔴 Crítico (Negativo)' if x < 0 else '🟢 Positivo')
+                        total_neg = df_ponto[df_ponto['Saldo (h)'] < 0]['Saldo (h)'].sum()
+                        total_pos = df_ponto[df_ponto['Saldo (h)'] > 0]['Saldo (h)'].sum()
+                        qtd_neg = len(df_ponto[df_ponto['Saldo (h)'] < 0])
+                        
+                        m1, m2, m3 = st.columns(3)
+                        m1.metric("🔴 Pessoas Negativas", f"{qtd_neg}")
+                        m2.metric("📉 Total Horas Devidas", formatar_saldo_decimal(total_neg))
+                        m3.metric("📈 Total Horas Crédito", formatar_saldo_decimal(total_pos))
+                        
+                        st.markdown("---")
+                        fig_ponto = px.bar(df_ponto.sort_values(by='Saldo (h)'), x='Saldo (h)', y='Colaborador', orientation='h', color='Status', color_discrete_map={'🔴 Crítico (Negativo)': '#e74c3c', '🟢 Positivo': '#2ecc71'}, text='Saldo String')
+                        st.plotly_chart(fig_ponto, use_container_width=True)
+                        st.dataframe(df_ponto.style.background_gradient(subset=['Saldo (h)'], cmap='RdYlGn'), use_container_width=True)
+                        
+                        # --- BOTÃO NOVO PARA SALVAR PARA A EQUIPE ---
+                        st.markdown("---")
+                        if st.button("💾 Publicar Saldos para a Equipe", type="primary"):
+                            df_ponto[['Colaborador', 'Saldo String', 'Saldo (h)', 'Status']].to_csv('saldo_banco_horas.csv', index=False)
+                            sincronizar_com_github('saldo_banco_horas.csv', "Atualizando saldos do banco de horas da equipe")
+                            st.success("✅ Saldos publicados com sucesso! A equipe já pode visualizar seus saldos individuais na aba 'Meu Banco de Horas'.")
+                            
+                    else: st.error("Colunas não identificadas.")
+                except Exception as e: st.error(f"Erro: {e}")
 
     # ------------------ FEEDBACKS GB ------------------
     with tabs[11]:
@@ -1518,7 +1632,7 @@ else:
             if not user_info.empty: minhas_ferias = user_info.iloc[0]['ferias']
         except: pass
 
-    tab_results, tab_time, tab_ferias, tab_feedbacks = st.tabs(["📊 Meus Resultados", "🦁 Visão do Time", "🏖️ Minhas Férias", "📝 Meus Feedbacks"])
+    tab_results, tab_time, tab_ferias, tab_feedbacks, tab_banco = st.tabs(["📊 Meus Resultados", "🦁 Visão do Time", "🏖️ Minhas Férias", "📝 Meus Feedbacks", "⏰ Meu Banco de Horas"])
 
     with tab_results:
         ranking_msg = "Não classificado"
@@ -1617,7 +1731,7 @@ else:
                 with cols[i]: st.metric(label, f"{val:.2%}", "✅ Meta Batida" if round(val, 4) >= meta else f"🔻 Meta {meta:.0%}", delta_color="normal" if round(val, 4) >= meta else "inverse")
             st.markdown("---")
             
-            # --- DADOS DE PRODUTIVIDADE DO OPERADOR (NOVO CÁLCULO) ---
+            # --- DADOS DE PRODUTIVIDADE DO OPERADOR ---
             st.markdown("#### ⏱️ Sua Produtividade")
             df_op_hist = carregar_historico_operacional()
             df_voz_hist = carregar_historico_voz()
@@ -1696,7 +1810,7 @@ else:
                         st.plotly_chart(fig, use_container_width=True)
             st.markdown("---")
             
-            # --- HISTÓRICO INDIVIDUAL ---
+            # --- HISTÓRICO INDIVIDUAL E PRODUTIVIDADE ---
             st.markdown("### ⏳ Sua Evolução Histórica")
             df_hist_full = carregar_historico_completo()
             if df_hist_full is not None:
@@ -1801,6 +1915,65 @@ else:
                         st.markdown(f"**🎯 Motivos:**\n> {row['Motivo']}\n\n**🚀 Plano de Ação:**\n> {row['Acao_GB']}\n\n**💡 Feedback:**\n> {row['Feedback_Valor']}")
             else: st.info("Você ainda não possui registros de feedback no sistema.")
         else: st.info("Nenhum feedback registrado no sistema até o momento.")
+
+    with tab_banco:
+        st.markdown("### ⏰ Meu Banco de Horas")
+        
+        # --- NOVO: SALDO ATUAL DO OPERADOR ---
+        df_saldos = carregar_saldos_banco()
+        if df_saldos is not None and not df_saldos.empty:
+            df_saldos['Colaborador_Norm'] = df_saldos['Colaborador'].apply(normalizar_chave)
+            meu_saldo_row = df_saldos[df_saldos['Colaborador_Norm'] == normalizar_chave(nome_logado)]
+            
+            if not meu_saldo_row.empty:
+                saldo_str = meu_saldo_row.iloc[0]['Saldo String']
+                saldo_h = meu_saldo_row.iloc[0]['Saldo (h)']
+                
+                if saldo_h < 0:
+                    cor_delta = "inverse"
+                    st_delta = "Devendo Horas"
+                else:
+                    cor_delta = "normal"
+                    st_delta = "Horas Positivas"
+                    
+                st.markdown("#### ⚖️ Seu Saldo Atual")
+                c_s1, c_s2 = st.columns([1, 3])
+                c_s1.metric("Saldo de Horas", saldo_str, st_delta, delta_color=cor_delta)
+                
+                if saldo_h < 0:
+                    c_s2.error(f"⚠️ **Atenção!** Você está com **{saldo_str}** negativas. Fique de olho na aba de Agendamentos para alinhar o pagamento com a gestão.")
+                else:
+                    c_s2.success(f"🎉 **Parabéns!** Você tem **{saldo_str}** positivas. Caso deseje, alinhe com seu gestor para retirar essas horas (folga ou sair mais cedo).")
+                st.markdown("---")
+
+        # --- AGENDAMENTOS (HISTÓRICO) ---
+        st.markdown("#### 📅 Seus Agendamentos")
+        df_banco = carregar_escalas_banco()
+        if df_banco is not None and not df_banco.empty:
+            df_banco['Colaborador_Norm'] = df_banco['Colaborador'].apply(normalizar_chave)
+            meus_agendamentos = df_banco[df_banco['Colaborador_Norm'] == normalizar_chave(nome_logado)].copy()
+            
+            if not meus_agendamentos.empty:
+                st.info("Abaixo estão as suas solicitações de folgas/retiradas ou dias de pagamento de horas já alinhadas com a coordenação.")
+                
+                # Exibir cada agendamento num card organizado
+                for _, row in meus_agendamentos.iloc[::-1].iterrows():
+                    cor_borda = "#2ecc71" if "Retirada" in row['Tipo'] else "#e74c3c"
+                    icone = "🏖️" if "Retirada" in row['Tipo'] else "💼"
+                    
+                    st.markdown(f"""
+                    <div style="border-left: 5px solid {cor_borda}; padding: 15px; background-color: #FFF; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 15px;">
+                        <h4 style="margin-top: 0; color: #003366;">{icone} {row['Tipo'].upper()}</h4>
+                        <p style="margin: 5px 0;"><b>Data:</b> {row['Data_Inicio']} até {row['Data_Fim']}</p>
+                        <p style="margin: 5px 0;"><b>Horário:</b> {row['Horario_Inicial']} às {row['Horario_Final']}</p>
+                        <p style="margin: 5px 0; color: #666;"><b>Total de Horas:</b> {row['Quantidade']}</p>
+                        <p style="margin: 5px 0; font-size: 12px; color: #999;">Registrado em: {row.get('Periodo_Registro', 'N/A')}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.success("Você não possui agendamentos futuros no momento.")
+        else:
+            st.success("Você não possui agendamentos futuros no momento.")
 
 st.markdown("---")
 st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
