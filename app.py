@@ -575,12 +575,49 @@ def carregar_usuarios():
 def filtrar_por_usuarios_cadastrados(df_dados, df_users):
     if df_dados is None or df_dados.empty: return df_dados
     if df_users is None or df_users.empty: return df_dados
-    lista_vip = df_users['nome'].unique()
+    
+    # Puxa a lista oficial de usuários cadastrados
+    lista_vip = df_users['nome'].apply(normalizar_chave).dropna().unique()
     df_filtrado = df_dados.copy()
     df_filtrado['TEMP_NOME_UPPER'] = df_filtrado['Colaborador'].apply(normalizar_chave)
-    df_filtrado = df_filtrado[df_filtrado['TEMP_NOME_UPPER'].isin(lista_vip)]
-    df_filtrado.drop(columns=['TEMP_NOME_UPPER'], inplace=True)
-    return df_filtrado
+    
+    # --- A MÁGICA DE RECONCILIAÇÃO DE NOMES ---
+    def reconciliar_nomes(nome_planilha):
+        if not nome_planilha: return nome_planilha
+        if nome_planilha in lista_vip: return nome_planilha # Bateu exato, ótimo!
+        
+        # 1. Troca pontos por espaço (caso seja login, ex: "jamile.rocha")
+        nome_limpo = str(nome_planilha).replace('.', ' ').strip()
+        if nome_limpo in lista_vip: return nome_limpo
+        
+        # 2. Busca inteligente (Primeiro e Último nome)
+        partes_planilha = nome_limpo.split()
+        if len(partes_planilha) >= 1:
+            primeiro_nome = partes_planilha[0]
+            ultimo_nome = partes_planilha[-1] if len(partes_planilha) > 1 else ""
+            
+            for nome_oficial in lista_vip:
+                partes_oficial = nome_oficial.split()
+                # Regra de Ouro: O primeiro nome TEM que ser igual
+                if primeiro_nome == partes_oficial[0]:
+                    # Se a planilha tem sobrenome, verifica se ele existe no nome oficial
+                    if ultimo_nome and (ultimo_nome in partes_oficial):
+                        return nome_oficial
+                    # Se a planilha só tem o primeiro nome, arrisca conectar
+                    elif not ultimo_nome:
+                        return nome_oficial
+                        
+        return nome_planilha # Se não achar nada, devolve como estava
+        
+    # Aplica o corretor de nomes em todos os dados
+    df_filtrado['TEMP_NOME_UPPER'] = df_filtrado['TEMP_NOME_UPPER'].apply(reconciliar_nomes)
+    
+    # Filtra apenas quem realmente é da equipe e finaliza
+    df_final = df_filtrado[df_filtrado['TEMP_NOME_UPPER'].isin(lista_vip)].copy()
+    df_final['Colaborador'] = df_final['TEMP_NOME_UPPER']
+    df_final.drop(columns=['TEMP_NOME_UPPER'], inplace=True)
+    
+    return df_final
 
 def salvar_feedback_gb(dados_fb):
     ARQUIVO_FB = 'feedbacks_gb.csv'
