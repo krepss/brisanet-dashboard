@@ -608,7 +608,6 @@ if not st.session_state['logado']:
         st.markdown('<div class="login-subtitle">Analytics & Performance</div>', unsafe_allow_html=True)
         st.markdown("---")
         
-        # Cria as abas na tela de Login
         tab_login, tab_senha = st.tabs(["🔐 Entrar", "🔑 Criar/Alterar Senha"])
         
         with tab_login:
@@ -627,11 +626,9 @@ if not st.session_state['logado']:
                         if df_users is not None:
                             user_row = df_users[df_users['email'] == email_input]
                             if not user_row.empty:
-                                # Verifica se a coluna de senha já existe e pega o valor
                                 senha_registrada = str(user_row.iloc[0].get('senha', '')).strip()
                                 nome_upper = user_row.iloc[0]['nome']
                                 
-                                # Trava de segurança
                                 if senha_registrada == "" or senha_registrada == "nan":
                                     st.warning("⚠️ Você ainda não criou uma senha. Acesse a aba 'Criar/Alterar Senha' primeiro!")
                                 elif senha_input == senha_registrada:
@@ -642,7 +639,7 @@ if not st.session_state['logado']:
                             else: st.error("🚫 Usuário não encontrado na base. Verifique seu e-mail.")
                         else: st.error("⚠️ Base de usuários não carregada.")
         
-       with tab_senha:
+        with tab_senha:
             with st.form("form_nova_senha"):
                 st.info("Digite seu e-mail corporativo para cadastrar sua senha de acesso.")
                 email_cad = st.text_input("Seu E-mail").strip().lower()
@@ -668,6 +665,7 @@ if not st.session_state['logado']:
                                 # Salva a senha e faz o redirecionamento automático
                                 if atualizar_senha(email_cad, nova_senha):
                                     st.success("✅ Senha registrada com sucesso! Redirecionando para o login...")
+                                    import time
                                     time.sleep(1.5)
                                     st.rerun()
                                 else:
