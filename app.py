@@ -642,7 +642,7 @@ if not st.session_state['logado']:
                             else: st.error("🚫 Usuário não encontrado na base. Verifique seu e-mail.")
                         else: st.error("⚠️ Base de usuários não carregada.")
         
-        with tab_senha:
+       with tab_senha:
             with st.form("form_nova_senha"):
                 st.info("Digite seu e-mail corporativo para cadastrar sua senha de acesso.")
                 email_cad = st.text_input("Seu E-mail").strip().lower()
@@ -650,7 +650,7 @@ if not st.session_state['logado']:
                 confirma_senha = st.text_input("Confirme a Nova Senha", type="password")
                 submit_senha = st.form_submit_button("Salvar Minha Senha", use_container_width=True)
                 
-               if submit_senha:
+                if submit_senha:
                     if not email_cad or not nova_senha:
                         st.error("⚠️ Preencha todos os campos.")
                     elif nova_senha != confirma_senha:
@@ -668,9 +668,8 @@ if not st.session_state['logado']:
                                 # Salva a senha e faz o redirecionamento automático
                                 if atualizar_senha(email_cad, nova_senha):
                                     st.success("✅ Senha registrada com sucesso! Redirecionando para o login...")
-                                    import time
-                                    time.sleep(1.5) # Pausa rápida para o operador ler a mensagem
-                                    st.rerun() # Recarrega a página, voltando para a aba "Entrar"
+                                    time.sleep(1.5)
+                                    st.rerun()
                                 else:
                                     st.error("❌ Erro ao salvar no banco de dados.")
                         else:
