@@ -644,7 +644,7 @@ if not st.session_state['logado']:
         
         with tab_senha:
             with st.form("form_nova_senha"):
-                st.info("Digite seu e-mail corporativo para cadastrar ou redefinir sua senha de acesso.")
+                st.info("Digite seu e-mail corporativo para cadastrar sua senha de acesso.")
                 email_cad = st.text_input("Seu E-mail").strip().lower()
                 nova_senha = st.text_input("Nova Senha", type="password")
                 confirma_senha = st.text_input("Confirme a Nova Senha", type="password")
@@ -657,12 +657,19 @@ if not st.session_state['logado']:
                         st.error("⚠️ As senhas digitadas não coincidem!")
                     else:
                         df_users = carregar_usuarios()
-                        # Valida se o email realmente faz parte da equipe antes de criar a senha
                         if df_users is not None and email_cad in df_users['email'].values:
-                            if atualizar_senha(email_cad, nova_senha):
-                                st.success("✅ Senha registrada com sucesso! Volte na aba 'Entrar' para fazer o login.")
+                            # --- TRAVA DE SEGURANÇA: Verifica se já existe senha ---
+                            user_row = df_users[df_users['email'] == email_cad]
+                            senha_registrada = str(user_row.iloc[0].get('senha', '')).strip()
+                            
+                            if senha_registrada != "" and senha_registrada != "nan":
+                                st.error("🔒 Este e-mail já possui uma senha cadastrada. Por segurança, se você deseja alterá-la ou a esqueceu, solicite o reset ao seu Gestor!")
                             else:
-                                st.error("❌ Erro ao salvar no banco de dados.")
+                                # Só deixa salvar se o campo de senha estiver vazio no banco
+                                if atualizar_senha(email_cad, nova_senha):
+                                    st.success("✅ Senha registrada com sucesso! Volte na aba 'Entrar' para fazer o login.")
+                                else:
+                                    st.error("❌ Erro ao salvar no banco de dados.")
                         else:
                             st.error("🚫 E-mail não encontrado na base da operação.")
 
