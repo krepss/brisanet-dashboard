@@ -568,8 +568,30 @@ def carregar_feedbacks_gb():
                 return pd.read_csv(nome)
             except: continue
     return None
-
-# --- 4. LOGIN RENOVADO ---
+    
+def atualizar_senha(email, nova_senha):
+    arquivos = [f for f in os.listdir('.') if f.endswith('.csv') and 'usuario' in f.lower()]
+    if arquivos:
+        arq = arquivos[0]
+        df = pd.read_csv(arq)
+        
+        # Padroniza as colunas para encontrar o email correto no arquivo original
+        cols_lower = df.columns.str.lower()
+        col_email = next((c for c, cl in zip(df.columns, cols_lower) if 'mail' in cl), None)
+        
+        if col_email:
+            if 'senha' not in df.columns:
+                df['senha'] = ""
+            
+            # Atualiza a senha no arquivo csv
+            mask = df[col_email].astype(str).str.strip().str.lower() == email.strip().lower()
+            if mask.any():
+                df.loc[mask, 'senha'] = nova_senha
+                df.to_csv(arq, index=False)
+                sincronizar_com_github(arq, f"Senha atualizada para o usuario: {email}")
+                return True
+    return False
+# --- 4. LOGIN RENOVADO (COM SENHA PARA OPERADOR) ---
 if 'logado' not in st.session_state:
     st.session_state.update({'logado': False, 'usuario_nome': '', 'perfil': '', 'usuario_email': ''})
 
@@ -577,33 +599,74 @@ if not st.session_state['logado']:
     c1, c2, c3 = st.columns([1, 1.2, 1]) 
     with c2:
         st.markdown("<br><br>", unsafe_allow_html=True)
-        with st.form("form_login"):
-            if os.path.exists(LOGO_FILE):
-                col_espaco1, col_logo, col_espaco2 = st.columns([1, 0.6, 1])
-                with col_logo: st.image(LOGO_FILE, use_column_width=True)
-            
-            st.markdown('<div class="login-title">Team Sofistas</div>', unsafe_allow_html=True)
-            st.markdown('<div class="login-subtitle">Analytics & Performance</div>', unsafe_allow_html=True)
-            st.markdown("---")
-            email_input = st.text_input("E-mail ou Usuário").strip().lower()
-            senha_input = st.text_input("Senha", type="password")
-            st.markdown("<br>", unsafe_allow_html=True)
-            submit_btn = st.form_submit_button("ACESSAR SISTEMA", use_container_width=True)
-            if submit_btn:
-                if email_input in USUARIOS_ADMIN and senha_input == SENHA_ADMIN:
-                    st.session_state.update({'logado': True, 'usuario_nome': 'Gestor', 'perfil': 'admin', 'usuario_email': 'admin'})
-                    st.rerun()
-                else:
-                    df_users = carregar_usuarios()
-                    if df_users is not None:
-                        user_row = df_users[df_users['email'] == email_input]
-                        if not user_row.empty:
-                            nome_upper = user_row.iloc[0]['nome']
-                            st.session_state.update({'logado': True, 'usuario_nome': nome_upper, 'perfil': 'user', 'usuario_email': email_input})
-                            st.rerun()
-                        else: st.error("🚫 Usuário não encontrado.")
-                    else: st.error("⚠️ Base de usuários não carregada.")
-    st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi</div>', unsafe_allow_html=True)
+        
+        if os.path.exists(LOGO_FILE):
+            col_espaco1, col_logo, col_espaco2 = st.columns([1, 0.6, 1])
+            with col_logo: st.image(LOGO_FILE, use_column_width=True)
+        
+        st.markdown('<div class="login-title">Team Sofistas</div>', unsafe_allow_html=True)
+        st.markdown('<div class="login-subtitle">Analytics & Performance</div>', unsafe_allow_html=True)
+        st.markdown("---")
+        
+        # Cria as abas na tela de Login
+        tab_login, tab_senha = st.tabs(["🔐 Entrar", "🔑 Criar/Alterar Senha"])
+        
+        with tab_login:
+            with st.form("form_login"):
+                email_input = st.text_input("E-mail ou Usuário").strip().lower()
+                senha_input = st.text_input("Senha", type="password")
+                st.markdown("<br>", unsafe_allow_html=True)
+                submit_btn = st.form_submit_button("ACESSAR SISTEMA", use_container_width=True)
+                
+                if submit_btn:
+                    if email_input in USUARIOS_ADMIN and senha_input == SENHA_ADMIN:
+                        st.session_state.update({'logado': True, 'usuario_nome': 'Gestor', 'perfil': 'admin', 'usuario_email': 'admin'})
+                        st.rerun()
+                    else:
+                        df_users = carregar_usuarios()
+                        if df_users is not None:
+                            user_row = df_users[df_users['email'] == email_input]
+                            if not user_row.empty:
+                                # Verifica se a coluna de senha já existe e pega o valor
+                                senha_registrada = str(user_row.iloc[0].get('senha', '')).strip()
+                                nome_upper = user_row.iloc[0]['nome']
+                                
+                                # Trava de segurança
+                                if senha_registrada == "" or senha_registrada == "nan":
+                                    st.warning("⚠️ Você ainda não criou uma senha. Acesse a aba 'Criar/Alterar Senha' primeiro!")
+                                elif senha_input == senha_registrada:
+                                    st.session_state.update({'logado': True, 'usuario_nome': nome_upper, 'perfil': 'user', 'usuario_email': email_input})
+                                    st.rerun()
+                                else:
+                                    st.error("🚫 Senha incorreta.")
+                            else: st.error("🚫 Usuário não encontrado na base. Verifique seu e-mail.")
+                        else: st.error("⚠️ Base de usuários não carregada.")
+        
+        with tab_senha:
+            with st.form("form_nova_senha"):
+                st.info("Digite seu e-mail corporativo para cadastrar ou redefinir sua senha de acesso.")
+                email_cad = st.text_input("Seu E-mail").strip().lower()
+                nova_senha = st.text_input("Nova Senha", type="password")
+                confirma_senha = st.text_input("Confirme a Nova Senha", type="password")
+                submit_senha = st.form_submit_button("Salvar Minha Senha", use_container_width=True)
+                
+                if submit_senha:
+                    if not email_cad or not nova_senha:
+                        st.error("⚠️ Preencha todos os campos.")
+                    elif nova_senha != confirma_senha:
+                        st.error("⚠️ As senhas digitadas não coincidem!")
+                    else:
+                        df_users = carregar_usuarios()
+                        # Valida se o email realmente faz parte da equipe antes de criar a senha
+                        if df_users is not None and email_cad in df_users['email'].values:
+                            if atualizar_senha(email_cad, nova_senha):
+                                st.success("✅ Senha registrada com sucesso! Volte na aba 'Entrar' para fazer o login.")
+                            else:
+                                st.error("❌ Erro ao salvar no banco de dados.")
+                        else:
+                            st.error("🚫 E-mail não encontrado na base da operação.")
+
+    st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
     st.stop()
 
 
@@ -1284,15 +1347,52 @@ Vamos com tudo! 🔥"""
     # ------------------ ADMIN ------------------
     with tabs[9]:
         st.markdown("### 📂 Gestão e Diagnóstico")
-        st1, st2, st3, st4 = st.tabs(["📤 Upload", "🗑️ Limpeza", "💾 Backup", "🔍 Diagnóstico"])
+        
+        # --- ADICIONAMOS A ABA DE GERENCIAR EQUIPE AQUI ---
+        st_eq, st1, st2, st3, st4 = st.tabs(["👥 Gerenciar Equipe", "📤 Upload", "🗑️ Limpeza", "💾 Backup", "🔍 Diagnóstico"])
+        
+        with st_eq:
+            st.markdown("#### 👥 Gestão de Usuários e Senhas")
+            st.info("Adicione, edite ou remova operadores. Para resetar a senha de alguém, basta apagar o conteúdo da coluna 'senha' na linha do operador e salvar (assim ele poderá criar uma nova senha na tela inicial).")
+            
+            arquivo_usuarios = "usuarios.csv"
+            if os.path.exists(arquivo_usuarios):
+                df_gerenciar = pd.read_csv(arquivo_usuarios)
+                # Garante que as colunas padrão existam para não dar erro
+                for col in ['nome', 'email', 'ferias', 'senha']:
+                    if col not in df_gerenciar.columns:
+                        df_gerenciar[col] = ""
+                        
+                # Mostra o editor de dados mágico
+                df_users_editado = st.data_editor(df_gerenciar, num_rows="dynamic", use_container_width=True, key="editor_usuarios")
+                
+                if st.button("💾 Salvar Alterações da Equipe", type="primary"):
+                    df_users_editado.to_csv(arquivo_usuarios, index=False)
+                    sincronizar_com_github(arquivo_usuarios, "Gestor atualizou a base de usuários e senhas")
+                    st.success("✅ Equipe atualizada com sucesso!")
+                    time.sleep(1.5)
+                    st.rerun()
+            else:
+                st.warning("⚠️ A base de usuários ainda não existe. Faça o upload na aba 'Upload'.")
+
         with st1:
             data_sugestao = obter_data_hoje()
             nova_data = st.text_input("Mês/Ano de Referência:", value=data_sugestao)
-            up_u = st.file_uploader("usuarios.csv", key="u")
+            
+            up_u = st.file_uploader("Atualizar usuarios.csv (Mantém senhas antigas)", key="u")
             if up_u: 
-                with open("usuarios.csv", "wb") as w: w.write(up_u.getbuffer())
-                sincronizar_com_github("usuarios.csv", "Atualizando base de usuários")
-                st.success("Usuarios OK!")
+                # --- NOVA REGRA DE UPLOAD PARA NÃO APAGAR AS SENHAS ---
+                df_novo_u = pd.read_csv(up_u)
+                if os.path.exists("usuarios.csv"):
+                    df_antigo_u = pd.read_csv("usuarios.csv")
+                    # Se o gestor subir um csv novo, o sistema mescla e salva as senhas já cadastradas
+                    if 'senha' in df_antigo_u.columns and 'email' in df_antigo_u.columns and 'email' in df_novo_u.columns:
+                        dicionario_senhas = dict(zip(df_antigo_u['email'].astype(str).str.lower().str.strip(), df_antigo_u['senha']))
+                        df_novo_u['senha'] = df_novo_u['email'].astype(str).str.lower().str.strip().map(dicionario_senhas).fillna("")
+                
+                df_novo_u.to_csv("usuarios.csv", index=False)
+                sincronizar_com_github("usuarios.csv", "Atualizando base de usuários mantendo senhas")
+                st.success("✅ Usuários atualizados sem perder as senhas já criadas!")
             
             st.markdown("---")
             st.markdown("#### 💎 Arquivos de Indicadores (Qualidade, Aderência, etc)")
