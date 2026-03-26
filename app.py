@@ -650,7 +650,7 @@ if not st.session_state['logado']:
                 confirma_senha = st.text_input("Confirme a Nova Senha", type="password")
                 submit_senha = st.form_submit_button("Salvar Minha Senha", use_container_width=True)
                 
-                if submit_senha:
+               if submit_senha:
                     if not email_cad or not nova_senha:
                         st.error("⚠️ Preencha todos os campos.")
                     elif nova_senha != confirma_senha:
@@ -665,9 +665,12 @@ if not st.session_state['logado']:
                             if senha_registrada != "" and senha_registrada != "nan":
                                 st.error("🔒 Este e-mail já possui uma senha cadastrada. Por segurança, se você deseja alterá-la ou a esqueceu, solicite o reset ao seu Gestor!")
                             else:
-                                # Só deixa salvar se o campo de senha estiver vazio no banco
+                                # Salva a senha e faz o redirecionamento automático
                                 if atualizar_senha(email_cad, nova_senha):
-                                    st.success("✅ Senha registrada com sucesso! Volte na aba 'Entrar' para fazer o login.")
+                                    st.success("✅ Senha registrada com sucesso! Redirecionando para o login...")
+                                    import time
+                                    time.sleep(1.5) # Pausa rápida para o operador ler a mensagem
+                                    st.rerun() # Recarrega a página, voltando para a aba "Entrar"
                                 else:
                                     st.error("❌ Erro ao salvar no banco de dados.")
                         else:
