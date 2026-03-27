@@ -10,6 +10,7 @@ import requests
 from datetime import datetime, timezone, timedelta
 import unicodedata
 import extra_streamlit_components as stx
+import google.generativeai as genai
 
 # --- CONFIGURAÇÃO DA LOGO E ACESSOS ---
 LOGO_FILE = "logo.png"
@@ -790,8 +791,7 @@ if df_dados is None and perfil == 'user':
 # --- 6. GESTOR ---
 # ==========================================
 if perfil == 'admin':
-    tabs = st.tabs(["🚦 Semáforo", "📈 Resumo Executivo", "🏆 Ranking Geral", "⏳ Evolução", "🔍 Indicadores", "⏱️ Produtividade (Chat & Voz)", "💰 Comissões", "📋 Tabela Geral", "🏖️ Férias Equipe", "⚙️ Admin", "⏰ Banco de Horas", "📝 Feedbacks GB"])
-
+    tabs = st.tabs(["🚦 Semáforo", "📈 Resumo Executivo", "🏆 Ranking Geral", "⏳ Evolução", "🔍 Indicadores", "⏱️ Produtividade (Chat & Voz)", "💰 Comissões", "📋 Tabela Geral", "🏖️ Férias Equipe", "⚙️ Admin", "⏰ Banco de Horas", "📝 Feedbacks GB", "🤖 Sofistas AI"])
     # ------------------ SEMÁFORO ------------------
     with tabs[0]: 
         if df_dados is not None and not df_dados.empty:
@@ -1759,6 +1759,51 @@ Vamos com tudo! 🔥"""
             st.dataframe(df_fbs_hist.iloc[::-1], use_container_width=True, hide_index=True)
         else: 
             st.info("Nenhum feedback registrado no sistema até o momento.")
+
+# ------------------ SOFISTAS AI (GEMINI) ------------------
+    with tabs[12]:
+        st.markdown("### 🤖 Sofistas AI - Assistente Operacional")
+        st.info("Faça perguntas sobre os resultados da equipe ou peça para eu redigir um feedback baseado nos números!")
+
+        if "GEMINI_API_KEY" in st.secrets:
+            # Configura a chave e chama o modelo mais inteligente
+            genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+            model = genai.GenerativeModel('gemini-2.5-flash')
+
+            # Cria a memória da conversa
+            if "mensagens_ia" not in st.session_state:
+                st.session_state.mensagens_ia = []
+
+            # Mostra as mensagens na tela
+            for msg in st.session_state.mensagens_ia:
+                with st.chat_message(msg["role"]):
+                    st.markdown(msg["content"])
+
+            # Caixa para você digitar
+            if prompt := st.chat_input("Ex: Escreva um feedback elogiando o top performer de CSAT"):
+                with st.chat_message("user"):
+                    st.markdown(prompt)
+                st.session_state.mensagens_ia.append({"role": "user", "content": prompt})
+
+                # Pega a tabela de dados atual (se existir)
+                contexto_dados = ""
+                if df_dados is not None and not df_dados.empty:
+                    contexto_dados = f"\n\n[DADOS ATUAIS DA EQUIPE]:\n{df_dados.to_csv(index=False)}"
+
+                # Responde
+                with st.chat_message("assistant"):
+                    with st.spinner("Analisando a operação..."):
+                        try:
+                            # Monta o prompt com instruções para a IA ser uma assistente de call center
+                            prompt_completo = f"Você é um assistente de gestão de call center chamado Sofistas AI. Use os dados a seguir para responder a pergunta. Seja direto e profissional.\n{contexto_dados}\n\nPergunta do Gestor: {prompt}"
+                            
+                            response = model.generate_content(prompt_completo)
+                            st.markdown(response.text)
+                            st.session_state.mensagens_ia.append({"role": "assistant", "content": response.text})
+                        except Exception as e:
+                            st.error(f"Erro de conexão com o Gemini: {e}")
+        else:
+            st.warning("⚠️ Chave da API do Gemini (GEMINI_API_KEY) não encontrada nas configurações secretas do Streamlit.")
 
 # ==========================================
 # --- 7. VISÃO DO OPERADOR ---
