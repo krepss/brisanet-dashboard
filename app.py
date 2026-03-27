@@ -2191,7 +2191,6 @@ else:
                         if i < len(df_podio):
                             op_data = df_podio.iloc[i]
                             op_nome = op_data['Colaborador']
-                            op_diamantes = int(op_data['Diamantes'])
                             op_perc = op_data['% Atingimento']
                             
                             op_seguro_foto = normalizar_chave(op_nome).replace(" ", ".")
@@ -2233,10 +2232,10 @@ else:
                                 else:
                                     st.markdown("<h1 style='font-size: 60px; text-align: center; margin:0;'>👤</h1>", unsafe_allow_html=True)
                                     
+                                # AQUI: Removi os diamantes, deixei apenas o nome e o % grandão
                                 st.markdown(f"""
                                     <p style="font-size: 1.1em; font-weight: bold; color: #333; margin: 5px 0;">{op_nome.title().split()[0]}</p>
-                                    <p style="font-size: 1.5em; font-weight: 800; color: {cores_borda[i]}; margin: 5px 0;">💎 {op_diamantes}</p>
-                                    <p style="font-size: 0.9em; color: #666; margin: 0;">{op_perc:.2%}</p>
+                                    <p style="font-size: 1.8em; font-weight: 800; color: {cores_borda[i]}; margin: 5px 0;">{op_perc:.2%}</p>
                                     </div>
                                 """, unsafe_allow_html=True)
             st.markdown("---")
