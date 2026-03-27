@@ -1819,7 +1819,7 @@ else:
             if not user_info.empty: minhas_ferias = user_info.iloc[0]['ferias']
         except: pass
 
-    tab_results, tab_time, tab_ferias, tab_feedbacks, tab_banco = st.tabs(["📊 Meus Resultados", "🦁 Visão do Time", "🏖️ Minhas Férias", "📝 Meus Feedbacks", "⏰ Meu Banco de Horas"])
+    tab_results, tab_time, tab_ferias, tab_feedbacks, tab_banco, tab_ia = st.tabs(["📊 Meus Resultados", "🦁 Visão do Time", "🏖️ Minhas Férias", "📝 Meus Feedbacks", "⏰ Meu Banco de Horas", "🤖 Assistente IA"])
 
     with tab_results:
         ranking_msg = "Não classificado"
@@ -2161,6 +2161,55 @@ else:
                 st.success("Você não possui agendamentos futuros no momento.")
         else:
             st.success("Você não possui agendamentos futuros no momento.")
+# ------------------ ASSISTENTE TÉCNICO IA (OPERADOR) ------------------
+    with tab_ia:
+        st.markdown("### 🤖 Sofistas AI - Seu Assistente Técnico")
+        st.info("Tire dúvidas sobre internet, Wi-Fi, roteadores, fibra óptica, ou até mesmo pergunte sobre seus indicadores e diamantes deste mês!")
 
+        if "GEMINI_API_KEY" in st.secrets:
+            import google.generativeai as genai
+            genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+            model = genai.GenerativeModel('gemini-2.5-flash')
+
+            # Cria uma memória de chat separada só para o operador
+            if "mensagens_ia_op" not in st.session_state:
+                st.session_state.mensagens_ia_op = []
+
+            # Mostra o histórico da conversa na tela
+            for msg in st.session_state.mensagens_ia_op:
+                with st.chat_message(msg["role"]):
+                    st.markdown(msg["content"])
+
+            # Caixa de texto estilo WhatsApp para o operador digitar
+            if prompt := st.chat_input("Ex: O que causa lentidão no Wi-Fi 2.4GHz? ou Como foi meu CSAT?"):
+                with st.chat_message("user"):
+                    st.markdown(prompt)
+                st.session_state.mensagens_ia_op.append({"role": "user", "content": prompt})
+
+                # Pega as notas do operador de forma invisível para a IA saber como ele está indo
+                contexto_op = ""
+                if not meus_dados.empty:
+                    contexto_op = f"\n[DADOS DO OPERADOR {nome_logado.upper()} NESTE MÊS]:\n{meus_dados[['Indicador', '% Atingimento', 'Diamantes']].to_csv(index=False)}"
+
+                # Instrução de Ouro: Ensina a IA a agir como Suporte Nível 2 / Mentor
+                instrucao_sistema = f"""
+                Você é o Sofistas AI, um assistente virtual criado para ajudar os operadores de suporte técnico de um provedor de internet (ISP).
+                Seu objetivo principal é ajudar o operador a resolver dúvidas técnicas do dia a dia (redes, Wi-Fi, fibra, roteadores, lentidão, etc) de forma didática, clara e direta ao ponto, para que ele possa atender bem o cliente na linha.
+                Você também tem acesso aos resultados de performance dele no mês: {contexto_op}.
+                Se ele perguntar sobre os indicadores dele, responda de forma amigável e motivadora.
+                """
+
+                # Resposta da IA
+                with st.chat_message("assistant"):
+                    with st.spinner("Sofistas AI digitando..."):
+                        try:
+                            # Junta a instrução + a pergunta do operador
+                            resposta = model.generate_content(f"{instrucao_sistema}\n\nPergunta do Operador: {prompt}")
+                            st.markdown(resposta.text)
+                            st.session_state.mensagens_ia_op.append({"role": "assistant", "content": resposta.text})
+                        except Exception as e:
+                            st.error(f"Erro ao conectar com a IA: {e}")
+        else:
+            st.warning("⚠️ O Gestor ainda não configurou a chave da Inteligência Artificial no sistema.")
 st.markdown("---")
 st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
