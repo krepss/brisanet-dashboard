@@ -1853,7 +1853,7 @@ else:
         st.markdown(f"<div style='display: flex; align-items: center; margin-top:-10px; color: #666; font-size:0.9em;'><span style='margin-right: 15px;'>📅 Referência: <b>{periodo_label}</b></span><span class='update-badge' style='background-color:#e0f7fa; color:#006064;'>🕒 Atualizado em: {obter_data_atualizacao()}</span></div>", unsafe_allow_html=True)
     
     # --- FINAL DO NOVO CABEÇALHO ---
-    st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
 # ------------------ SEU PERFIL (FOTO) ------------------
 
         st.markdown("---")
