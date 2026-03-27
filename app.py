@@ -596,11 +596,8 @@ def atualizar_senha(email, nova_senha):
 import extra_streamlit_components as stx
 import streamlit.components.v1 as components
 
-@st.cache_resource
-def get_manager():
-    return stx.CookieManager()
-
-cookie_manager = get_manager()
+# Removemos o cache. Iniciamos o gerenciador de cookies diretamente:
+cookie_manager = stx.CookieManager()
 
 # --- FUNÇÃO MÁGICA QUE GRAVA NO NAVEGADOR E APERTA F5 ---
 def criar_cracha_e_recarregar(email):
