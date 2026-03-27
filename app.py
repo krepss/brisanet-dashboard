@@ -2138,8 +2138,8 @@ else:
                         fig_line_voz.update_yaxes(visible=False)
                         st.plotly_chart(fig_line_voz, use_container_width=True)
 
-    # ---------------------------------------------------------
-    # ABA 2: VISÃO DO TIME (PÓDIO E GAUGE)
+# ---------------------------------------------------------
+    # ABA 2: VISÃO DO TIME (PÓDIO FOCADO NO % COM NOME COMPLETO)
     # ---------------------------------------------------------
     with tab_time:
         st.markdown("### 🦁 Visão Geral do Time")
@@ -2232,10 +2232,10 @@ else:
                                 else:
                                     st.markdown("<h1 style='font-size: 60px; text-align: center; margin:0;'>👤</h1>", unsafe_allow_html=True)
                                     
-                                # AQUI: Removi os diamantes, deixei apenas o nome e o % grandão
+                                # AJUSTE: Removemos o .split()[0] para mostrar Nome e Sobrenome e centralizamos
                                 st.markdown(f"""
-                                    <p style="font-size: 1.1em; font-weight: bold; color: #333; margin: 5px 0;">{op_nome.title().split()[0]}</p>
-                                    <p style="font-size: 1.8em; font-weight: 800; color: {cores_borda[i]}; margin: 5px 0;">{op_perc:.2%}</p>
+                                    <p style="font-size: 1.1em; font-weight: bold; color: #333; margin: 5px 0; text-align: center;">{op_nome.title()}</p>
+                                    <p style="font-size: 1.8em; font-weight: 800; color: {cores_borda[i]}; margin: 5px 0; text-align: center;">{op_perc:.2%}</p>
                                     </div>
                                 """, unsafe_allow_html=True)
             st.markdown("---")
