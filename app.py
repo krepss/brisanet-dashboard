@@ -1861,7 +1861,8 @@ else:
     # ---------------------------------------------------------
     # ABA 1: MEUS RESULTADOS
     # ---------------------------------------------------------
-    # UPLOAD DA FOTO DO OPERADOR
+    with tab_results:
+        # UPLOAD E REMOÇÃO DA FOTO DO OPERADOR
         with st.expander("📸 Atualizar Minha Foto de Perfil", expanded=False):
             upload_foto = st.file_uploader("Escolha sua foto (PNG ou JPG):", type=['png', 'jpg', 'jpeg'], key="up_foto_propria")
             
