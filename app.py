@@ -1814,17 +1814,47 @@ Vamos com tudo! 🔥"""
 # --- 7. VISÃO DO OPERADOR ---
 # ==========================================
 else:
-    st.markdown(f"## 🚀 Olá, **{nome_logado.split()[0]}**!")
-    st.markdown(f"<div style='display: flex; align-items: center; margin-bottom: 20px; color: #666;'><span style='margin-right: 15px;'>📅 Referência: <b>{periodo_label}</b></span><span class='update-badge'>🕒 Atualizado em: {obter_data_atualizacao()}</span></div>", unsafe_allow_html=True)
+    # --- NOVO CABEÇALHO ALINHADO (FOTO E BOAS-VINDAS) ---
     
-    minhas_ferias = "Não informado"
-    if df_users_cadastrados is not None:
-        try:
-            user_info = df_users_cadastrados[df_users_cadastrados['nome'] == nome_logado.upper()]
-            if not user_info.empty: minhas_ferias = user_info.iloc[0]['ferias']
-        except: pass
+    # 1. Tenta carregar a foto do usuário logado (ex: jamile.rocha.png)
+    nome_seguro_user = normalizar_chave(nome_logado).replace(" ", ".")
+    caminho_foto_user = os.path.join(PASTA_FOTOS, f"{nome_seguro_user}.png")
+
+    # 2. Cria duas colunas para o alinhamento: uma narrow pra foto e uma wide pro texto
+    col_foto_perfil, col_texto_perfil = st.columns([1, 6]) # Ratio 1:6
+    
+    with col_foto_perfil:
+        # Mostra a foto atual ou um ícone genérico centralizado
+        if os.path.exists(caminho_foto_user):
+            # CSS para foto redonda e estilizada na ponta
+            st.markdown(f"""
+                <style>
+                    .perfil-foto-ponta {{
+                        border-radius: 50%;
+                        width: 70px;
+                        height: 70px;
+                        object-fit: cover;
+                        border: 3px solid #003366;
+                        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                        display: block;
+                        margin-left: auto;
+                        margin-right: auto;
+                    }}
+                </style>
+                <img src="data:image/png;base64,{base64.b64encode(open(caminho_foto_user, "rb").read()).decode()}" class="perfil-foto-ponta">
+            """, unsafe_allow_html=True)
+        else:
+            # Emoji genérico se não tiver foto, centralizado
+            st.markdown("<h1 style='font-size: 55px; text-align: center; margin:0;'>👤</h1>", unsafe_allow_html=True)
+
+    with col_texto_perfil:
+        # Mostra o Olá e os metadados com ajuste de margem técnica
+        st.markdown(f"## 🚀 Olá, **{nome_logado.split()[0]}**!")
+        st.markdown(f"<div style='display: flex; align-items: center; margin-top:-10px; color: #666; font-size:0.9em;'><span style='margin-right: 15px;'>📅 Referência: <b>{periodo_label}</b></span><span class='update-badge' style='background-color:#e0f7fa; color:#006064;'>🕒 Atualizado em: {obter_data_atualizacao()}</span></div>", unsafe_allow_html=True)
+    
+    # --- FINAL DO NOVO CABEÇALHO ---
+    st.markdown("<br>", unsafe_allow_html=True)
 # ------------------ SEU PERFIL (FOTO) ------------------
-        # ... (seu código de boas-vindas existente) ...
 
         st.markdown("---")
         
