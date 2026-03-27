@@ -14,11 +14,18 @@ import google.generativeai as genai
 
 # --- CONFIGURAÇÃO DE ARQUIVOS E ACESSOS ---
 LOGO_FILE = "logo.png"
-PASTA_FOTOS = "fotos_perfil" # <--- ESTA É A VARIÁVEL QUE ESTAVA FALTANDO!
-SENHA_ADMIN = "admin123"
+PASTA_FOTOS = "fotos_perfil" 
+
+# Busca a senha no cofre seguro. Se por acaso você esquecer de configurar o cofre, 
+# ele usa uma de emergência para o sistema não sair do ar.
+try:
+    SENHA_ADMIN = st.secrets["SENHA_GESTOR"]
+except:
+    SENHA_ADMIN = "admin123" # Senha de emergência caso o cofre falhe
+
 USUARIOS_ADMIN = ['gestor', 'admin']
 
-# Garante que a pasta de fotos exista no servidor para não dar erro
+# Garante que a pasta de fotos exista no servidor
 if not os.path.exists(PASTA_FOTOS):
     os.makedirs(PASTA_FOTOS)
 
