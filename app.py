@@ -1809,106 +1809,82 @@ Vamos com tudo! 🔥"""
                             st.error(f"Erro de conexão com o Gemini: {e}")
         else:
             st.warning("⚠️ Chave da API do Gemini (GEMINI_API_KEY) não encontrada nas configurações secretas do Streamlit.")
-
 # ==========================================
 # --- 7. VISÃO DO OPERADOR ---
 # ==========================================
 else:
     # --- NOVO CABEÇALHO ALINHADO (FOTO E BOAS-VINDAS) ---
-    
-    # 1. Tenta carregar a foto do usuário logado (ex: jamile.rocha.png)
     nome_seguro_user = normalizar_chave(nome_logado).replace(" ", ".")
     caminho_foto_user = os.path.join(PASTA_FOTOS, f"{nome_seguro_user}.png")
 
-    # 2. Cria duas colunas para o alinhamento: uma narrow pra foto e uma wide pro texto
-    col_foto_perfil, col_texto_perfil = st.columns([1, 6]) # Ratio 1:6
+    col_foto_perfil, col_texto_perfil = st.columns([1, 6])
     
     with col_foto_perfil:
-        # Mostra a foto atual ou um ícone genérico centralizado
         if os.path.exists(caminho_foto_user):
-            # CSS para foto redonda e estilizada na ponta
             st.markdown(f"""
                 <style>
                     .perfil-foto-ponta {{
                         border-radius: 50%;
-                        width: 70px;
-                        height: 70px;
+                        width: 75px;
+                        height: 75px;
                         object-fit: cover;
                         border: 3px solid #003366;
                         box-shadow: 0 4px 8px rgba(0,0,0,0.1);
                         display: block;
                         margin-left: auto;
                         margin-right: auto;
+                        margin-top: 15px;
                     }}
                 </style>
                 <img src="data:image/png;base64,{base64.b64encode(open(caminho_foto_user, "rb").read()).decode()}" class="perfil-foto-ponta">
             """, unsafe_allow_html=True)
         else:
-            # Emoji genérico se não tiver foto, centralizado
-            st.markdown("<h1 style='font-size: 55px; text-align: center; margin:0;'>👤</h1>", unsafe_allow_html=True)
+            st.markdown("<h1 style='font-size: 65px; text-align: center; margin:0; margin-top: 5px;'>👤</h1>", unsafe_allow_html=True)
 
     with col_texto_perfil:
-        # Mostra o Olá e os metadados com ajuste de margem técnica
         st.markdown(f"## 🚀 Olá, **{nome_logado.split()[0]}**!")
-        st.markdown(f"<div style='display: flex; align-items: center; margin-top:-10px; color: #666; font-size:0.9em;'><span style='margin-right: 15px;'>📅 Referência: <b>{periodo_label}</b></span><span class='update-badge' style='background-color:#e0f7fa; color:#006064;'>🕒 Atualizado em: {obter_data_atualizacao()}</span></div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='display: flex; align-items: center; margin-top:-15px; color: #666; font-size:0.9em;'><span style='margin-right: 15px;'>📅 Referência: <b>{periodo_label}</b></span><span class='update-badge' style='background-color:#e0f7fa; color:#006064;'>🕒 Atualizado em: {obter_data_atualizacao()}</span></div>", unsafe_allow_html=True)
     
-    # --- FINAL DO NOVO CABEÇALHO ---
-        st.markdown("<br>", unsafe_allow_html=True)
-# ------------------ SEU PERFIL (FOTO) ------------------
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # --- BUSCA FÉRIAS DO OPERADOR ---
+    minhas_ferias = "Não informado"
+    if df_users_cadastrados is not None:
+        try:
+            user_info = df_users_cadastrados[df_users_cadastrados['nome'] == nome_logado.upper()]
+            if not user_info.empty: minhas_ferias = user_info.iloc[0]['ferias']
+        except: pass
 
-        st.markdown("---")
-        
-        # Mostra a foto atual ou um emoji genérico
-        nome_seguro_foto = normalizar_chave(nome_logado).replace(" ", ".")
-        caminho_foto_user = os.path.join(PASTA_FOTOS, f"{nome_seguro_foto}.png")
+    # --- CRIAÇÃO DAS ABAS ---
+    tab_results, tab_time, tab_ferias, tab_feedbacks, tab_banco, tab_ia = st.tabs(["📊 Meus Resultados", "🦁 Visão do Time", "🏖️ Minhas Férias", "📝 Meus Feedbacks", "⏰ Meu Banco de Horas", "🤖 Assistente IA"])
 
-        if os.path.exists(caminho_foto_user):
-            # Usamos CSS para forçar a foto a ser redonda e bonitona
-            st.markdown(f"""
-                <style>
-                    .perfil-foto-op {{
-                        border-radius: 50%;
-                        width: 100px;
-                        height: 100px;
-                        object-fit: cover;
-                        border: 4px solid #003366;
-                        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-                        display: block;
-                        margin-bottom: 10px;
-                    }}
-                </style>
-                <img src="data:image/png;base64,{base64.b64encode(open(caminho_foto_user, "rb").read()).decode()}" class="perfil-foto-op">
-            """, unsafe_allow_html=True)
-        else:
-            # Emoji genérico se não tiver foto
-            st.markdown("<h1 style='font-size: 80px; margin:0;'>👤</h1>", unsafe_allow_html=True)
-
-        # Dropdown para upload da própria foto
-        with st.expander("📸 Atualizar Foto de Perfil", expanded=False):
-            upload_foto = st.file_uploader("Escolha sua foto (PNG ou JPG, máx 2MB):", type=['png', 'jpg', 'jpeg'], key="up_foto_propria")
-            
-            if st.button("📤 Salvar Minha Foto e Sincronizar", type="primary", use_container_width=True):
+    # ---------------------------------------------------------
+    # ABA 1: MEUS RESULTADOS
+    # ---------------------------------------------------------
+    with tab_results:
+        # UPLOAD DA FOTO DO OPERADOR
+        with st.expander("📸 Atualizar Minha Foto de Perfil", expanded=False):
+            upload_foto = st.file_uploader("Escolha sua foto (PNG ou JPG):", type=['png', 'jpg', 'jpeg'], key="up_foto_propria")
+            if st.button("📤 Salvar Minha Foto", type="primary"):
                 if not upload_foto:
                     st.error("⚠️ Por favor, escolha uma imagem primeiro.")
                 else:
                     try:
-                        # Salva o arquivo na pasta local
                         with open(caminho_foto_user, "wb") as w_foto:
                             w_foto.write(upload_foto.getbuffer())
-                        
-                        # Sincroniza a foto com o GitHub
-                        if sincronizar_com_github(caminho_foto_user, f"Foto atualizada pelo próprio usuário: {nome_logado}"):
-                            st.success(f"✅ Sua foto foi atualizada e sincronizada com sucesso!")
+                        if sincronizar_com_github(caminho_foto_user, f"Foto atualizada pelo usuário: {nome_logado}"):
+                            st.success("✅ Sua foto foi atualizada com sucesso!")
+                            import time
                             time.sleep(1.5)
                             st.rerun()
                         else:
-                            st.error("❌ Erro ao sincronizar sua foto com o GitHub.")
+                            st.error("❌ Erro ao sincronizar com o GitHub.")
                     except Exception as e:
                         st.error(f"Erro no upload: {e}")
-                        
-    tab_results, tab_time, tab_ferias, tab_feedbacks, tab_banco, tab_ia = st.tabs(["📊 Meus Resultados", "🦁 Visão do Time", "🏖️ Minhas Férias", "📝 Meus Feedbacks", "⏰ Meu Banco de Horas", "🤖 Assistente IA"])
 
-    with tab_results:
+        st.markdown("---")
+        
+        # CÁLCULO DE RANKING
         ranking_msg = "Não classificado"
         if df_dados is not None and not df_dados.empty:
             if tem_tam: df_rank = df_dados[df_dados['Indicador'] == 'TAM'].copy().sort_values(by='% Atingimento', ascending=False).reset_index(drop=True)
@@ -1961,12 +1937,45 @@ else:
             
             st.markdown("---")
             
-            # --- DEVOLVENDO O EXTRATO FINANCEIRO ---
-            pior_row = meus_dados.sort_values(by='% Atingimento').iloc[0]
-            if pior_row['% Atingimento'] < 0.9:
-                dica = DICAS_KPI.get(pior_row['Indicador'], "Fale com seu gestor.")
-                st.markdown(f"""<div class="insight-box"><div class="insight-title">💡 Smart Coach: {formatar_nome_visual(pior_row['Indicador'])}</div><div class="insight-text">{dica} (Atual: {pior_row['% Atingimento']:.1%})</div></div>""", unsafe_allow_html=True)
+            # SMART COACH (MENTOR IA)
+            st.markdown("### 🤖 Seu Mentor IA (Smart Coach)")
+            st.info("Deixe a Inteligência Artificial analisar seus números atuais e te dar dicas exclusivas de como aumentar sua comissão!")
 
+            if "GEMINI_API_KEY" in st.secrets:
+                if st.button("✨ Gerar meu Plano de Ação com IA", type="primary", use_container_width=True):
+                    with st.spinner("O Sofistas AI está analisando seus resultados detalhadamente..."):
+                        try:
+                            dados_op_str = meus_dados[['Indicador', '% Atingimento', 'Diamantes']].to_csv(index=False)
+                            prompt_op = f"""
+                            Você é um mentor motivacional e especialista em atendimento ao cliente chamado Sofistas AI. 
+                            O nome do operador é {nome_logado.split()[0]}.
+                            Aqui estão os resultados dele neste mês atual:
+                            {dados_op_str}
+                            
+                            Sua tarefa:
+                            1. Comece com um cumprimento super animado chamando-o pelo nome.
+                            2. Elogie os pontos fortes (onde ele bateu a meta ou chegou perto).
+                            3. Identifique o maior gargalo (o indicador com a nota mais baixa).
+                            4. Dê 2 dicas práticas, curtas e diretas de como ele pode melhorar esse indicador específico no dia a dia do call center.
+                            5. Encerre com uma frase de incentivo focada em como ele pode ganhar mais comissões/diamantes no próximo ciclo.
+                            Use formatação bonita com Markdown (negrito, listas) e use emojis. Seja extremamente amigável, direto e focado em dinheiro/resultados.
+                            """
+                            import google.generativeai as genai
+                            genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+                            model = genai.GenerativeModel('gemini-2.5-flash')
+                            resposta = model.generate_content(prompt_op)
+                            
+                            st.markdown("""<div style="background-color: #f8f9fa; border-left: 6px solid #F37021; padding: 25px; border-radius: 10px; margin-top: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">""", unsafe_allow_html=True)
+                            st.markdown(resposta.text)
+                            st.markdown("</div><br>", unsafe_allow_html=True)
+                        except Exception as e:
+                            st.error(f"Putz, a IA tropeçou nos cabos: {e}")
+            else:
+                st.caption("A chave da IA ainda não foi configurada pelo Gestor no sistema.")
+
+            st.markdown("---")
+
+            # EXTRATO FINANCEIRO
             df_conf = meus_dados[meus_dados['Indicador'] == 'CONFORMIDADE']
             atingimento_conf = df_conf.iloc[0]['% Atingimento'] if not df_conf.empty else 0.0
             tem_dado_conf = not df_conf.empty
@@ -2005,7 +2014,7 @@ else:
                 with cols[i]: st.metric(label, f"{val:.2%}", "✅ Meta Batida" if round(val, 4) >= meta else f"🔻 Meta {meta:.0%}", delta_color="normal" if round(val, 4) >= meta else "inverse")
             st.markdown("---")
             
-            # --- DADOS DE PRODUTIVIDADE DO OPERADOR ---
+            # PRODUTIVIDADE OPERADOR
             st.markdown("#### ⏱️ Sua Produtividade")
             df_op_hist = carregar_historico_operacional()
             df_voz_hist = carregar_historico_voz()
@@ -2021,19 +2030,15 @@ else:
                     
                     media_chat_dia = vol_chat / 22.0
                     delta_vol_c = f"~{media_chat_dia:.0f} por dia (base 22d)"
-                    
-                    if tma_chat_seg <= 1200: # 1200 seg = 20 min
-                        delta_tma_c = "- Dentro da Meta (20m)"
-                    else:
-                        delta_tma_c = "+ Acima da Meta (20m)"
+                    delta_tma_c = "- Dentro da Meta (20m)" if tma_chat_seg <= 1200 else "+ Acima da Meta (20m)"
                         
                     c_p1.metric("💬 Chats Atendidos", vol_chat, delta_vol_c, delta_color="off")
                     c_p2.metric("⏱️ TMA Chat", tma_chat_fmt, delta_tma_c, delta_color="inverse")
                 else:
-                    c_p1.metric("💬 Chats Atendidos", "-")
+                    c_p1.metric("💬 Chats", "-")
                     c_p2.metric("⏱️ TMA Chat", "-")
             else:
-                c_p1.metric("💬 Chats Atendidos", "-")
+                c_p1.metric("💬 Chats", "-")
                 c_p2.metric("⏱️ TMA Chat", "-")
 
             if df_voz_hist is not None:
@@ -2045,24 +2050,20 @@ else:
                     
                     media_voz_dia = vol_voz / 22.0
                     delta_vol_v = f"~{media_voz_dia:.0f} por dia (base 22d)"
-                    
-                    if tma_voz_seg <= 420: # 420 seg = 7 min
-                        delta_tma_v = "- Dentro da Meta (7m)"
-                    else:
-                        delta_tma_v = "+ Acima da Meta (7m)"
+                    delta_tma_v = "- Dentro da Meta (7m)" if tma_voz_seg <= 420 else "+ Acima da Meta (7m)"
                         
                     c_p3.metric("📞 Ligações Atendidas", vol_voz, delta_vol_v, delta_color="off")
                     c_p4.metric("⏱️ TMA Voz", tma_voz_fmt, delta_tma_v, delta_color="inverse")
                 else:
-                    c_p3.metric("📞 Ligações Atendidas", "-")
+                    c_p3.metric("📞 Ligações", "-")
                     c_p4.metric("⏱️ TMA Voz", "-")
             else:
-                c_p3.metric("📞 Ligações Atendidas", "-")
+                c_p3.metric("📞 Ligações", "-")
                 c_p4.metric("⏱️ TMA Voz", "-")
 
             st.markdown("---")
             
-            # --- DEVOLVENDO O RAIO-X RADAR CHART ---
+            # RAIO X RADAR CHART
             media_equipe = df_dados.groupby('Indicador')['% Atingimento'].mean().reset_index()
             media_equipe.rename(columns={'% Atingimento': 'Média Equipe'}, inplace=True)
             if not media_equipe.empty:
@@ -2084,7 +2085,7 @@ else:
                         st.plotly_chart(fig, use_container_width=True)
             st.markdown("---")
             
-            # --- HISTÓRICO INDIVIDUAL E PRODUTIVIDADE ---
+            # EVOLUÇÃO HISTÓRICA
             st.markdown("### ⏳ Sua Evolução Histórica")
             df_hist_full = carregar_historico_completo()
             if df_hist_full is not None:
@@ -2118,13 +2119,14 @@ else:
                         fig_line_voz.update_yaxes(visible=False)
                         st.plotly_chart(fig_line_voz, use_container_width=True)
 
-  # --- NOVA ABA: VISÃO DO TIME (OPERADOR) ---
+    # ---------------------------------------------------------
+    # ABA 2: VISÃO DO TIME (PÓDIO E GAUGE)
+    # ---------------------------------------------------------
     with tab_time:
         st.markdown("### 🦁 Visão Geral do Time")
         st.info("Aqui você acompanha como estamos indo como equipe. Lembre-se: quando o time ganha, todos ganham!")
 
         if df_dados is not None:
-            # Opção de Ignorar Pontualidade
             ignorar_pont_op = st.checkbox("Recalcular Visão Global sem Pontualidade", key="chk_pont_op", value=False)
             
             if tem_tam:
@@ -2142,35 +2144,29 @@ else:
                 df_media_team = df_calc.groupby('Colaborador').agg({'Diamantes': 'sum', 'Max. Diamantes': 'sum'}).reset_index()
                 df_media_team['% Atingimento'] = df_media_team.apply(lambda row: row['Diamantes'] / row['Max. Diamantes'] if row['Max. Diamantes'] > 0 else 0, axis=1)
 
-            # Cálculo dos Totais
             total_dia_team = df_media_team['Diamantes'].sum()
             total_max_team = df_media_team['Max. Diamantes'].sum()
             perc_team = (total_dia_team / total_max_team) if total_max_team > 0 else 0
             
-            # --- 🍰 SUA FATIA NO BOLO (CONTRIBUIÇÃO) ---
             user_share_row = df_media_team[df_media_team['Colaborador'] == nome_logado]
             msg_share = "Dados insuficientes"
-            
             if not user_share_row.empty and total_dia_team > 0:
                 user_dia = user_share_row.iloc[0]['Diamantes']
                 share = (user_dia / total_dia_team)
                 msg_share = f"Você representa **{share:.1%}** do resultado da equipe."
 
-            # ------------------ PÓDIO SOFISTAS 🦁 (OPERADOR) ------------------
+            # PÓDIO TOP 3
             st.markdown("---")
             st.markdown("### 🏆 Pódio Team Sofistas - Top 3")
             
             if not df_media_team.empty:
-                # Ordena pelo resultado e pega o top 3 (ignorando os nomes com erro ⚠️)
                 df_podio = df_media_team[~df_media_team['Colaborador'].str.startswith('⚠️')].sort_values(by='Diamantes', ascending=False).head(3).reset_index(drop=True)
                 
                 if len(df_podio) >= 1:
                     col1, col2, col3 = st.columns(3)
-                    
-                    # Posições do Pódio no Layout (2º lugar na esquerda, 1º no meio, 3º na direita)
                     ordem_colunas = [col2, col1, col3] 
                     posicoes_legenda = ["🥇 1º LUGAR", "🥈 2º LUGAR", "🥉 3º LUGAR"]
-                    cores_borda = ["#d4af37", "#a9a9a9", "#cd7f32"] # Ouro, Prata, Bronze
+                    cores_borda = ["#d4af37", "#a9a9a9", "#cd7f32"] 
 
                     for i, col in enumerate(ordem_colunas):
                         if i < len(df_podio):
@@ -2179,7 +2175,6 @@ else:
                             op_diamantes = int(op_data['Diamantes'])
                             op_perc = op_data['% Atingimento']
                             
-                            # Padroniza o nome para carregar a foto
                             op_seguro_foto = normalizar_chave(op_nome).replace(" ", ".")
                             op_caminho_foto = os.path.join(PASTA_FOTOS, f"{op_seguro_foto}.png")
 
@@ -2198,7 +2193,6 @@ else:
                                     ">
                                 """, unsafe_allow_html=True)
                                 
-                                # Foto Redonda do Pódio
                                 if os.path.exists(op_caminho_foto):
                                     st.markdown(f"""
                                         <style>
@@ -2233,7 +2227,6 @@ else:
             c1.markdown(f"#### 🦁 Média Global da Equipe: **{perc_team:.1%}**")
             c2.success(msg_share)
             
-            # Gauge Chart
             fig_team = go.Figure(go.Indicator(
                 mode = "gauge+number", value = perc_team * 100, domain = {'x': [0, 1], 'y': [0, 1]},
                 gauge = {
@@ -2244,10 +2237,17 @@ else:
             ))
             fig_team.update_layout(height=250, margin=dict(l=20, r=20, t=30, b=20))
             st.plotly_chart(fig_team, use_container_width=True)
+
+    # ---------------------------------------------------------
+    # ABA 3: FÉRIAS
+    # ---------------------------------------------------------
     with tab_ferias:
         st.markdown("### 🗓️ Planejamento de Férias")
         st.markdown(f"<div class='vacation-card'><p class='vacation-title'>Suas próximas férias estão programadas para:</p><div class='vacation-date'>{minhas_ferias}</div><p class='vacation-note'>*Sujeito a alteração.</p></div>", unsafe_allow_html=True)
 
+    # ---------------------------------------------------------
+    # ABA 4: FEEDBACKS
+    # ---------------------------------------------------------
     with tab_feedbacks:
         st.markdown("### 📝 Histórico de Feedbacks")
         df_fbs = carregar_feedbacks_gb()
@@ -2261,10 +2261,11 @@ else:
             else: st.info("Você ainda não possui registros de feedback no sistema.")
         else: st.info("Nenhum feedback registrado no sistema até o momento.")
 
+    # ---------------------------------------------------------
+    # ABA 5: BANCO DE HORAS
+    # ---------------------------------------------------------
     with tab_banco:
         st.markdown("### ⏰ Meu Banco de Horas")
-        
-        # --- NOVO: SALDO ATUAL DO OPERADOR ---
         df_saldos = carregar_saldos_banco()
         if df_saldos is not None and not df_saldos.empty:
             df_saldos['Colaborador_Norm'] = df_saldos['Colaborador'].apply(normalizar_chave)
@@ -2291,7 +2292,6 @@ else:
                     c_s2.success(f"🎉 **Parabéns!** Você tem **{saldo_str}** positivas. Caso deseje, alinhe com seu gestor para retirar essas horas (folga ou sair mais cedo).")
                 st.markdown("---")
 
-        # --- AGENDAMENTOS (HISTÓRICO) ---
         st.markdown("#### 📅 Seus Agendamentos")
         df_banco = carregar_escalas_banco()
         if df_banco is not None and not df_banco.empty:
@@ -2300,12 +2300,9 @@ else:
             
             if not meus_agendamentos.empty:
                 st.info("Abaixo estão as suas solicitações de folgas/retiradas ou dias de pagamento de horas já alinhadas com a coordenação.")
-                
-                # Exibir cada agendamento num card organizado
                 for _, row in meus_agendamentos.iloc[::-1].iterrows():
                     cor_borda = "#2ecc71" if "Retirada" in row['Tipo'] else "#e74c3c"
                     icone = "🏖️" if "Retirada" in row['Tipo'] else "💼"
-                    
                     st.markdown(f"""
                     <div style="border-left: 5px solid {cor_borda}; padding: 15px; background-color: #FFF; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 15px;">
                         <h4 style="margin-top: 0; color: #003366;">{icone} {row['Tipo'].upper()}</h4>
@@ -2319,7 +2316,10 @@ else:
                 st.success("Você não possui agendamentos futuros no momento.")
         else:
             st.success("Você não possui agendamentos futuros no momento.")
-# ------------------ ASSISTENTE TÉCNICO IA (OPERADOR) ------------------
+
+    # ---------------------------------------------------------
+    # ABA 6: ASSISTENTE TÉCNICO IA
+    # ---------------------------------------------------------
     with tab_ia:
         st.markdown("### 🤖 Sofistas AI - Seu Assistente Técnico")
         st.info("Tire dúvidas sobre internet, Wi-Fi, roteadores, fibra óptica, ou até mesmo pergunte sobre seus indicadores e diamantes deste mês!")
@@ -2329,27 +2329,22 @@ else:
             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
             model = genai.GenerativeModel('gemini-2.5-flash')
 
-            # Cria uma memória de chat separada só para o operador
             if "mensagens_ia_op" not in st.session_state:
                 st.session_state.mensagens_ia_op = []
 
-            # Mostra o histórico da conversa na tela
             for msg in st.session_state.mensagens_ia_op:
                 with st.chat_message(msg["role"]):
                     st.markdown(msg["content"])
 
-            # Caixa de texto estilo WhatsApp para o operador digitar
             if prompt := st.chat_input("Ex: O que causa lentidão no Wi-Fi 2.4GHz? ou Como foi meu CSAT?"):
                 with st.chat_message("user"):
                     st.markdown(prompt)
                 st.session_state.mensagens_ia_op.append({"role": "user", "content": prompt})
 
-                # Pega as notas do operador de forma invisível para a IA saber como ele está indo
                 contexto_op = ""
                 if not meus_dados.empty:
                     contexto_op = f"\n[DADOS DO OPERADOR {nome_logado.upper()} NESTE MÊS]:\n{meus_dados[['Indicador', '% Atingimento', 'Diamantes']].to_csv(index=False)}"
 
-                # Instrução de Ouro: Ensina a IA a agir como Suporte Nível 2 / Mentor
                 instrucao_sistema = f"""
                 Você é o Sofistas AI, um assistente virtual criado para ajudar os operadores de suporte técnico de um provedor de internet (ISP).
                 Seu objetivo principal é ajudar o operador a resolver dúvidas técnicas do dia a dia (redes, Wi-Fi, fibra, roteadores, lentidão, etc) de forma didática, clara e direta ao ponto, para que ele possa atender bem o cliente na linha.
@@ -2357,11 +2352,9 @@ else:
                 Se ele perguntar sobre os indicadores dele, responda de forma amigável e motivadora.
                 """
 
-                # Resposta da IA
                 with st.chat_message("assistant"):
                     with st.spinner("Sofistas AI digitando..."):
                         try:
-                            # Junta a instrução + a pergunta do operador
                             resposta = model.generate_content(f"{instrucao_sistema}\n\nPergunta do Operador: {prompt}")
                             st.markdown(resposta.text)
                             st.session_state.mensagens_ia_op.append({"role": "assistant", "content": resposta.text})
@@ -2369,5 +2362,9 @@ else:
                             st.error(f"Erro ao conectar com a IA: {e}")
         else:
             st.warning("⚠️ O Gestor ainda não configurou a chave da Inteligência Artificial no sistema.")
+
+# ==========================================
+# RODAPÉ DO SISTEMA
+# ==========================================
 st.markdown("---")
 st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
