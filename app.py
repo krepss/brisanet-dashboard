@@ -12,10 +12,15 @@ import unicodedata
 import extra_streamlit_components as stx
 import google.generativeai as genai
 
-# --- CONFIGURAÇÃO DA LOGO E ACESSOS ---
+# --- CONFIGURAÇÃO DE ARQUIVOS E ACESSOS ---
 LOGO_FILE = "logo.png"
+PASTA_FOTOS = "fotos_perfil" # <--- ESTA É A VARIÁVEL QUE ESTAVA FALTANDO!
 SENHA_ADMIN = "admin123"
 USUARIOS_ADMIN = ['gestor', 'admin']
+
+# Garante que a pasta de fotos exista no servidor para não dar erro
+if not os.path.exists(PASTA_FOTOS):
+    os.makedirs(PASTA_FOTOS)
 
 DICAS_KPI = {
     "ADERENCIA": "Atenção aos horários de login/logoff e pausas. Cumpra a escala rigorosamente.",
