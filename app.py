@@ -592,18 +592,34 @@ def atualizar_senha(email, nova_senha):
                 sincronizar_com_github(arq, f"Senha atualizada para o usuario: {email}")
                 return True
     return False
-# --- 4. LOGIN RENOVADO (COM COOKIES E SENHA) ---
-# 1. Inicializa o gerenciador de cookies
-cookie_manager = stx.CookieManager()
+# --- 4. LOGIN RENOVADO (COM COOKIES BLINDADOS) ---
+import extra_streamlit_components as stx
+import streamlit.components.v1 as components
 
-# 2. Tenta ler o "crachá" salvo no navegador
-cookie_usuario = cookie_manager.get(cookie="usuario_logado")
+@st.cache_resource(experimental_allow_widgets=True)
+def get_manager():
+    return stx.CookieManager()
+
+cookie_manager = get_manager()
+
+# --- FUNÇÃO MÁGICA QUE GRAVA NO NAVEGADOR E APERTA F5 ---
+def criar_cracha_e_recarregar(email):
+    components.html(f"""
+    <script>
+        var date = new Date();
+        date.setTime(date.getTime() + (30*24*60*60*1000));
+        document.cookie = "usuario_logado={email}; expires=" + date.toUTCString() + "; path=/";
+        setTimeout(function() {{ window.parent.location.reload(); }}, 500);
+    </script>
+    """, height=0)
 
 if 'logado' not in st.session_state:
     st.session_state.update({'logado': False, 'usuario_nome': '', 'perfil': '', 'usuario_email': ''})
 
-# --- AUTO-LOGIN MÁGICO ---
-# Se o cara tem o cookie no navegador, mas o Streamlit esqueceu (deu F5), a gente reloga ele invisivelmente!
+# Lê o crachá salvo no navegador
+cookie_usuario = cookie_manager.get(cookie="usuario_logado")
+
+# Auto-Login se o crachá existir
 if cookie_usuario and not st.session_state['logado']:
     if cookie_usuario == 'admin':
         st.session_state.update({'logado': True, 'usuario_nome': 'Gestor', 'perfil': 'admin', 'usuario_email': 'admin'})
@@ -617,7 +633,7 @@ if cookie_usuario and not st.session_state['logado']:
                 st.session_state.update({'logado': True, 'usuario_nome': nome_upper, 'perfil': 'user', 'usuario_email': cookie_usuario})
                 st.rerun()
 
-# --- TELA DE LOGIN (SÓ APARECE SE NÃO ESTIVER LOGADO) ---
+# --- TELA DE LOGIN ---
 if not st.session_state['logado']:
     c1, c2, c3 = st.columns([1, 1.2, 1]) 
     with c2:
@@ -642,25 +658,19 @@ if not st.session_state['logado']:
                 
                 if submit_btn:
                     if email_input in USUARIOS_ADMIN and senha_input == SENHA_ADMIN:
-                        # Grava o crachá do Admin por 30 dias
-                        cookie_manager.set("usuario_logado", "admin", expires_at=datetime.now() + timedelta(days=30))
-                        st.session_state.update({'logado': True, 'usuario_nome': 'Gestor', 'perfil': 'admin', 'usuario_email': 'admin'})
-                        st.rerun()
+                        st.success("✅ Login realizado! Salvando sessão...")
+                        criar_cracha_e_recarregar('admin')
                     else:
                         df_users = carregar_usuarios()
                         if df_users is not None:
                             user_row = df_users[df_users['email'] == email_input]
                             if not user_row.empty:
                                 senha_registrada = str(user_row.iloc[0].get('senha', '')).strip()
-                                nome_upper = user_row.iloc[0]['nome']
-                                
                                 if senha_registrada == "" or senha_registrada == "nan":
                                     st.warning("⚠️ Você ainda não criou uma senha. Acesse a aba 'Criar/Alterar Senha' primeiro!")
                                 elif senha_input == senha_registrada:
-                                    # Grava o crachá do Operador por 30 dias
-                                    cookie_manager.set("usuario_logado", email_input, expires_at=datetime.now() + timedelta(days=30))
-                                    st.session_state.update({'logado': True, 'usuario_nome': nome_upper, 'perfil': 'user', 'usuario_email': email_input})
-                                    st.rerun()
+                                    st.success("✅ Login realizado! Salvando sessão...")
+                                    criar_cracha_e_recarregar(email_input)
                                 else:
                                     st.error("🚫 Senha incorreta.")
                             else: st.error("🚫 Usuário não encontrado na base. Verifique seu e-mail.")
@@ -686,7 +696,7 @@ if not st.session_state['logado']:
                             senha_registrada = str(user_row.iloc[0].get('senha', '')).strip()
                             
                             if senha_registrada != "" and senha_registrada != "nan":
-                                st.error("🔒 Este e-mail já possui uma senha cadastrada. Por segurança, se você deseja alterá-la ou a esqueceu, solicite o reset ao seu Gestor!")
+                                st.error("🔒 Este e-mail já possui uma senha cadastrada. Solicite o reset ao seu Gestor!")
                             else:
                                 if atualizar_senha(email_cad, nova_senha):
                                     st.success("✅ Senha registrada com sucesso! Redirecionando para o login...")
@@ -699,7 +709,6 @@ if not st.session_state['logado']:
 
     st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
     st.stop()
-
 # ==========================================
 # --- 5. BARRA SUPERIOR E LÓGICA GLOBAL ---
 # ==========================================
@@ -743,11 +752,14 @@ with c_periodo:
 with c_sair:
     st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
     if st.button("🚪 Sair do Sistema", type="primary", use_container_width=True):
-        # Destrói o cookie (rasga o crachá do navegador)
-        cookie_manager.delete("usuario_logado")
         st.session_state.update({'logado': False})
-        time.sleep(0.5) # Pausinha rápida para o cookie ser apagado com sucesso
-        st.rerun()
+        # Apaga o cookie via JS e recarrega a página
+        components.html("""
+        <script>
+            document.cookie = "usuario_logado=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+            setTimeout(function() { window.parent.location.reload(); }, 500);
+        </script>
+        """, height=0)
 
 st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px;'>", unsafe_allow_html=True)
 
