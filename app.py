@@ -1818,7 +1818,59 @@ else:
             user_info = df_users_cadastrados[df_users_cadastrados['nome'] == nome_logado.upper()]
             if not user_info.empty: minhas_ferias = user_info.iloc[0]['ferias']
         except: pass
+# ------------------ SEU PERFIL (FOTO) ------------------
+        # ... (seu código de boas-vindas existente) ...
 
+        st.markdown("---")
+        
+        # Mostra a foto atual ou um emoji genérico
+        nome_seguro_foto = normalizar_chave(nome_logado).replace(" ", ".")
+        caminho_foto_user = os.path.join(PASTA_FOTOS, f"{nome_seguro_foto}.png")
+
+        if os.path.exists(caminho_foto_user):
+            # Usamos CSS para forçar a foto a ser redonda e bonitona
+            st.markdown(f"""
+                <style>
+                    .perfil-foto-op {{
+                        border-radius: 50%;
+                        width: 100px;
+                        height: 100px;
+                        object-fit: cover;
+                        border: 4px solid #003366;
+                        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+                        display: block;
+                        margin-bottom: 10px;
+                    }}
+                </style>
+                <img src="data:image/png;base64,{base64.b64encode(open(caminho_foto_user, "rb").read()).decode()}" class="perfil-foto-op">
+            """, unsafe_allow_html=True)
+        else:
+            # Emoji genérico se não tiver foto
+            st.markdown("<h1 style='font-size: 80px; margin:0;'>👤</h1>", unsafe_allow_html=True)
+
+        # Dropdown para upload da própria foto
+        with st.expander("📸 Atualizar Foto de Perfil", expanded=False):
+            upload_foto = st.file_uploader("Escolha sua foto (PNG ou JPG, máx 2MB):", type=['png', 'jpg', 'jpeg'], key="up_foto_propria")
+            
+            if st.button("📤 Salvar Minha Foto e Sincronizar", type="primary", use_container_width=True):
+                if not upload_foto:
+                    st.error("⚠️ Por favor, escolha uma imagem primeiro.")
+                else:
+                    try:
+                        # Salva o arquivo na pasta local
+                        with open(caminho_foto_user, "wb") as w_foto:
+                            w_foto.write(upload_foto.getbuffer())
+                        
+                        # Sincroniza a foto com o GitHub
+                        if sincronizar_com_github(caminho_foto_user, f"Foto atualizada pelo próprio usuário: {nome_logado}"):
+                            st.success(f"✅ Sua foto foi atualizada e sincronizada com sucesso!")
+                            time.sleep(1.5)
+                            st.rerun()
+                        else:
+                            st.error("❌ Erro ao sincronizar sua foto com o GitHub.")
+                    except Exception as e:
+                        st.error(f"Erro no upload: {e}")
+                        
     tab_results, tab_time, tab_ferias, tab_feedbacks, tab_banco, tab_ia = st.tabs(["📊 Meus Resultados", "🦁 Visão do Time", "🏖️ Minhas Férias", "📝 Meus Feedbacks", "⏰ Meu Banco de Horas", "🤖 Assistente IA"])
 
     with tab_results:
@@ -2031,14 +2083,14 @@ else:
                         fig_line_voz.update_yaxes(visible=False)
                         st.plotly_chart(fig_line_voz, use_container_width=True)
 
-    # --- NOVA ABA: VISÃO DO TIME (OPERADOR) ---
+  # --- NOVA ABA: VISÃO DO TIME (OPERADOR) ---
     with tab_time:
         st.markdown("### 🦁 Visão Geral do Time")
         st.info("Aqui você acompanha como estamos indo como equipe. Lembre-se: quando o time ganha, todos ganham!")
 
         if df_dados is not None:
             # Opção de Ignorar Pontualidade
-            ignorar_pont_op = st.checkbox("Recalcular Visão Global sem Pontualidade", value=False)
+            ignorar_pont_op = st.checkbox("Recalcular Visão Global sem Pontualidade", key="chk_pont_op", value=False)
             
             if tem_tam:
                 df_base = df_dados[df_dados['Indicador'] == 'TAM'][['Colaborador', 'Diamantes', 'Max. Diamantes']].set_index('Colaborador').copy()
@@ -2069,7 +2121,79 @@ else:
                 share = (user_dia / total_dia_team)
                 msg_share = f"Você representa **{share:.1%}** do resultado da equipe."
 
-            # Display
+            # ------------------ PÓDIO SOFISTAS 🦁 (OPERADOR) ------------------
+            st.markdown("---")
+            st.markdown("### 🏆 Pódio Team Sofistas - Top 3")
+            
+            if not df_media_team.empty:
+                # Ordena pelo resultado e pega o top 3 (ignorando os nomes com erro ⚠️)
+                df_podio = df_media_team[~df_media_team['Colaborador'].str.startswith('⚠️')].sort_values(by='Diamantes', ascending=False).head(3).reset_index(drop=True)
+                
+                if len(df_podio) >= 1:
+                    col1, col2, col3 = st.columns(3)
+                    
+                    # Posições do Pódio no Layout (2º lugar na esquerda, 1º no meio, 3º na direita)
+                    ordem_colunas = [col2, col1, col3] 
+                    posicoes_legenda = ["🥇 1º LUGAR", "🥈 2º LUGAR", "🥉 3º LUGAR"]
+                    cores_borda = ["#d4af37", "#a9a9a9", "#cd7f32"] # Ouro, Prata, Bronze
+
+                    for i, col in enumerate(ordem_colunas):
+                        if i < len(df_podio):
+                            op_data = df_podio.iloc[i]
+                            op_nome = op_data['Colaborador']
+                            op_diamantes = int(op_data['Diamantes'])
+                            op_perc = op_data['% Atingimento']
+                            
+                            # Padroniza o nome para carregar a foto
+                            op_seguro_foto = normalizar_chave(op_nome).replace(" ", ".")
+                            op_caminho_foto = os.path.join(PASTA_FOTOS, f"{op_seguro_foto}.png")
+
+                            with col:
+                                st.markdown(f"<h4 style='text-align: center; color: #003366;'>{posicoes_legenda[i]}</h4>", unsafe_allow_html=True)
+                                
+                                st.markdown(f"""
+                                    <div style="
+                                        background-color: #FFF;
+                                        border: 4px solid {cores_borda[i]};
+                                        padding: 15px;
+                                        border-radius: 12px;
+                                        text-align: center;
+                                        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+                                        margin-bottom: 20px;
+                                    ">
+                                """, unsafe_allow_html=True)
+                                
+                                # Foto Redonda do Pódio
+                                if os.path.exists(op_caminho_foto):
+                                    st.markdown(f"""
+                                        <style>
+                                            .podio-foto-{i} {{
+                                                border-radius: 50%;
+                                                width: 100px;
+                                                height: 100px;
+                                                object-fit: cover;
+                                                border: 4px solid {cores_borda[i]};
+                                                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                                                display: block;
+                                                margin-left: auto;
+                                                margin-right: auto;
+                                                margin-bottom: 10px;
+                                            }}
+                                        </style>
+                                        <img src="data:image/png;base64,{base64.b64encode(open(op_caminho_foto, "rb").read()).decode()}" class="podio-foto-{i}">
+                                    """, unsafe_allow_html=True)
+                                else:
+                                    st.markdown("<h1 style='font-size: 60px; text-align: center; margin:0;'>👤</h1>", unsafe_allow_html=True)
+                                    
+                                st.markdown(f"""
+                                    <p style="font-size: 1.1em; font-weight: bold; color: #333; margin: 5px 0;">{op_nome.title().split()[0]}</p>
+                                    <p style="font-size: 1.5em; font-weight: 800; color: {cores_borda[i]}; margin: 5px 0;">💎 {op_diamantes}</p>
+                                    <p style="font-size: 0.9em; color: #666; margin: 0;">{op_perc:.2%}</p>
+                                    </div>
+                                """, unsafe_allow_html=True)
+            st.markdown("---")
+
+            # Display Global
             c1, c2 = st.columns(2)
             c1.markdown(f"#### 🦁 Média Global da Equipe: **{perc_team:.1%}**")
             c2.success(msg_share)
@@ -2085,7 +2209,6 @@ else:
             ))
             fig_team.update_layout(height=250, margin=dict(l=20, r=20, t=30, b=20))
             st.plotly_chart(fig_team, use_container_width=True)
-
     with tab_ferias:
         st.markdown("### 🗓️ Planejamento de Férias")
         st.markdown(f"<div class='vacation-card'><p class='vacation-title'>Suas próximas férias estão programadas para:</p><div class='vacation-date'>{minhas_ferias}</div><p class='vacation-note'>*Sujeito a alteração.</p></div>", unsafe_allow_html=True)
