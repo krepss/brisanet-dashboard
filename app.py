@@ -16,12 +16,10 @@ import google.generativeai as genai
 LOGO_FILE = "logo.png"
 PASTA_FOTOS = "fotos_perfil" 
 
-# Busca a senha no cofre seguro. Se por acaso você esquecer de configurar o cofre, 
-# ele usa uma de emergência para o sistema não sair do ar.
-try:
-    SENHA_ADMIN = st.secrets["SENHA_GESTOR"]
-except:
-    SENHA_ADMIN = "admin123" # Senha de emergência caso o cofre falhe
+# Busca a senha EXCLUSIVAMENTE no cofre seguro. 
+# O .get() faz com que, se o cofre não existir, a senha vire 'None' (Nulo).
+# Assim, é impossível alguém acertar a senha, trancando o sistema 100%.
+SENHA_ADMIN = st.secrets.get("SENHA_GESTOR", None)
 
 USUARIOS_ADMIN = ['gestor', 'admin']
 
