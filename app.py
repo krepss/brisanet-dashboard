@@ -1861,26 +1861,44 @@ else:
     # ---------------------------------------------------------
     # ABA 1: MEUS RESULTADOS
     # ---------------------------------------------------------
-    with tab_results:
-        # UPLOAD DA FOTO DO OPERADOR
+    # UPLOAD DA FOTO DO OPERADOR
         with st.expander("📸 Atualizar Minha Foto de Perfil", expanded=False):
             upload_foto = st.file_uploader("Escolha sua foto (PNG ou JPG):", type=['png', 'jpg', 'jpeg'], key="up_foto_propria")
-            if st.button("📤 Salvar Minha Foto", type="primary"):
-                if not upload_foto:
-                    st.error("⚠️ Por favor, escolha uma imagem primeiro.")
-                else:
-                    try:
-                        with open(caminho_foto_user, "wb") as w_foto:
-                            w_foto.write(upload_foto.getbuffer())
-                        if sincronizar_com_github(caminho_foto_user, f"Foto atualizada pelo usuário: {nome_logado}"):
-                            st.success("✅ Sua foto foi atualizada com sucesso!")
+            
+            # Criamos duas colunas para colocar os botões lado a lado
+            col_up, col_del = st.columns(2)
+            
+            with col_up:
+                if st.button("📤 Salvar Minha Foto", type="primary", use_container_width=True):
+                    if not upload_foto:
+                        st.error("⚠️ Por favor, escolha uma imagem primeiro.")
+                    else:
+                        try:
+                            with open(caminho_foto_user, "wb") as w_foto:
+                                w_foto.write(upload_foto.getbuffer())
+                            if sincronizar_com_github(caminho_foto_user, f"Foto atualizada pelo usuário: {nome_logado}"):
+                                st.success("✅ Sua foto foi atualizada com sucesso!")
+                                import time
+                                time.sleep(1.5)
+                                st.rerun()
+                            else:
+                                st.error("❌ Erro ao sincronizar com o GitHub.")
+                        except Exception as e:
+                            st.error(f"Erro no upload: {e}")
+            
+            with col_del:
+                if st.button("🗑️ Remover Foto", use_container_width=True):
+                    if os.path.exists(caminho_foto_user):
+                        try:
+                            os.remove(caminho_foto_user)
+                            st.success("✅ Foto removida com sucesso!")
                             import time
                             time.sleep(1.5)
                             st.rerun()
-                        else:
-                            st.error("❌ Erro ao sincronizar com o GitHub.")
-                    except Exception as e:
-                        st.error(f"Erro no upload: {e}")
+                        except Exception as e:
+                            st.error(f"Erro ao deletar: {e}")
+                    else:
+                        st.warning("⚠️ Você não tem uma foto cadastrada para remover.")
 
         st.markdown("---")
         
