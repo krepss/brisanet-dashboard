@@ -6,3 +6,4 @@ jinja2
 openpyxl
 requests
 extra-streamlit-components
+google-generativeai
