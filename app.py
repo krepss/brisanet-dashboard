@@ -527,18 +527,33 @@ def carregar_usuarios():
     if arquivos:
         df = ler_csv_inteligente(arquivos[0])
         if df is not None:
-            df.columns = df.columns.str.lower()
+            # 1. Padroniza os nomes para minúsculo e tira espaços
+            df.columns = df.columns.str.lower().str.strip()
+            
+            # 2. SEGREDO AQUI: Remove colunas duplicadas acidentais do CSV
+            df = df.loc[:, ~df.columns.duplicated()].copy()
+            
             col_email = next((c for c in df.columns if 'mail' in c), None)
             col_nome = next((c for c in df.columns if 'colaborador' in c or 'nome' in c), None)
             col_ferias = next((c for c in df.columns if 'ferias' in c or 'férias' in c), None)
+            
             if col_email and col_nome:
                 rename_map = {col_email: 'email', col_nome: 'nome'}
                 if col_ferias: rename_map[col_ferias] = 'ferias'
+                
                 df.rename(columns=rename_map, inplace=True)
+                
+                # 3. Garante novamente que não há duplicidade após renomear
+                df = df.loc[:, ~df.columns.duplicated()].copy()
+                
+                # Agora o .str funciona perfeitamente, pois garantimos ser uma coluna única!
                 df['email'] = df['email'].astype(str).str.strip().str.lower()
                 df['nome'] = df['nome'].apply(normalizar_chave)
-                if 'ferias' not in df.columns: df['ferias'] = "Não informado"
-                else: df['ferias'] = df['ferias'].astype(str).replace('nan', 'Não informado')
+                
+                if 'ferias' not in df.columns: 
+                    df['ferias'] = "Não informado"
+                else: 
+                    df['ferias'] = df['ferias'].astype(str).replace('nan', 'Não informado')
                 return df
     return None
 
