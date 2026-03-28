@@ -685,7 +685,7 @@ if not st.session_state['logado']:
                             else: st.error("🚫 Usuário não encontrado na base. Verifique seu e-mail.")
                         else: st.error("⚠️ Base de usuários não carregada.")
         
-       with tab_senha:
+with tab_senha:
         # 1. Verifica se a pessoa acabou de criar a senha com sucesso
         if st.session_state.get('senha_criada_sucesso', False):
             st.success("✅ Senha registrada com sucesso!")
