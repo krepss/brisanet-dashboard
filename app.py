@@ -730,7 +730,7 @@ st.markdown(f"""
         </div>
     </div>
     <div style="text-align: right;">
-        <h4>Olá, {nome_logado.split()[0]}! 👋</h4>
+        st.write(f"<h4>Olá, {primeiro_nome}! 👋</h4>", unsafe_allow_html=True))
         <p class="sub-text" style="font-weight: bold !important;">{ativos_texto}</p>
     </div>
 </div>
