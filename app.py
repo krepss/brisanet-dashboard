@@ -11,6 +11,7 @@ from datetime import datetime, timezone, timedelta
 import unicodedata
 import extra_streamlit_components as stx
 import google.generativeai as genai
+import time
 
 # --- CONFIGURAÇÃO DE ARQUIVOS E ACESSOS ---
 LOGO_FILE = "logo.png"
