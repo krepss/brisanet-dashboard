@@ -719,7 +719,7 @@ if os.path.exists(LOGO_FILE):
             encoded_string = base64.b64encode(image_file.read()).decode()
         logo_html = f'<img src="data:image/png;base64,{encoded_string}" style="height: 60px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">'
     except: pass
-
+primeiro_nome = nome_logado.split()[0] if nome_logado and str(nome_logado).strip() else "Usuário"
 st.markdown(f"""
 <div class="top-banner">
     <div style="display: flex; align-items: center; gap: 20px;">
@@ -730,7 +730,7 @@ st.markdown(f"""
         </div>
     </div>
     <div style="text-align: right;">
-        st.write(f"<h4>Olá, {primeiro_nome}! 👋</h4>", unsafe_allow_html=True))
+        <h4>Olá, {primeiro_nome}! 👋</h4>
         <p class="sub-text" style="font-weight: bold !important;">{ativos_texto}</p>
     </div>
 </div>
