@@ -729,8 +729,8 @@ with tab_senha:
                         else:
                             st.error("🚫 E-mail não encontrado na base da operação.")
 
-    st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
-    st.stop()
+        st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
+        st.stop()
 # ==========================================
 # --- 5. BARRA SUPERIOR E LÓGICA GLOBAL ---
 # ==========================================
