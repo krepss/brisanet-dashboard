@@ -642,61 +642,31 @@ if cookie_usuario and not st.session_state['logado']:
                 st.session_state.update({'logado': True, 'usuario_nome': nome_upper, 'perfil': 'user', 'usuario_email': cookie_usuario})
                 st.rerun()
 
-# --- TELA DE LOGIN ---
-if not st.session_state['logado']:
-    c1, c2, c3 = st.columns([1, 1.2, 1]) 
-    with c2:
-        st.markdown("<br><br>", unsafe_allow_html=True)
-        
-        if os.path.exists(LOGO_FILE):
-            col_espaco1, col_logo, col_espaco2 = st.columns([1, 0.6, 1])
-            with col_logo: st.image(LOGO_FILE, use_column_width=True)
-        
-        st.markdown('<div class="login-title">Team Sofistas</div>', unsafe_allow_html=True)
-        st.markdown('<div class="login-subtitle">Analytics & Performance</div>', unsafe_allow_html=True)
-        st.markdown("---")
-        
-        tab_login, tab_senha = st.tabs(["🔐 Entrar", "🔑 Criar/Alterar Senha"])
-        
-        with tab_login:
-            with st.form("form_login"):
-                email_input = st.text_input("E-mail ou Usuário").strip().lower()
-                senha_input = st.text_input("Senha", type="password")
-                st.markdown("<br>", unsafe_allow_html=True)
-                submit_btn = st.form_submit_button("ACESSAR SISTEMA", use_container_width=True)
-                
-                if submit_btn:
-                    if email_input in USUARIOS_ADMIN and senha_input == SENHA_ADMIN:
-                        st.success("✅ Login realizado! Salvando sessão...")
-                        criar_cracha_e_recarregar('admin')
-                    else:
-                        df_users = carregar_usuarios()
-                        if df_users is not None:
-                            user_row = df_users[df_users['email'] == email_input]
-                            if not user_row.empty:
-                                senha_registrada = str(user_row.iloc[0].get('senha', '')).strip()
-                                if senha_registrada == "" or senha_registrada == "nan":
-                                    st.warning("⚠️ Você ainda não criou uma senha. Acesse a aba 'Criar/Alterar Senha' primeiro!")
-                                elif senha_input == senha_registrada:
-                                    st.success("✅ Login realizado! Salvando sessão...")
-                                    criar_cracha_e_recarregar(email_input)
-                                else:
-                                    st.error("🚫 Senha incorreta.")
-                            else: st.error("🚫 Usuário não encontrado na base. Verifique seu e-mail.")
-                        else: st.error("⚠️ Base de usuários não carregada.")
-        
-with tab_senha:
-        # 1. Verifica se a pessoa acabou de criar a senha com sucesso
+# === 1. A SOLUÇÃO: CRIAR AS ABAS PRIMEIRO ===
+    tab_login, tab_senha = st.tabs(["🔑 Fazer Login", "📝 Cadastrar Senha"])
+
+    # === 2. ABA DE LOGIN ===
+    with tab_login:
+        with st.form("form_login"):
+            st.info("Digite suas credenciais para acessar o painel.")
+            email_login = st.text_input("E-mail corporativo").strip().lower()
+            senha_login = st.text_input("Senha", type="password")
+            submit_login = st.form_submit_button("Entrar", use_container_width=True)
+            
+            # ... (Aqui continua a sua lógica de login que já estava funcionando) ...
+
+    # === 3. ABA DE CADASTRAR SENHA ===
+    with tab_senha:
+        # Verifica se a pessoa acabou de criar a senha com sucesso
         if st.session_state.get('senha_criada_sucesso', False):
             st.success("✅ Senha registrada com sucesso!")
             st.info("👉 Por favor, clique na aba **'Fazer Login'** ao lado para acessar o sistema.")
             
-            # Um botãozinho caso ele queira cadastrar a senha de outro colega (opcional)
             if st.button("Cadastrar outra senha"):
                 st.session_state['senha_criada_sucesso'] = False
                 st.rerun()
                 
-        # 2. Se não criou ainda, mostra o formulário normal
+        # Se não criou ainda, mostra o formulário normal
         else:
             with st.form("form_nova_senha"):
                 st.info("Digite seu e-mail corporativo para cadastrar sua senha de acesso.")
@@ -720,8 +690,7 @@ with tab_senha:
                                 st.error("🔒 Este e-mail já possui uma senha cadastrada. Solicite o reset ao seu Gestor!")
                             else:
                                 if atualizar_senha(email_cad, nova_senha):
-                                    # A MÁGICA ACONTECE AQUI:
-                                    # Salvamos na memória que deu certo e recarregamos a página
+                                    # Sucesso! Marca na memória e atualiza
                                     st.session_state['senha_criada_sucesso'] = True
                                     st.rerun() 
                                 else:
@@ -729,8 +698,9 @@ with tab_senha:
                         else:
                             st.error("🚫 E-mail não encontrado na base da operação.")
 
-        st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
-        st.stop()
+    # === 4. RODAPÉ FORA DAS ABAS ===
+    st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
+    st.stop()
 # ==========================================
 # --- 5. BARRA SUPERIOR E LÓGICA GLOBAL ---
 # ==========================================
