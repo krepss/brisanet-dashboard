@@ -1831,10 +1831,12 @@ else:
             st.markdown("<h1 style='font-size: 65px; text-align: center; margin:0; margin-top: 5px;'>👤</h1>", unsafe_allow_html=True)
 
     with col_texto_perfil:
-        st.markdown(f"## 🚀 Olá, **{nome_logado.split()[0]}**!")
+        # 1. Cria a variável blindada ANTES de jogar na tela
+        primeiro_nome = nome_logado.split()[0] if nome_logado and str(nome_logado).strip() else "Equipe"
+        
+        # 2. Usa a variável segura no Markdown
+        st.markdown(f"## 🚀 Olá, **{primeiro_nome}**!")
         st.markdown(f"<div style='display: flex; align-items: center; margin-top:-15px; color: #666; font-size:0.9em;'><span style='margin-right: 15px;'>📅 Referência: <b>{periodo_label}</b></span><span class='update-badge' style='background-color:#e0f7fa; color:#006064;'>🕒 Atualizado em: {obter_data_atualizacao()}</span></div>", unsafe_allow_html=True)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
     
     # --- BUSCA FÉRIAS DO OPERADOR ---
     minhas_ferias = "Não informado"
