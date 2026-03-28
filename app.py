@@ -604,7 +604,9 @@ def atualizar_senha(email, nova_senha):
                 sincronizar_com_github(arq, f"Senha atualizada para o usuario: {email}")
                 return True
     return False
+# ==========================================
 # --- 4. LOGIN RENOVADO (COM COOKIES BLINDADOS) ---
+# ==========================================
 import extra_streamlit_components as stx
 import streamlit.components.v1 as components
 
@@ -630,7 +632,7 @@ cookie_usuario = cookie_manager.get(cookie="usuario_logado")
 
 # Auto-Login se o crachá existir
 if cookie_usuario and not st.session_state['logado']:
-    if cookie_usuario == 'admin':
+    if cookie_usuario == 'admin' or cookie_usuario == 'gestor':
         st.session_state.update({'logado': True, 'usuario_nome': 'Gestor', 'perfil': 'admin', 'usuario_email': 'admin'})
         st.rerun()
     else:
@@ -642,7 +644,10 @@ if cookie_usuario and not st.session_state['logado']:
                 st.session_state.update({'logado': True, 'usuario_nome': nome_upper, 'perfil': 'user', 'usuario_email': cookie_usuario})
                 st.rerun()
 
-# === 1. A SOLUÇÃO: CRIAR AS ABAS PRIMEIRO ===
+# SÓ MOSTRA A TELA DE LOGIN SE NÃO ESTIVER LOGADO
+if not st.session_state['logado']:
+    
+    # === 1. A SOLUÇÃO: CRIAR AS ABAS PRIMEIRO ===
     tab_login, tab_senha = st.tabs(["🔑 Fazer Login", "📝 Cadastrar Senha"])
 
     # === 2. ABA DE LOGIN ===
@@ -653,7 +658,31 @@ if cookie_usuario and not st.session_state['logado']:
             senha_login = st.text_input("Senha", type="password")
             submit_login = st.form_submit_button("Entrar", use_container_width=True)
             
-            # ... (Aqui continua a sua lógica de login que já estava funcionando) ...
+            if submit_login:
+                if email_login == 'admin' or email_login == 'gestor':
+                    if senha_login == SENHA_ADMIN:
+                        # SETA O NOME DO ADMIN E LOGA
+                        st.session_state.update({'logado': True, 'usuario_nome': 'Gestor', 'perfil': 'admin', 'usuario_email': 'admin'})
+                        criar_cracha_e_recarregar('admin')
+                    else:
+                        st.error("❌ Senha do Gestor incorreta.")
+                else:
+                    df_users = carregar_usuarios()
+                    if df_users is not None and email_login in df_users['email'].values:
+                        user_row = df_users[df_users['email'] == email_login]
+                        senha_banco = str(user_row.iloc[0].get('senha', '')).strip()
+
+                        if senha_banco == "" or senha_banco == "nan":
+                            st.warning("⚠️ Você ainda não cadastrou uma senha. Clique na aba 'Cadastrar Senha'.")
+                        elif senha_login == senha_banco:
+                            # SETA O NOME DO OPERADOR NA MEMÓRIA E LOGA
+                            nome_upper = user_row.iloc[0]['nome']
+                            st.session_state.update({'logado': True, 'usuario_nome': nome_upper, 'perfil': 'user', 'usuario_email': email_login})
+                            criar_cracha_e_recarregar(email_login)
+                        else:
+                            st.error("❌ Senha incorreta.")
+                    else:
+                        st.error("🚫 E-mail não encontrado na base da operação.")
 
     # === 3. ABA DE CADASTRAR SENHA ===
     with tab_senha:
