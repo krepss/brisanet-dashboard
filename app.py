@@ -620,44 +620,42 @@ def atualizar_senha(email, nova_senha):
                 return True
     return False
 # ==========================================
-# --- 4. LOGIN RENOVADO (COM COOKIES BLINDADOS) ---
+# --- 4. LOGIN RENOVADO (SEM DELAY E SEM PISCAR) ---
 # ==========================================
 import extra_streamlit_components as stx
 import streamlit.components.v1 as components
 
-# Removemos o cache. Iniciamos o gerenciador de cookies diretamente:
 cookie_manager = stx.CookieManager()
-
-# --- FUNÇÃO MÁGICA QUE GRAVA NO NAVEGADOR E APERTA F5 ---
-def criar_cracha_e_recarregar(email):
-    components.html(f"""
-    <script>
-        var date = new Date();
-        date.setTime(date.getTime() + (30*24*60*60*1000));
-        document.cookie = "usuario_logado={email}; expires=" + date.toUTCString() + "; path=/";
-        setTimeout(function() {{ window.parent.location.reload(); }}, 500);
-    </script>
-    """, height=0)
 
 if 'logado' not in st.session_state:
     st.session_state.update({'logado': False, 'usuario_nome': '', 'perfil': '', 'usuario_email': ''})
 
-# Lê o crachá salvo no navegador
 cookie_usuario = cookie_manager.get(cookie="usuario_logado")
 
-# Auto-Login se o crachá existir
+# Auto-Login (Lê o cookie sem piscar a tela)
 if cookie_usuario and not st.session_state['logado']:
     if cookie_usuario == 'admin' or cookie_usuario == 'gestor':
         st.session_state.update({'logado': True, 'usuario_nome': 'Gestor', 'perfil': 'admin', 'usuario_email': 'admin'})
         st.rerun()
     else:
         df_users = carregar_usuarios()
-        if df_users is not None:
+        if df_users is not None and cookie_usuario in df_users['email'].values:
             user_row = df_users[df_users['email'] == cookie_usuario]
             if not user_row.empty:
                 nome_upper = user_row.iloc[0]['nome']
                 st.session_state.update({'logado': True, 'usuario_nome': nome_upper, 'perfil': 'user', 'usuario_email': cookie_usuario})
                 st.rerun()
+
+# --- GRAVAÇÃO INVISÍVEL DO COOKIE ---
+# Se ele logou mas o cookie ainda não foi salvo no navegador, salva agora SILENCIOSAMENTE no fundo
+if st.session_state['logado'] and cookie_usuario != st.session_state['usuario_email']:
+    components.html(f"""
+    <script>
+        var date = new Date();
+        date.setTime(date.getTime() + (30*24*60*60*1000));
+        document.cookie = "usuario_logado={st.session_state['usuario_email']}; expires=" + date.toUTCString() + "; path=/";
+    </script>
+    """, height=0)
 
 # SÓ MOSTRA A TELA DE LOGIN SE NÃO ESTIVER LOGADO
 if not st.session_state['logado']:
@@ -680,13 +678,11 @@ if not st.session_state['logado']:
     """, unsafe_allow_html=True)
 
     # --- 2. CENTRALIZANDO O FORMULÁRIO NA TELA ---
-    # Usamos colunas para espremer o login no meio da tela e não deixar ele esticado
     c_vazio_esq, c_formulario, c_vazio_dir = st.columns([1, 1.5, 1])
     
     with c_formulario:
         tab_login, tab_senha = st.tabs(["🔑 Fazer Login", "📝 Cadastrar Senha"])
 
-        # === ABA DE LOGIN ===
         with tab_login:
             with st.form("form_login"):
                 st.info("Digite suas credenciais para acessar o painel.")
@@ -698,7 +694,7 @@ if not st.session_state['logado']:
                     if email_login == 'admin' or email_login == 'gestor':
                         if senha_login == SENHA_ADMIN:
                             st.session_state.update({'logado': True, 'usuario_nome': 'Gestor', 'perfil': 'admin', 'usuario_email': 'admin'})
-                            criar_cracha_e_recarregar('admin')
+                            st.rerun() # Troca a tela instantaneamente!
                         else:
                             st.error("❌ Senha do Gestor incorreta.")
                     else:
@@ -712,13 +708,12 @@ if not st.session_state['logado']:
                             elif senha_login == senha_banco:
                                 nome_upper = user_row.iloc[0]['nome']
                                 st.session_state.update({'logado': True, 'usuario_nome': nome_upper, 'perfil': 'user', 'usuario_email': email_login})
-                                criar_cracha_e_recarregar(email_login)
+                                st.rerun() # Troca a tela instantaneamente!
                             else:
                                 st.error("❌ Senha incorreta.")
                         else:
                             st.error("🚫 E-mail não encontrado na base da operação.")
 
-        # === ABA DE CADASTRAR SENHA ===
         with tab_senha:
             if st.session_state.get('senha_criada_sucesso', False):
                 st.success("✅ Senha registrada com sucesso!")
@@ -757,7 +752,6 @@ if not st.session_state['logado']:
                             else:
                                 st.error("🚫 E-mail não encontrado na base da operação.")
 
-    # Rodapé centralizado embaixo do login
     st.markdown('<div class="dev-footer">Desenvolvido por Klebson Davi - Supervisor de Suporte Técnico</div>', unsafe_allow_html=True)
     st.stop()
 # ==========================================
