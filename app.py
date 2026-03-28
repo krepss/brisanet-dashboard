@@ -2184,7 +2184,8 @@ else:
             st.markdown("### 🏆 Pódio Team Sofistas - Top 3")
             
             if not df_media_team.empty:
-                df_podio = df_media_team[~df_media_team['Colaborador'].str.startswith('⚠️')].sort_values(by='Diamantes', ascending=False).head(3).reset_index(drop=True)
+                # CORREÇÃO AQUI: Ordenando matematicamente pelo % de Atingimento, e não mais por Diamantes
+                df_podio = df_media_team[~df_media_team['Colaborador'].str.startswith('⚠️')].sort_values(by='% Atingimento', ascending=False).head(3).reset_index(drop=True)
                 
                 if len(df_podio) >= 1:
                     col1, col2, col3 = st.columns(3)
@@ -2237,7 +2238,6 @@ else:
                                 else:
                                     st.markdown("<h1 style='font-size: 60px; text-align: center; margin:0;'>👤</h1>", unsafe_allow_html=True)
                                     
-                                # AJUSTE: Removemos o .split()[0] para mostrar Nome e Sobrenome e centralizamos
                                 st.markdown(f"""
                                     <p style="font-size: 1.1em; font-weight: bold; color: #333; margin: 5px 0; text-align: center;">{op_nome.title()}</p>
                                     <p style="font-size: 1.8em; font-weight: 800; color: {cores_borda[i]}; margin: 5px 0; text-align: center;">{op_perc:.2%}</p>
