@@ -685,7 +685,19 @@ if not st.session_state['logado']:
                             else: st.error("🚫 Usuário não encontrado na base. Verifique seu e-mail.")
                         else: st.error("⚠️ Base de usuários não carregada.")
         
-        with tab_senha:
+       with tab_senha:
+        # 1. Verifica se a pessoa acabou de criar a senha com sucesso
+        if st.session_state.get('senha_criada_sucesso', False):
+            st.success("✅ Senha registrada com sucesso!")
+            st.info("👉 Por favor, clique na aba **'Fazer Login'** ao lado para acessar o sistema.")
+            
+            # Um botãozinho caso ele queira cadastrar a senha de outro colega (opcional)
+            if st.button("Cadastrar outra senha"):
+                st.session_state['senha_criada_sucesso'] = False
+                st.rerun()
+                
+        # 2. Se não criou ainda, mostra o formulário normal
+        else:
             with st.form("form_nova_senha"):
                 st.info("Digite seu e-mail corporativo para cadastrar sua senha de acesso.")
                 email_cad = st.text_input("Seu E-mail").strip().lower()
@@ -708,9 +720,10 @@ if not st.session_state['logado']:
                                 st.error("🔒 Este e-mail já possui uma senha cadastrada. Solicite o reset ao seu Gestor!")
                             else:
                                 if atualizar_senha(email_cad, nova_senha):
-                                    st.success("✅ Senha registrada com sucesso! Redirecionando para o login...")
-                                    time.sleep(1.5)
-                                    st.rerun()
+                                    # A MÁGICA ACONTECE AQUI:
+                                    # Salvamos na memória que deu certo e recarregamos a página
+                                    st.session_state['senha_criada_sucesso'] = True
+                                    st.rerun() 
                                 else:
                                     st.error("❌ Erro ao salvar no banco de dados.")
                         else:
