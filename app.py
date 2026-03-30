@@ -1813,42 +1813,44 @@ Vamos com tudo! 🔥"""
         st.info("Faça perguntas sobre os resultados da equipe ou peça para eu redigir um feedback baseado nos números!")
 
         if "GEMINI_API_KEY" in st.secrets:
-            # Configura a chave e chama o modelo mais inteligente
             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
             model = genai.GenerativeModel('gemini-2.5-flash')
 
-            # Cria a memória da conversa
             if "mensagens_ia" not in st.session_state:
                 st.session_state.mensagens_ia = []
 
-            # Mostra as mensagens na tela
-            for msg in st.session_state.mensagens_ia:
-                with st.chat_message(msg["role"]):
-                    st.markdown(msg["content"])
+            # 1. A MÁGICA: Criamos uma caixa com scroll (tamanho fixo) para as mensagens
+            caixa_chat_gestor = st.container(height=450)
 
-            # Caixa para você digitar
+            # 2. Desenhamos o histórico SEMPRE dentro da caixa
+            with caixa_chat_gestor:
+                for msg in st.session_state.mensagens_ia:
+                    with st.chat_message(msg["role"]):
+                        st.markdown(msg["content"])
+
+            # 3. O input fica FORA da caixa, garantindo que as respostas fiquem EM CIMA dele
             if prompt := st.chat_input("Ex: Escreva um feedback elogiando o top performer de CSAT"):
-                with st.chat_message("user"):
-                    st.markdown(prompt)
+                
                 st.session_state.mensagens_ia.append({"role": "user", "content": prompt})
 
-                # Pega a tabela de dados atual (se existir)
-                contexto_dados = ""
-                if df_dados is not None and not df_dados.empty:
-                    contexto_dados = f"\n\n[DADOS ATUAIS DA EQUIPE]:\n{df_dados.to_csv(index=False)}"
+                # 4. Forçamos a pergunta e a resposta a aparecerem DENTRO da caixa
+                with caixa_chat_gestor:
+                    with st.chat_message("user"):
+                        st.markdown(prompt)
 
-                # Responde
-                with st.chat_message("assistant"):
-                    with st.spinner("Analisando a operação..."):
-                        try:
-                            # Monta o prompt com instruções para a IA ser uma assistente de call center
-                            prompt_completo = f"Você é um assistente de gestão de call center chamado Sofistas AI. Use os dados a seguir para responder a pergunta. Seja direto e profissional.\n{contexto_dados}\n\nPergunta do Gestor: {prompt}"
-                            
-                            response = model.generate_content(prompt_completo)
-                            st.markdown(response.text)
-                            st.session_state.mensagens_ia.append({"role": "assistant", "content": response.text})
-                        except Exception as e:
-                            st.error(f"Erro de conexão com o Gemini: {e}")
+                    contexto_dados = ""
+                    if df_dados is not None and not df_dados.empty:
+                        contexto_dados = f"\n\n[DADOS ATUAIS DA EQUIPE]:\n{df_dados.to_csv(index=False)}"
+
+                    with st.chat_message("assistant"):
+                        with st.spinner("Analisando a operação..."):
+                            try:
+                                prompt_completo = f"Você é um assistente de gestão de call center chamado Sofistas AI. Use os dados a seguir para responder a pergunta. Seja direto e profissional.\n{contexto_dados}\n\nPergunta do Gestor: {prompt}"
+                                response = model.generate_content(prompt_completo)
+                                st.markdown(response.text)
+                                st.session_state.mensagens_ia.append({"role": "assistant", "content": response.text})
+                            except Exception as e:
+                                st.error(f"Erro de conexão com o Gemini: {e}")
         else:
             st.warning("⚠️ Chave da API do Gemini (GEMINI_API_KEY) não encontrada nas configurações secretas do Streamlit.")
 # ==========================================
