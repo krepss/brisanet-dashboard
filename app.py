@@ -1784,30 +1784,35 @@ Vamos com tudo! 🔥"""
                                     dados_kpi_str = df_user_fb[['Indicador', '% Atingimento']].to_csv(index=False)
                                     
                                     prompt_ia = f"""
-                                    Aja como se você fosse EU, o Supervisor de Suporte Técnico (experiente, empático e focado em resultados).
-                                    Sua tarefa é escrever o feedback diretamente para o MEU operador, {colab_fb}, em PRIMEIRA PESSOA (como se eu estivesse conversando ou mandando uma mensagem para ele).
+                                    Aja como se você fosse EU, o Supervisor de Suporte Técnico (experiente, muito empático, humano e focado no desenvolvimento da equipe).
+                                    Sua tarefa é estruturar o feedback para o MEU operador, {colab_fb}, em PRIMEIRA PESSOA (como se eu estivesse conversando diretamente com ele).
                                     
                                     Aqui estão os indicadores de performance dele neste mês:
                                     {dados_kpi_str}
                                     O Resultado Geral (TAM) dele fechou em {tam_v:.1%}.
                                     
-                                    Meu contexto/observação extra sobre ele para você incluir no texto: {contexto_gestor}
+                                    Meu contexto/observação extra sobre ele para você incluir de forma natural no texto: {contexto_gestor}
                                     
-                                    Escreva um texto fluido, humano, inspirador e com tom de liderança parceira. Use termos como "eu notei", "nós vamos trabalhar juntos", "meu objetivo contigo é", "eu vi que o seu indicador...".
-                                    
+                                    Escreva um texto extremamente humanizado e encorajador. Fuja do tom robótico ou punitivo. 
                                     Gere a resposta com a seguinte estrutura EXATA:
                                     
-                                    ### 🎯 Meu Diagnóstico Operacional
-                                    (Análise detalhada conversando com ele sobre onde ele foi bem e qual é o ofensor principal que precisamos atacar)
+                                    ### 🌟 Seus Pontos Fortes (Reconhecimento)
+                                    (Fale diretamente com ele. Comece valorizando o esforço dele, citando os indicadores em que ele foi bem ou superou a meta. Faça-o se sentir importante e essencial para o nosso time.)
+                                    
+                                    ### 🎯 Onde Vamos Focar (Ponto de Atenção)
+                                    (Aponte o indicador mais crítico ou o gargalo principal de forma construtiva e amigável. Use abordagens como "Notei que podemos ajustar...", "Onde a gente pode virar o jogo juntos é...")
                                     
                                     ### 🚀 Nosso Plano de Ação
-                                    (2 a 3 passos práticos do que nós vamos fazer para melhorar o indicador mais crítico no dia a dia)
+                                    (Forneça 2 a 3 dicas super práticas, rápidas e aplicáveis no dia a dia do suporte técnico para ele melhorar esse ponto de atenção. Mostre que eu, como supervisor, estou lado a lado com ele para ajudar.)
                                     
-                                    ### 💡 Meu Feedback Estratégico
-                                    (Mensagem motivacional minha de alinhamento, fechamento e parceria)
-                                    
-                                    ### 📧 Mensagem para o WhatsApp
-                                    (Um texto pronto, amigável e direto, resumindo os pontos acima, pronto para eu copiar e enviar para ele)
+                                    ### 📧 Resumo Oficial para Envio (E-mail / WhatsApp)
+                                    (Escreva uma mensagem pronta, formatada de forma limpa e amigável, para eu simplesmente copiar e enviar para ele. 
+                                    Esta mensagem deve agir como um "Resumo do nosso 1:1", contendo:
+                                    1. Agradecimento pelo empenho no mês.
+                                    2. Destaque rápido do que ele fez de melhor.
+                                    3. Qual será o nosso foco de melhoria combinado.
+                                    4. Fechamento motivacional me colocando à disposição.
+                                    Assine como "Sua Liderança".)
                                     """
                                     
                                     resposta_fb = model.generate_content(prompt_ia)
