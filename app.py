@@ -1719,6 +1719,7 @@ Vamos com tudo! 🔥"""
                     else: st.error("Colunas não identificadas.")
                 except Exception as e: st.error(f"Erro: {e}")
 
+    # ------------------ FEEDBACKS GB ------------------
     # ------------------ FEEDBACKS GB (COM IA INTEGRADA) ------------------
     with tabs[11]:
         st.markdown("### 📝 Controle de Feedbacks (GB)")
@@ -1809,28 +1810,6 @@ Vamos com tudo! 🔥"""
                                     (Um texto pronto, amigável e direto, resumindo os pontos acima, pronto para eu copiar e enviar para ele)
                                     """
                                     
-                                    Aqui estão os indicadores de performance dele neste mês:
-                                    {dados_kpi_str}
-                                    O Resultado Geral (TAM) dele foi de {tam_v:.1%}.
-                                    
-                                    Contexto extra do supervisor direto que deve ser considerado: {contexto_gestor}
-                                    
-                                    Escreva um texto fluido, humano e inspirador. Não seja robótico. 
-                                    Gere a resposta com a seguinte estrutura EXATA:
-                                    
-                                    ### 🎯 Motivos / Diagnóstico Operacional
-                                    (Análise detalhada de onde ele foi bem e qual é o ofensor principal)
-                                    
-                                    ### 🚀 Plano de Ação
-                                    (2 a 3 passos práticos para ele melhorar o indicador mais crítico)
-                                    
-                                    ### 💡 Feedback Estratégico
-                                    (Mensagem motivacional de alinhamento e parceria)
-                                    
-                                    ### 📧 E-mail / Mensagem Sugerida (Para enviar ao operador)
-                                    (Um texto pronto, amigável e direto, resumindo os pontos acima, pronto para ser enviado por e-mail ou WhatsApp corporativo)
-                                    """
-                                    
                                     resposta_fb = model.generate_content(prompt_ia)
                                     # Salva na memória para não sumir se a tela recarregar
                                     st.session_state[f'fb_gerado_{colab_fb}'] = resposta_fb.text
@@ -1872,7 +1851,6 @@ Vamos com tudo! 🔥"""
             st.dataframe(df_fbs_hist.iloc[::-1], use_container_width=True, hide_index=True)
         else: 
             st.info("Nenhum feedback registrado no sistema até o momento.")
-    
 
 # ------------------ SOFISTAS AI (GEMINI) ------------------
     with tabs[12]:
@@ -1924,13 +1902,6 @@ Vamos com tudo! 🔥"""
 # --- 7. VISÃO DO OPERADOR ---
 # ==========================================
 else:
-    # --- 🔔 SISTEMA DE NOTIFICAÇÃO DE ATUALIZAÇÃO ---
-    data_atual_bd = obter_data_atualizacao()
-    # Verifica se a data da base de dados é diferente da última que o operador viu
-    if st.session_state.get('ultima_atualizacao_vista') != data_atual_bd:
-        st.toast(f"Novos dados disponíveis! Sua base de {periodo_label} foi atualizada.", icon="🚀")
-        # Atualiza a memória para não ficar apitando toda hora
-        st.session_state['ultima_atualizacao_vista'] = data_atual_bd
     # --- NOVO CABEÇALHO ALINHADO (FOTO E BOAS-VINDAS) ---
     nome_seguro_user = normalizar_chave(nome_logado).replace(" ", ".")
     caminho_foto_user = os.path.join(PASTA_FOTOS, f"{nome_seguro_user}.png")
@@ -1939,11 +1910,9 @@ else:
     
     with col_foto_perfil:
         if os.path.exists(caminho_foto_user):
-            
-            # 1. CSS puro sem o 'f' no início (Impossível dar erro de Sintaxe)
-            st.markdown("""
+            st.markdown(f"""
                 <style>
-                    .perfil-foto-ponta {
+                    .perfil-foto-ponta {{
                         border-radius: 50%;
                         width: 75px;
                         height: 75px;
@@ -1954,17 +1923,13 @@ else:
                         margin-left: auto;
                         margin-right: auto;
                         margin-top: 15px;
-                    }
+                    }}
                 </style>
+                <img src="data:image/png;base64,{base64.b64encode(open(caminho_foto_user, "rb").read()).decode()}" class="perfil-foto-ponta">
             """, unsafe_allow_html=True)
-            
-            # 2. Imagem processada separadamente
-            img_base64 = base64.b64encode(open(caminho_foto_user, "rb").read()).decode()
-            st.markdown(f'<img src="data:image/png;base64,{img_base64}" class="perfil-foto-ponta">', unsafe_allow_html=True)
-            
         else:
             st.markdown("<h1 style='font-size: 65px; text-align: center; margin:0; margin-top: 5px;'>👤</h1>", unsafe_allow_html=True)
-            
+
     with col_texto_perfil:
         # 1. Cria a variável blindada ANTES de jogar na tela
         primeiro_nome = nome_logado.split()[0] if nome_logado and str(nome_logado).strip() else "Equipe"
