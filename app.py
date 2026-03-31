@@ -1939,9 +1939,11 @@ else:
     
     with col_foto_perfil:
         if os.path.exists(caminho_foto_user):
-            st.markdown(f"""
+            
+            # 1. CSS puro sem o 'f' no início (Impossível dar erro de Sintaxe)
+            st.markdown("""
                 <style>
-                    .perfil-foto-ponta {{
+                    .perfil-foto-ponta {
                         border-radius: 50%;
                         width: 75px;
                         height: 75px;
@@ -1952,10 +1954,14 @@ else:
                         margin-left: auto;
                         margin-right: auto;
                         margin-top: 15px;
-                    }}
+                    }
                 </style>
-                <img src="data:image/png;base64,{base64.b64encode(open(caminho_foto_user, "rb").read()).decode()}" class="perfil-foto-ponta">
             """, unsafe_allow_html=True)
+            
+            # 2. Imagem processada separadamente
+            img_base64 = base64.b64encode(open(caminho_foto_user, "rb").read()).decode()
+            st.markdown(f'<img src="data:image/png;base64,{img_base64}" class="perfil-foto-ponta">', unsafe_allow_html=True)
+            
         else:
             st.markdown("<h1 style='font-size: 65px; text-align: center; margin:0; margin-top: 5px;'>👤</h1>", unsafe_allow_html=True)
             
