@@ -1719,21 +1719,18 @@ Vamos com tudo! 🔥"""
                     else: st.error("Colunas não identificadas.")
                 except Exception as e: st.error(f"Erro: {e}")
 
-    # ------------------ FEEDBACKS GB ------------------
+    # ------------------ FEEDBACKS GB (COM IA INTEGRADA) ------------------
     with tabs[11]:
         st.markdown("### 📝 Controle de Feedbacks (GB)")
         
-        # --- DIAGNÓSTICO DE ARQUIVO ---
         arquivo_padrao = os.path.exists('feedbacks_gb.csv')
         arquivo_backup = os.path.exists('feedbacks_gb_backup.csv')
-        
         status_msg = "❌ Nenhum banco de dados encontrado."
         if arquivo_padrao: status_msg = "✅ Banco de Dados Principal (feedbacks_gb.csv) encontrado."
         elif arquivo_backup: status_msg = "⚠️ Usando Backup (feedbacks_gb_backup.csv)."
         
         st.caption(f"Status do Sistema: {status_msg}")
-        
-        st.info("💡 **Objetivo:** Registrar feedback orientado a valor.")
+        st.info("💡 **Objetivo:** Registrar feedback orientado a valor, agora com ajuda da Inteligência Artificial!")
         
         if df_dados is not None and tem_tam:
             df_tam = df_dados[df_dados['Indicador'] == 'TAM'].copy()
@@ -1766,38 +1763,92 @@ Vamos com tudo! 🔥"""
                                 color = "normal" if round(val, 4) >= meta else "inverse"
                                 cols[j].metric(ind_nome, f"{val:.1%}", status_msg, delta_color=color)
                     
-                    piores_kpis = df_user_fb[(df_user_fb['Indicador'] != 'TAM') & (df_user_fb['% Atingimento'] < 0.85)]
-                    if not piores_kpis.empty:
-                        st.markdown("##### 💡 Sugestões de Abordagem (Smart Coach)")
-                        for _, row in piores_kpis.iterrows():
-                            st.markdown(f"⚠️ **{formatar_nome_visual(row['Indicador'])} ({row['% Atingimento']:.1%}):** {DICAS_KPI.get(row['Indicador'], 'Atenção aos processos.')}")
+                    st.markdown("---")
                     
+                    # --- NOVO: GERADOR DE FEEDBACK COM IA ---
+                    st.markdown("#### 🤖 1. Gerador Inteligente de Feedback (Sofistas AI)")
+                    st.write("Deixe a inteligência artificial cruzar os dados operacionais e criar um feedback humanizado, saindo do modelo engessado!")
+                    
+                    contexto_gestor = st.text_input("Alguma observação extra para a IA incluir? (Opcional):", placeholder="Ex: Elogie a empatia nas ligações, ou cobre mais agilidade no chat...")
+                    
+                    if st.button("✨ Gerar Feedback Completo com IA", type="primary", use_container_width=True):
+                        if "GEMINI_API_KEY" in st.secrets:
+                            with st.spinner("Sofistas AI está analisando os indicadores e escrevendo o feedback..."):
+                                try:
+                                    import google.generativeai as genai
+                                    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+                                    model = genai.GenerativeModel('gemini-2.5-flash')
+                                    
+                                    # Pega os números exatos do operador
+                                    dados_kpi_str = df_user_fb[['Indicador', '% Atingimento']].to_csv(index=False)
+                                    
+                                    prompt_ia = f"""
+                                    Você é um Gestor de Suporte Técnico experiente e empático em um provedor de internet.
+                                    Sua tarefa é escrever um rascunho de feedback personalizado para o operador {colab_fb}.
+                                    
+                                    Aqui estão os indicadores de performance dele neste mês:
+                                    {dados_kpi_str}
+                                    O Resultado Geral (TAM) dele foi de {tam_v:.1%}.
+                                    
+                                    Contexto extra do supervisor direto que deve ser considerado: {contexto_gestor}
+                                    
+                                    Escreva um texto fluido, humano e inspirador. Não seja robótico. 
+                                    Gere a resposta com a seguinte estrutura EXATA:
+                                    
+                                    ### 🎯 Motivos / Diagnóstico Operacional
+                                    (Análise detalhada de onde ele foi bem e qual é o ofensor principal)
+                                    
+                                    ### 🚀 Plano de Ação
+                                    (2 a 3 passos práticos para ele melhorar o indicador mais crítico)
+                                    
+                                    ### 💡 Feedback Estratégico
+                                    (Mensagem motivacional de alinhamento e parceria)
+                                    
+                                    ### 📧 E-mail / Mensagem Sugerida (Para enviar ao operador)
+                                    (Um texto pronto, amigável e direto, resumindo os pontos acima, pronto para ser enviado por e-mail ou WhatsApp corporativo)
+                                    """
+                                    
+                                    resposta_fb = model.generate_content(prompt_ia)
+                                    # Salva na memória para não sumir se a tela recarregar
+                                    st.session_state[f'fb_gerado_{colab_fb}'] = resposta_fb.text
+                                except Exception as e:
+                                    st.error(f"Erro ao conectar com a IA: {e}")
+                        else:
+                            st.warning("⚠️ Você precisa configurar a chave GEMINI_API_KEY no painel de Segredos (Secrets) do Streamlit.")
+                            
+                    # Mostra a resposta gerada de forma elegante
+                    if st.session_state.get(f'fb_gerado_{colab_fb}'):
+                        st.markdown("<div style='background-color: #f8f9fa; padding: 25px; border-radius: 10px; border-left: 5px solid #003366; box-shadow: 0 4px 10px rgba(0,0,0,0.05);'>", unsafe_allow_html=True)
+                        st.markdown(st.session_state[f'fb_gerado_{colab_fb}'])
+                        st.markdown("</div><br>", unsafe_allow_html=True)
+                        st.info("👆 Copie os trechos acima que você mais gostou e cole nas caixas abaixo para registrar oficialmente no sistema.")
+
+                    # --- FORMULÁRIO DE REGISTRO ---
+                    st.markdown("#### 💾 2. Registrar Feedback no Sistema")
                     with st.form("form_registro_fb"):
-                        motivo_txt = st.text_area("1. Motivo(s):")
-                        fb_valor_txt = st.text_area("2. Feedback:")
+                        motivo_txt = st.text_area("1. Motivo(s) / Diagnóstico:")
+                        fb_valor_txt = st.text_area("2. Feedback Estratégico:")
                         acao_txt = st.text_area("3. Plano de Ação:")
-                        if st.form_submit_button("💾 Salvar Registro e Gerar E-mail"):
-                            if not motivo_txt or not fb_valor_txt or not acao_txt: st.error("⚠️ Preencha todos os campos.")
+                        
+                        if st.form_submit_button("Salvar Registro Oficial"):
+                            if not motivo_txt or not fb_valor_txt or not acao_txt: 
+                                st.error("⚠️ Preencha os três campos para registrar.")
                             else:
                                 salvar_feedback_gb({"Data_Registro": datetime.now().strftime("%d/%m/%Y %H:%M"), "Periodo_Ref": periodo_label, "Colaborador": colab_fb, "Faixa": faixa_sel.split(" ")[0], "TAM": f"{tam_v:.1%}", "Motivo": motivo_txt, "Acao_GB": acao_txt, "Feedback_Valor": fb_valor_txt})
-                                st.success("✅ Feedback registrado! (A tabela atualizará no próximo clique)")
-                                
-                                # GERADOR DE EMAIL (MOSTRAR ANTES DE RECARREGAR)
-                                lista_kpis_email = "\n".join([f"* **{formatar_nome_visual(row['Indicador'])}:** {row['% Atingimento']:.1%}" for _, row in df_user_fb.iterrows()])
-                                if tam_v < 0.70: ab = f"O seu Resultado Geral (TAM) fechou em **{tam_v:.1%}**, abaixo da meta. Vamos focar na recuperação!"
-                                elif tam_v < 0.80: ab = f"O seu Resultado Geral (TAM) fechou em **{tam_v:.1%}**. Estamos quase lá! Vamos alinhar os ponteiros."
-                                elif tam_v < 0.90: ab = f"Parabéns! O seu Resultado Geral (TAM) fechou em **{tam_v:.1%}**, batendo a nossa meta."
-                                else: ab = f"Uau! O seu Resultado Geral (TAM) fechou em **{tam_v:.1%}**, resultado de extrema Excelência!"
-                                
-                                email_template = f"**Assunto:** Feedback Mensal - Resultado Operacional - {periodo_label}\n\nOlá, **{colab_fb}**. Tudo bem?\n\nGostaria de repassar os pontos referentes ao seu desempenho de **{periodo_label}**.\n{ab}\n\nAqui está o detalhamento dos seus indicadores:\n{lista_kpis_email}\n\n**Pontos Mapeados:**\n{motivo_txt}\n\n**Nosso Plano de Ação:**\n{acao_txt}\n\n**Feedback Estratégico:**\n{fb_valor_txt}\n\nConto com seu engajamento para o próximo ciclo!\n\nAtenciosamente,\nSua Liderança."
-                                
-                                st.markdown("### 📧 E-mail Gerado (Copie e cole):")
-                                st.code(email_template, language='markdown')
+                                st.success("✅ Feedback registrado e salvo na base com sucesso!")
+                                import time
+                                time.sleep(1.5)
+                                st.rerun()
 
             else: st.success(f"Nenhum colaborador encontrado na faixa.")
         
         st.markdown("---")
         st.markdown("### 📚 Base Geral de Feedbacks Aplicados")
+        df_fbs_hist = carregar_feedbacks_gb()
+        if df_fbs_hist is not None and not df_fbs_hist.empty: 
+            st.dataframe(df_fbs_hist.iloc[::-1], use_container_width=True, hide_index=True)
+        else: 
+            st.info("Nenhum feedback registrado no sistema até o momento.")
         
         # --- CARREGAMENTO ROBUSTO ---
         df_fbs_hist = carregar_feedbacks_gb()
