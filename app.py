@@ -1857,6 +1857,13 @@ Vamos com tudo! 🔥"""
 # --- 7. VISÃO DO OPERADOR ---
 # ==========================================
 else:
+    # --- 🔔 SISTEMA DE NOTIFICAÇÃO DE ATUALIZAÇÃO ---
+    data_atual_bd = obter_data_atualizacao()
+    # Verifica se a data da base de dados é diferente da última que o operador viu
+    if st.session_state.get('ultima_atualizacao_vista') != data_atual_bd:
+        st.toast(f"Novos dados disponíveis! Sua base de {periodo_label} foi atualizada.", icon="🚀")
+        # Atualiza a memória para não ficar apitando toda hora
+        st.session_state['ultima_atualizacao_vista'] = data_atual_bd
     # --- NOVO CABEÇALHO ALINHADO (FOTO E BOAS-VINDAS) ---
     nome_seguro_user = normalizar_chave(nome_logado).replace(" ", ".")
     caminho_foto_user = os.path.join(PASTA_FOTOS, f"{nome_seguro_user}.png")
