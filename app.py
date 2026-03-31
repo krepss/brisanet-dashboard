@@ -1958,6 +1958,7 @@ else:
             """, unsafe_allow_html=True)
         else:
             st.markdown("<h1 style='font-size: 65px; text-align: center; margin:0; margin-top: 5px;'>👤</h1>", unsafe_allow_html=True)
+            
     with col_texto_perfil:
         # 1. Cria a variável blindada ANTES de jogar na tela
         primeiro_nome = nome_logado.split()[0] if nome_logado and str(nome_logado).strip() else "Equipe"
