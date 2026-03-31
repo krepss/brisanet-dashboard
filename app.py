@@ -1783,8 +1783,31 @@ Vamos com tudo! 🔥"""
                                     dados_kpi_str = df_user_fb[['Indicador', '% Atingimento']].to_csv(index=False)
                                     
                                     prompt_ia = f"""
-                                    Você é um Gestor de Suporte Técnico experiente e empático em um provedor de internet.
-                                    Sua tarefa é escrever um rascunho de feedback personalizado para o operador {colab_fb}.
+                                    Aja como se você fosse EU, o Supervisor de Suporte Técnico (experiente, empático e focado em resultados).
+                                    Sua tarefa é escrever o feedback diretamente para o MEU operador, {colab_fb}, em PRIMEIRA PESSOA (como se eu estivesse conversando ou mandando uma mensagem para ele).
+                                    
+                                    Aqui estão os indicadores de performance dele neste mês:
+                                    {dados_kpi_str}
+                                    O Resultado Geral (TAM) dele fechou em {tam_v:.1%}.
+                                    
+                                    Meu contexto/observação extra sobre ele para você incluir no texto: {contexto_gestor}
+                                    
+                                    Escreva um texto fluido, humano, inspirador e com tom de liderança parceira. Use termos como "eu notei", "nós vamos trabalhar juntos", "meu objetivo contigo é", "eu vi que o seu indicador...".
+                                    
+                                    Gere a resposta com a seguinte estrutura EXATA:
+                                    
+                                    ### 🎯 Meu Diagnóstico Operacional
+                                    (Análise detalhada conversando com ele sobre onde ele foi bem e qual é o ofensor principal que precisamos atacar)
+                                    
+                                    ### 🚀 Nosso Plano de Ação
+                                    (2 a 3 passos práticos do que nós vamos fazer para melhorar o indicador mais crítico no dia a dia)
+                                    
+                                    ### 💡 Meu Feedback Estratégico
+                                    (Mensagem motivacional minha de alinhamento, fechamento e parceria)
+                                    
+                                    ### 📧 Mensagem para o WhatsApp
+                                    (Um texto pronto, amigável e direto, resumindo os pontos acima, pronto para eu copiar e enviar para ele)
+                                    """
                                     
                                     Aqui estão os indicadores de performance dele neste mês:
                                     {dados_kpi_str}
