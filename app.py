@@ -1849,14 +1849,7 @@ Vamos com tudo! 🔥"""
             st.dataframe(df_fbs_hist.iloc[::-1], use_container_width=True, hide_index=True)
         else: 
             st.info("Nenhum feedback registrado no sistema até o momento.")
-        
-        # --- CARREGAMENTO ROBUSTO ---
-        df_fbs_hist = carregar_feedbacks_gb()
-        
-        if df_fbs_hist is not None and not df_fbs_hist.empty: 
-            st.dataframe(df_fbs_hist.iloc[::-1], use_container_width=True, hide_index=True)
-        else: 
-            st.info("Nenhum feedback registrado no sistema até o momento.")
+    
 
 # ------------------ SOFISTAS AI (GEMINI) ------------------
     with tabs[12]:
