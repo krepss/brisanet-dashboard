@@ -1961,24 +1961,28 @@ else:
                             anos -= 1
                             meses += 12
                             
+                        # Ajusta plural e singular para ficar gramaticalmente perfeito
+                        str_anos = f"{anos} ano" if anos == 1 else f"{anos} anos"
+                        str_meses = f"{meses} mês" if meses == 1 else f"{meses} meses"
+                        
                         # Monta o textinho da medalha
                         if anos > 0 and meses > 0:
-                            texto_tempo = f"{anos}a e {meses}m"
+                            texto_tempo = f"{str_anos} e {str_meses}"
                         elif anos > 0:
-                            texto_tempo = f"{anos} ano(s)"
+                            texto_tempo = f"{str_anos}"
                         elif meses > 0:
-                            texto_tempo = f"{meses} mes(es)"
+                            texto_tempo = f"{str_meses}"
                         else:
-                            texto_tempo = "Novato(a) 🌱"
+                            texto_tempo = "Menos de 1 mês 🌱"
                             
-                        # Cria a medalha laranja/dourada
-                        tempo_empresa_str = f"<span class='update-badge' style='background-color:#fff3e0; color:#e65100; margin-left:10px; border-color: #ffb74d;'>⏳ Casa: <b>{texto_tempo}</b></span>"
+                        # Cria a medalha com o novo texto completo
+                        tempo_empresa_str = f"<span class='update-badge' style='background-color:#fff3e0; color:#e65100; margin-left:10px; border-color: #ffb74d;'>⏳ Tempo de Casa: <b>{texto_tempo}</b></span>"
             except Exception as e:
                 pass # Se a data estiver em branco ou no formato errado, simplesmente não mostra a medalha
 
         # 2. Usa a variável segura no Markdown e injeta a medalha de tempo de casa
         st.markdown(f"## 🚀 Olá, **{primeiro_nome}**!")
-        st.markdown(f"<div style='display: flex; align-items: center; margin-top:-15px; color: #666; font-size:0.9em;'><span style='margin-right: 15px;'>📅 Referência: <b>{periodo_label}</b></span><span class='update-badge' style='background-color:#e0f7fa; color:#006064;'>🕒 Atualizado em: {obter_data_atualizacao()}</span>{tempo_empresa_str}</div>", unsafe_allow_html=True)    
+        st.markdown(f"<div style='display: flex; align-items: center; margin-top:-15px; color: #666; font-size:0.9em;'><span style='margin-right: 15px;'>📅 Referência: <b>{periodo_label}</b></span><span class='update-badge' style='background-color:#e0f7fa; color:#006064;'>🕒 Atualizado em: {obter_data_atualizacao()}</span>{tempo_empresa_str}</div>", unsafe_allow_html=True)
     # --- BUSCA FÉRIAS DO OPERADOR ---
     minhas_ferias = "Não informado"
     if df_users_cadastrados is not None:
