@@ -1448,7 +1448,7 @@ Vamos com tudo! 🔥"""
             if os.path.exists(arquivo_usuarios):
                 df_gerenciar = pd.read_csv(arquivo_usuarios)
                 # Garante que as colunas padrão existam para não dar erro
-                for col in ['nome', 'email', 'ferias', 'senha']:
+                for col in ['nome', 'email', 'ferias', 'senha', 'nascimento']:
                     if col not in df_gerenciar.columns:
                         df_gerenciar[col] = ""
                         
@@ -1950,6 +1950,26 @@ else:
             user_info = df_users_cadastrados[df_users_cadastrados['nome'] == nome_logado.upper()]
             if not user_info.empty: minhas_ferias = user_info.iloc[0]['ferias']
         except: pass
+            
+    # --- 🎂 VERIFICAÇÃO DE ANIVERSÁRIO ---
+    if df_users_cadastrados is not None:
+        try:
+            # Puxa o dado da linha do usuário logado
+            user_info = df_users_cadastrados[df_users_cadastrados['nome'] == nome_logado.upper()]
+            if not user_info.empty and 'nascimento' in user_info.columns:
+                data_nasc = str(user_info.iloc[0]['nascimento']).strip()
+                
+                # Pega o dia e mês de hoje no formato DD/MM
+                hoje_str = datetime.now().strftime("%d/%m")
+                
+                # Se os primeiros 5 caracteres (DD/MM) baterem, é festa!
+                # Usamos st.session_state para os balões subirem só 1 vez por login e não irritar o operador
+                if data_nasc[:5] == hoje_str:
+                    st.success(f"🎉 **Feliz Aniversário, {primeiro_nome}!** Toda a equipe Sofistas te deseja um dia incrível e repleto de conquistas! 🎂🎈")
+                    if not st.session_state.get('baloes_vistos', False):
+                        st.balloons()
+                        st.session_state['baloes_vistos'] = True
+        except: pass        
 
     # --- CRIAÇÃO DAS ABAS ---
     tab_results, tab_time, tab_ferias, tab_feedbacks, tab_banco, tab_ia = st.tabs(["📊 Meus Resultados", "🦁 Visão do Time", "🏖️ Minhas Férias", "📝 Meus Feedbacks", "⏰ Meu Banco de Horas", "🤖 Assistente IA"])
