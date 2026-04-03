@@ -1975,7 +1975,58 @@ Vamos com tudo! 🔥"""
                 for item in lista_firma:
                     anos_texto = f"{item['anos']} ano" if item['anos'] == 1 else f"{item['anos']} anos"
                     st.markdown(f"<div style='padding:12px; background-color:#FFF; border-left:5px solid #003366; margin-bottom:10px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.05); display:flex; justify-content:space-between;'><span><b>{item['data']}</b> - {item['nome']}</span><span style='background-color:#e0f7fa; padding:2px 10px; border-radius:12px; font-size:0.85em; color:#006064; font-weight:bold;'>{anos_texto}</span></div>", unsafe_allow_html=True)
-            else: st.write("Ninguém completando tempo de casa neste mês.")            
+            else: st.write("Ninguém completando tempo de casa neste mês.")   
+                
+# --- 💌 MURAL DE RECADINHOS (VERSÃO GESTOR) ---
+        st.markdown("---")
+        st.markdown("### 💌 Mural de Recadinhos")
+        st.info("Como Gestor, também podes deixar mensagens para os teus colaboradores e acompanhar o que a equipa está a escrever!")
+
+        aniversariantes_nomes = [item['nome'] for item in lista_niver]
+        
+        if aniversariantes_nomes:
+            # Formulário para o Gestor enviar recados
+            with st.form("form_recado_gestor"):
+                c_quem, c_vazio = st.columns([1, 2])
+                para_quem = c_quem.selectbox("Enviar parabéns para:", aniversariantes_nomes)
+                mensagem = st.text_area("Mensagem do Gestor:", placeholder="Ex: Parabéns pelo teu dia e pelo excelente trabalho! 🚀")
+                
+                if st.form_submit_button("Publicar no Mural 🎈"):
+                    if mensagem.strip():
+                        salvar_mensagem_mural({
+                            "Data": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                            "De": "Gestor 🦁", # Identifica que foi a liderança que enviou
+                            "Para": para_quem,
+                            "Mensagem": mensagem
+                        })
+                        st.success("✅ Recado do Gestor publicado!")
+                        import time
+                        time.sleep(1.2)
+                        st.rerun()
+        
+        # --- EXIBIÇÃO DOS RECADOS NO PAINEL DO GESTOR ---
+        df_mural = carregar_mensagens_mural()
+        if df_mural is not None and not df_mural.empty:
+            st.markdown("#### 📬 Todas as Mensagens do Mês")
+            
+            # Filtra mensagens para os aniversariantes atuais
+            recados_mes = df_mural[df_mural['Para'].isin(aniversariantes_nomes)]
+            
+            if not recados_mes.empty:
+                for _, row in recados_mes.iloc[::-1].iterrows():
+                    # Estilo diferenciado se a mensagem veio do Gestor
+                    is_gestor = "Gestor" in str(row['De'])
+                    cor_borda = "#e74c3c" if is_gestor else "#003366"
+                    
+                    st.markdown(f"""
+                    <div style='background-color:#FFF; padding:15px; border-radius:10px; border-left: 5px solid {cor_borda}; margin-bottom:15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);'>
+                        <p style='margin:0; color:#555; font-size:0.9em;'>
+                            De: <b>{row['De']}</b> ➔ Para: <b>{row['Para']}</b>
+                            <span style='float:right; font-size:0.8em; color:#999;'>{row['Data']}</span>
+                        </p>
+                        <p style='margin-top:10px; margin-bottom:0; font-size:1.05em; color:#333; font-style: italic;'>"{row['Mensagem']}"</p>
+                    </div>
+                    """, unsafe_allow_html=True)
 # ==========================================
 # --- 7. VISÃO DO OPERADOR ---
 # ==========================================
