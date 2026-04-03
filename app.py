@@ -1448,7 +1448,7 @@ Vamos com tudo! 🔥"""
             if os.path.exists(arquivo_usuarios):
                 df_gerenciar = pd.read_csv(arquivo_usuarios)
                 # Garante que as colunas padrão existam para não dar erro
-                for col in ['nome', 'email', 'ferias', 'senha', 'nascimento']:
+                for col in ['nome', 'email', 'ferias', 'senha', 'nascimento', 'admissao']:
                     if col not in df_gerenciar.columns:
                         df_gerenciar[col] = ""
                         
@@ -1939,10 +1939,46 @@ else:
         # 1. Cria a variável blindada ANTES de jogar na tela
         primeiro_nome = nome_logado.split()[0] if nome_logado and str(nome_logado).strip() else "Equipe"
         
-        # 2. Usa a variável segura no Markdown
+        # --- ⏳ CÁLCULO DE TEMPO DE EMPRESA ---
+        tempo_empresa_str = ""
+        if df_users_cadastrados is not None:
+            try:
+                user_info = df_users_cadastrados[df_users_cadastrados['nome'] == nome_logado.upper()]
+                if not user_info.empty and 'admissao' in user_info.columns:
+                    data_adm_str = str(user_info.iloc[0]['admissao']).strip()
+                    
+                    if data_adm_str and data_adm_str != "nan":
+                        # Tenta converter a data que o gestor digitou (DD/MM/YYYY)
+                        data_adm = datetime.strptime(data_adm_str, "%d/%m/%Y")
+                        hoje = datetime.now()
+                        
+                        # Faz a matemática de anos e meses
+                        anos = hoje.year - data_adm.year
+                        meses = hoje.month - data_adm.month
+                        if hoje.day < data_adm.day:
+                            meses -= 1
+                        if meses < 0:
+                            anos -= 1
+                            meses += 12
+                            
+                        # Monta o textinho da medalha
+                        if anos > 0 and meses > 0:
+                            texto_tempo = f"{anos}a e {meses}m"
+                        elif anos > 0:
+                            texto_tempo = f"{anos} ano(s)"
+                        elif meses > 0:
+                            texto_tempo = f"{meses} mes(es)"
+                        else:
+                            texto_tempo = "Novato(a) 🌱"
+                            
+                        # Cria a medalha laranja/dourada
+                        tempo_empresa_str = f"<span class='update-badge' style='background-color:#fff3e0; color:#e65100; margin-left:10px; border-color: #ffb74d;'>⏳ Casa: <b>{texto_tempo}</b></span>"
+            except Exception as e:
+                pass # Se a data estiver em branco ou no formato errado, simplesmente não mostra a medalha
+
+        # 2. Usa a variável segura no Markdown e injeta a medalha de tempo de casa
         st.markdown(f"## 🚀 Olá, **{primeiro_nome}**!")
-        st.markdown(f"<div style='display: flex; align-items: center; margin-top:-15px; color: #666; font-size:0.9em;'><span style='margin-right: 15px;'>📅 Referência: <b>{periodo_label}</b></span><span class='update-badge' style='background-color:#e0f7fa; color:#006064;'>🕒 Atualizado em: {obter_data_atualizacao()}</span></div>", unsafe_allow_html=True)
-    
+        st.markdown(f"<div style='display: flex; align-items: center; margin-top:-15px; color: #666; font-size:0.9em;'><span style='margin-right: 15px;'>📅 Referência: <b>{periodo_label}</b></span><span class='update-badge' style='background-color:#e0f7fa; color:#006064;'>🕒 Atualizado em: {obter_data_atualizacao()}</span>{tempo_empresa_str}</div>", unsafe_allow_html=True)    
     # --- BUSCA FÉRIAS DO OPERADOR ---
     minhas_ferias = "Não informado"
     if df_users_cadastrados is not None:
