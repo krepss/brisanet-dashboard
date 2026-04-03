@@ -619,6 +619,24 @@ def atualizar_senha(email, nova_senha):
                 sincronizar_com_github(arq, f"Senha atualizada para o usuario: {email}")
                 return True
     return False
+
+def salvar_mensagem_mural(dados):
+    ARQ = 'mural_parabens.csv'
+    df_novo = pd.DataFrame([dados])
+    if os.path.exists(ARQ):
+        try:
+            df_hist = pd.read_csv(ARQ)
+            df_final = pd.concat([df_hist, df_novo], ignore_index=True)
+        except: df_final = df_novo
+    else: df_final = df_novo
+    df_final.to_csv(ARQ, index=False)
+    sincronizar_com_github(ARQ, "Novo recado no mural de parabens")
+
+def carregar_mensagens_mural():
+    if os.path.exists('mural_parabens.csv'):
+        try: return pd.read_csv('mural_parabens.csv', dtype=str)
+        except: return None
+    return None
 # ==========================================
 # --- 4. LOGIN RENOVADO (SEM DELAY E SEM PISCAR) ---
 # ==========================================
@@ -2648,6 +2666,65 @@ else:
                     anos_texto = f"{item['anos']} ano" if item['anos'] == 1 else f"{item['anos']} anos"
                     st.markdown(f"<div style='padding:12px; background-color:#FFF; border-left:5px solid #003366; margin-bottom:10px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.05); display:flex; justify-content:space-between;'><span><b>{item['data']}</b> - {item['nome']}</span><span style='background-color:#e0f7fa; padding:2px 10px; border-radius:12px; font-size:0.85em; color:#006064; font-weight:bold;'>{anos_texto}</span></div>", unsafe_allow_html=True)
             else: st.write("Ninguém completando tempo de casa neste mês.")
+
+# --- 💌 MURAL DE RECADINHOS ---
+        st.markdown("---")
+        st.markdown("### 💌 Mural de Recadinhos")
+        st.write("Deixe uma mensagem de carinho para os aniversariantes deste mês!")
+
+        aniversariantes_nomes = [item['nome'] for item in lista_niver]
+        
+        if aniversariantes_nomes:
+            # Formulário para enviar o recado
+            with st.form("form_recado"):
+                c_quem, c_vazio = st.columns([1, 2])
+                para_quem = c_quem.selectbox("Para quem é o recado?", aniversariantes_nomes)
+                mensagem = st.text_area("Escreva sua mensagem (ela ficará visível para toda a equipe):", placeholder="Ex: Parabéns, guerreiro! Muito sucesso e saúde! 🎉")
+                
+                if st.form_submit_button("Enviar Recado 🎈"):
+                    if mensagem.strip():
+                        salvar_mensagem_mural({
+                            "Data": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                            "De": primeiro_nome.title(),
+                            "Para": para_quem,
+                            "Mensagem": mensagem
+                        })
+                        st.success("✅ Recado enviado com sucesso!")
+                        import time
+                        time.sleep(1.5)
+                        st.rerun()
+                    else:
+                        st.error("⚠️ Escreva algo antes de enviar!")
+        else:
+            st.info("Nenhum aniversariante neste mês para deixar recado.")
+
+        # --- EXIBIÇÃO DOS RECADOS ---
+        df_mural = carregar_mensagens_mural()
+        if df_mural is not None and not df_mural.empty:
+            st.markdown("#### 📬 Recados Recentes")
+            
+            # Filtramos só os recados para os aniversariantes do mês atual
+            recados_mes = df_mural[df_mural['Para'].isin(aniversariantes_nomes)]
+            
+            if not recados_mes.empty:
+                for _, row in recados_mes.iloc[::-1].iterrows():
+                    # Se o recado for para o usuário logado, damos um destaque dourado!
+                    eh_pra_mim = row['Para'].upper() == nome_logado.upper()
+                    cor_fundo = "#fff8e1" if eh_pra_mim else "#FFF"
+                    cor_borda = "#ffc107" if eh_pra_mim else "#003366"
+                    tag_especial = "<span style='background-color:#ffc107; color:#555; padding:2px 8px; border-radius:10px; font-size:0.8em; font-weight:bold; margin-left:10px;'>É PRA VOCÊ! 🎉</span>" if eh_pra_mim else ""
+                    
+                    st.markdown(f"""
+                    <div style='background-color:{cor_fundo}; padding:15px; border-radius:10px; border-left: 5px solid {cor_borda}; margin-bottom:15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);'>
+                        <p style='margin:0; color:#555; font-size:0.9em;'>
+                            De: <b>{row['De']}</b> ➔ Para: <b style="color: {cor_borda};">{row['Para']}</b> {tag_especial}
+                            <span style='float:right; font-size:0.8em; color:#999;'>{row['Data']}</span>
+                        </p>
+                        <p style='margin-top:10px; margin-bottom:0; font-size:1.05em; color:#333; font-style: italic;'>"{row['Mensagem']}"</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.write("Ainda não há recados neste mês. Seja o primeiro a escrever!")
 # ==========================================
 # RODAPÉ DO SISTEMA
 # ==========================================
