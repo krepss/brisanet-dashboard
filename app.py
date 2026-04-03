@@ -838,8 +838,7 @@ if df_dados is None and perfil == 'user':
 # --- 6. GESTOR ---
 # ==========================================
 if perfil == 'admin':
-    tabs = st.tabs(["🚦 Semáforo", "📈 Resumo Executivo", "🏆 Ranking Geral", "⏳ Evolução", "🔍 Indicadores", "⏱️ Produtividade (Chat & Voz)", "💰 Comissões", "📋 Tabela Geral", "🏖️ Férias Equipe", "⚙️ Admin", "⏰ Banco de Horas", "📝 Feedbacks GB", "🤖 Sofistas AI"])
-    # ------------------ SEMÁFORO ------------------
+    tabs = st.tabs(["🚦 Semáforo", "📈 Resumo Executivo", "🏆 Ranking Geral", "⏳ Evolução", "🔍 Indicadores", "⏱️ Produtividade (Chat & Voz)", "💰 Comissões", "📋 Tabela Geral", "🏖️ Férias Equipe", "⚙️ Admin", "⏰ Banco de Horas", "📝 Feedbacks GB", "🤖 Sofistas AI", "🎉 Celebrações"])    # ------------------ SEMÁFORO ------------------
     with tabs[0]: 
         if df_dados is not None and not df_dados.empty:
             st.markdown(f"### Resumo de Saúde: **{periodo_label}**")
@@ -1903,6 +1902,62 @@ Vamos com tudo! 🔥"""
                                 st.error(f"Erro de conexão com o Gemini: {e}")
         else:
             st.warning("⚠️ Chave da API do Gemini (GEMINI_API_KEY) não encontrada nas configurações secretas do Streamlit.")
+# ------------------ MURAL DE CELEBRAÇÕES (GESTOR) ------------------
+    with tabs[13]:
+        st.markdown("### 🎉 Mural de Celebrações")
+        st.info("Acompanhe os aniversariantes do mês e quem está completando mais um ciclo de casa com a gente! 🎈")
+        
+        meses_pt = {1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril', 5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto', 9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'}
+        hoje = datetime.now()
+        mes_atual = hoje.month
+        
+        lista_niver, lista_firma = [], []
+        
+        if df_users_cadastrados is not None:
+            for _, row in df_users_cadastrados.iterrows():
+                nome_colab = str(row.get('nome', '')).title()
+                
+                # 🎂 Aniversário
+                nasc_str = str(row.get('nascimento', '')).strip()
+                if nasc_str and nasc_str != 'nan':
+                    try:
+                        dia_n, mes_n = int(nasc_str.split('/')[0]), int(nasc_str.split('/')[1])
+                        if mes_n == mes_atual:
+                            lista_niver.append({'dia': dia_n, 'nome': nome_colab, 'data': f"{dia_n:02d}/{mes_n:02d}"})
+                    except: pass
+                    
+                # 💼 Tempo de Casa
+                adm_str = str(row.get('admissao', '')).strip()
+                if adm_str and adm_str != 'nan':
+                    try:
+                        data_adm = datetime.strptime(adm_str, "%d/%m/%Y")
+                        if data_adm.month == mes_atual:
+                            anos_casa = hoje.year - data_adm.year
+                            if anos_casa > 0:
+                                lista_firma.append({'dia': data_adm.day, 'nome': nome_colab, 'anos': anos_casa, 'data': f"{data_adm.day:02d}/{data_adm.month:02d}"})
+                    except: pass
+
+        lista_niver = sorted(lista_niver, key=lambda x: x['dia'])
+        lista_firma = sorted(lista_firma, key=lambda x: x['dia'])
+        
+        st.markdown(f"<h4 style='text-align: center; color: #003366; margin-top: 20px;'>Celebrações de {meses_pt[mes_atual]}</h4>", unsafe_allow_html=True)
+        c1, c2 = st.columns(2)
+        
+        with c1:
+            st.markdown("##### 🎂 Aniversários de Vida")
+            if lista_niver:
+                for item in lista_niver:
+                    is_today = "🎈 HOJE!" if item['dia'] == hoje.day else ""
+                    st.markdown(f"<div style='padding:12px; background-color:#FFF; border-left:5px solid #F37021; margin-bottom:10px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.05); display:flex; justify-content:space-between;'><span><b>{item['data']}</b> - {item['nome']}</span><span style='color:#e74c3c; font-weight:bold;'>{is_today}</span></div>", unsafe_allow_html=True)
+            else: st.write("Nenhum aniversariante neste mês.")
+                
+        with c2:
+            st.markdown("##### 💼 Tempo de Casa")
+            if lista_firma:
+                for item in lista_firma:
+                    anos_texto = f"{item['anos']} ano" if item['anos'] == 1 else f"{item['anos']} anos"
+                    st.markdown(f"<div style='padding:12px; background-color:#FFF; border-left:5px solid #003366; margin-bottom:10px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.05); display:flex; justify-content:space-between;'><span><b>{item['data']}</b> - {item['nome']}</span><span style='background-color:#e0f7fa; padding:2px 10px; border-radius:12px; font-size:0.85em; color:#006064; font-weight:bold;'>{anos_texto}</span></div>", unsafe_allow_html=True)
+            else: st.write("Ninguém completando tempo de casa neste mês.")            
 # ==========================================
 # --- 7. VISÃO DO OPERADOR ---
 # ==========================================
@@ -2012,8 +2067,7 @@ else:
         except: pass        
 
     # --- CRIAÇÃO DAS ABAS ---
-    tab_results, tab_time, tab_ferias, tab_feedbacks, tab_banco, tab_ia = st.tabs(["📊 Meus Resultados", "🦁 Visão do Time", "🏖️ Minhas Férias", "📝 Meus Feedbacks", "⏰ Meu Banco de Horas", "🤖 Assistente IA"])
-
+    tab_results, tab_time, tab_ferias, tab_feedbacks, tab_banco, tab_ia, tab_celebracoes = st.tabs(["📊 Meus Resultados", "🦁 Visão do Time", "🏖️ Minhas Férias", "📝 Meus Feedbacks", "⏰ Meu Banco de Horas", "🤖 Assistente IA", "🎉 Celebrações"])
     # ---------------------------------------------------------
     # ABA 1: MEUS RESULTADOS
     # ---------------------------------------------------------
@@ -2536,7 +2590,64 @@ else:
                             st.error(f"Erro ao conectar com a IA: {e}")
         else:
             st.warning("⚠️ O Gestor ainda não configurou a chave da Inteligência Artificial no sistema.")
+# ---------------------------------------------------------
+    # ABA 7: MURAL DE CELEBRAÇÕES (OPERADOR)
+    # ---------------------------------------------------------
+    with tab_celebracoes:
+        st.markdown("### 🎉 Mural de Celebrações")
+        st.info("Fique de olho nos aniversariantes do mês e mande os parabéns para a equipe! 🎈")
+        
+        meses_pt = {1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril', 5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto', 9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'}
+        hoje = datetime.now()
+        mes_atual = hoje.month
+        
+        lista_niver, lista_firma = [], []
+        
+        if df_users_cadastrados is not None:
+            for _, row in df_users_cadastrados.iterrows():
+                nome_colab = str(row.get('nome', '')).title()
+                
+                # 🎂 Aniversário
+                nasc_str = str(row.get('nascimento', '')).strip()
+                if nasc_str and nasc_str != 'nan':
+                    try:
+                        dia_n, mes_n = int(nasc_str.split('/')[0]), int(nasc_str.split('/')[1])
+                        if mes_n == mes_atual:
+                            lista_niver.append({'dia': dia_n, 'nome': nome_colab, 'data': f"{dia_n:02d}/{mes_n:02d}"})
+                    except: pass
+                    
+                # 💼 Tempo de Casa
+                adm_str = str(row.get('admissao', '')).strip()
+                if adm_str and adm_str != 'nan':
+                    try:
+                        data_adm = datetime.strptime(adm_str, "%d/%m/%Y")
+                        if data_adm.month == mes_atual:
+                            anos_casa = hoje.year - data_adm.year
+                            if anos_casa > 0:
+                                lista_firma.append({'dia': data_adm.day, 'nome': nome_colab, 'anos': anos_casa, 'data': f"{data_adm.day:02d}/{data_adm.month:02d}"})
+                    except: pass
 
+        lista_niver = sorted(lista_niver, key=lambda x: x['dia'])
+        lista_firma = sorted(lista_firma, key=lambda x: x['dia'])
+        
+        st.markdown(f"<h4 style='text-align: center; color: #003366; margin-top: 20px;'>Celebrações de {meses_pt[mes_atual]}</h4>", unsafe_allow_html=True)
+        c1, c2 = st.columns(2)
+        
+        with c1:
+            st.markdown("##### 🎂 Aniversários de Vida")
+            if lista_niver:
+                for item in lista_niver:
+                    is_today = "🎈 HOJE!" if item['dia'] == hoje.day else ""
+                    st.markdown(f"<div style='padding:12px; background-color:#FFF; border-left:5px solid #F37021; margin-bottom:10px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.05); display:flex; justify-content:space-between;'><span><b>{item['data']}</b> - {item['nome']}</span><span style='color:#e74c3c; font-weight:bold;'>{is_today}</span></div>", unsafe_allow_html=True)
+            else: st.write("Nenhum aniversariante neste mês.")
+                
+        with c2:
+            st.markdown("##### 💼 Tempo de Casa")
+            if lista_firma:
+                for item in lista_firma:
+                    anos_texto = f"{item['anos']} ano" if item['anos'] == 1 else f"{item['anos']} anos"
+                    st.markdown(f"<div style='padding:12px; background-color:#FFF; border-left:5px solid #003366; margin-bottom:10px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.05); display:flex; justify-content:space-between;'><span><b>{item['data']}</b> - {item['nome']}</span><span style='background-color:#e0f7fa; padding:2px 10px; border-radius:12px; font-size:0.85em; color:#006064; font-weight:bold;'>{anos_texto}</span></div>", unsafe_allow_html=True)
+            else: st.write("Ninguém completando tempo de casa neste mês.")
 # ==========================================
 # RODAPÉ DO SISTEMA
 # ==========================================
