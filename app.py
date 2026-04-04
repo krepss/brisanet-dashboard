@@ -1214,7 +1214,10 @@ Vamos com tudo! 🔥"""
                         """
                         
                         # Chama a IA (usando o mesmo modelo já configurado no seu sistema)
-                        resposta_fcar = model.generate_content(prompt_fcar)
+                        # Conecta com a IA especificamente para esta função
+                        import google.generativeai as genai
+                        modelo_ia = genai.GenerativeModel('gemini-1.5-flash') # ou o nome do modelo que vc já usa no app
+                        resposta_fcar = modelo_ia.generate_content(prompt_fcar)
                         
                         # Caixinha Clean Glass para exibir o resultado com estilo
                         st.markdown("<div style='background-color: #FFFFFF; padding: 25px; border-radius: 20px; border-left: 6px solid #F37021; box-shadow: 0 8px 24px rgba(0,0,0,0.04); margin-top: 15px;'>", unsafe_allow_html=True)
