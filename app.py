@@ -45,53 +45,79 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁", initial_sidebar_state="collapsed")
 
-# --- 2. CSS COMPACTADO (DESIGN PREMIUM + CARDS) ---
+# --- 2. CSS COMPACTADO (DARK MODE PREMIUM) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
-    html,body{scroll-behavior:smooth!important;font-family:'Roboto',sans-serif;}
-    .stApp{background-color:#F4F7F6!important;}
-    [data-testid="collapsedControl"],[data-testid="stSidebar"]{display:none!important;}
-    .top-banner{background:linear-gradient(135deg,#002b55 0%,#004e92 100%);padding:20px 30px;border-radius:15px;box-shadow:0 8px 20px rgba(0,0,0,0.15);display:flex;justify-content:space-between;align-items:center;margin-bottom:25px;}
-    .top-banner h2,.top-banner h4{color:#FFF!important;margin:0!important;padding:0!important;font-family:'Montserrat',sans-serif!important;}
-    .top-banner h2{font-weight:800!important;letter-spacing:1px!important;font-size:28px!important;}
-    .top-banner h4{font-weight:600!important;font-size:20px!important;}
-    .top-banner .sub-text{color:#cce0ff!important;margin:0!important;padding:0!important;font-size:14px!important;font-weight:400!important;}
-    button[kind="primary"]{background-color:#e74c3c!important;border:1px solid #c0392b!important;border-radius:8px!important;}
-    button[kind="primary"] p{color:#FFF!important;font-weight:bold!important;}
-    button[kind="primary"]:hover{background-color:#c0392b!important;border-color:#a93226!important;}
-    button[kind="secondary"]{background-color:#003366!important;color:#FFF!important;border-radius:8px!important;font-weight:bold!important;border:none!important;}
-    button[kind="secondary"] p{color:#FFF!important;}
-    h1,h2,h3,h4,h5,h6{color:#003366!important;font-family:'Montserrat',sans-serif!important;}
-    p,li,div{color:#333;}
-    div.stMetric,.insight-box,.badge-card{background-color:#FFF!important;box-shadow:0 4px 10px rgba(0,0,0,0.05);border-radius:10px;}
-    .card-link{text-decoration:none!important;display:block;}
-    .card-excelencia,.card-meta,.card-critico{background-color:#FFF;box-shadow:0 4px 10px rgba(0,0,0,0.05);border-radius:10px;border:1px solid #e0e0e0;padding:10px 15px;cursor:pointer;transition:all .3s ease;}
-    .card-excelencia{border-left:5px solid #003366;}
-    .card-excelencia:hover{transform:scale(1.03);box-shadow:0 6px 15px rgba(0,51,102,.2);}
-    .card-meta{border-left:5px solid #2ecc71;}
-    .card-meta:hover{transform:scale(1.03);box-shadow:0 6px 15px rgba(46,204,113,.2);}
-    .card-critico{border-left:5px solid #e74c3c;}
-    .card-critico:hover{transform:scale(1.03);box-shadow:0 6px 15px rgba(231,76,60,.2);}
-    .vacation-card{background-color:#FFF!important;border-left:8px solid #00bcd4!important;padding:30px!important;border-radius:12px!important;text-align:center!important;box-shadow:0 6px 15px rgba(0,0,0,0.08)!important;margin-top:20px!important;}
-    .vacation-title{font-family:'Montserrat',sans-serif!important;font-size:1.4em!important;font-weight:600!important;color:#555!important;margin-bottom:10px!important;}
-    .vacation-date{font-family:'Roboto',sans-serif!important;font-size:3.5em!important;font-weight:800!important;color:#00838f!important;margin:20px 0!important;text-transform:uppercase!important;}
-    .vacation-note{font-size:.9em!important;color:#999!important;font-style:italic!important;}
-    [data-testid="stForm"]{background-color:#FFF!important;padding:3rem 2rem!important;border-radius:20px!important;box-shadow:0 15px 35px rgba(0,0,0,0.1)!important;border:none!important;border-top:6px solid #F37021!important;}
-    .login-title{font-family:'Montserrat',sans-serif!important;font-weight:800!important;font-size:2.2rem!important;color:#003366!important;text-align:center;margin-bottom:0px;}
-    .login-subtitle{font-family:'Roboto',sans-serif!important;font-size:1.1rem!important;color:#666!important;text-align:center;margin-bottom:25px;}
-    [data-testid="stForm"] input{background-color:#f8f9fa!important;color:#333!important;border-radius:8px!important;}
-    [data-testid="stFileUploader"] button{background-color:#003366!important;color:#FFF!important;border:none!important;}
-    [data-testid="stFileUploader"] button:hover{background-color:#F37021!important;}
-    div.stMetric{border:1px solid #e0e0e0;border-left:5px solid #F37021;padding:10px 15px!important;}
-    div.stMetric label{color:#666!important;font-size:14px!important;}
-    div.stMetric div[data-testid="stMetricValue"]{color:#003366!important;font-size:26px!important;font-weight:700;}
-    div.stMetric div[data-testid="stMetricDelta"]{font-size:13px!important;}
-    .update-badge{background-color:#e3f2fd;color:#0d47a1;padding:5px 10px;border-radius:15px;font-size:.85em;font-weight:bold;border:1px solid #bbdefb;}
-    .insight-box{background-color:#fff8e1!important;border-left:5px solid #ffc107!important;padding:15px;margin-bottom:20px;}
-    .insight-title{font-weight:bold;color:#d35400;font-size:1.1em;display:flex;align-items:center;gap:8px;}
-    .insight-text{font-size:.95em;margin-top:5px;color:#555;}
-    .dev-footer{text-align:center;margin-top:40px;font-size:.8em;color:#aaa!important;}
+    
+    /* Fundo Geral da Tela */
+    html, body {scroll-behavior: smooth !important; font-family: 'Roboto', sans-serif;}
+    .stApp {background-color: #121214 !important;}
+    
+    /* Esconde barra lateral */
+    [data-testid="collapsedControl"], [data-testid="stSidebar"] {display: none !important;}
+    
+    /* Textos Gerais */
+    h1, h2, h3, h4, h5, h6 {color: #E1E1E6 !important; font-family: 'Montserrat', sans-serif !important;}
+    p, li, div {color: #C4C4CC;}
+    
+    /* Banner Superior Estilo "Cyberpunk/Monitoramento" */
+    .top-banner {background: linear-gradient(135deg, #1A1A24 0%, #20202A 100%); padding: 20px 30px; border-radius: 15px; border: 1px solid #323238; box-shadow: 0 8px 20px rgba(0,0,0,0.5); display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;}
+    .top-banner h2, .top-banner h4 {color: #FFF !important; margin: 0 !important; padding: 0 !important;}
+    .top-banner h2 {font-weight: 800 !important; letter-spacing: 1px !important; font-size: 28px !important;}
+    .top-banner .sub-text {color: #8D8D99 !important; margin: 0 !important; padding: 0 !important; font-size: 14px !important; font-weight: 400 !important;}
+    
+    /* Botões */
+    button[kind="primary"] {background-color: #F37021 !important; border: 1px solid #F37021 !important; border-radius: 8px !important;}
+    button[kind="primary"] p {color: #FFF !important; font-weight: bold !important;}
+    button[kind="primary"]:hover {background-color: #D35400 !important; border-color: #D35400 !important;}
+    button[kind="secondary"] {background-color: #202024 !important; border: 1px solid #323238 !important; border-radius: 8px !important;}
+    button[kind="secondary"] p {color: #E1E1E6 !important; font-weight: bold !important;}
+    button[kind="secondary"]:hover {border-color: #F37021 !important;}
+    
+    /* Cards e Métricas Base */
+    div.stMetric, .insight-box, .badge-card, [data-testid="stForm"] {background-color: #202024 !important; border: 1px solid #323238 !important; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-radius: 10px;}
+    
+    /* Cards do Semáforo com efeito NEON na borda */
+    .card-link {text-decoration: none !important; display: block;}
+    .card-excelencia, .card-meta, .card-critico {background-color: #202024; border-radius: 10px; border: 1px solid #323238; padding: 10px 15px; cursor: pointer; transition: all .3s ease;}
+    .card-excelencia {border-left: 5px solid #00B37E;}
+    .card-excelencia:hover {transform: scale(1.03); box-shadow: 0 6px 15px rgba(0, 179, 126, 0.2);}
+    .card-meta {border-left: 5px solid #FBA94C;}
+    .card-meta:hover {transform: scale(1.03); box-shadow: 0 6px 15px rgba(251, 169, 76, 0.2);}
+    .card-critico {border-left: 5px solid #F75A68;}
+    .card-critico:hover {transform: scale(1.03); box-shadow: 0 6px 15px rgba(247, 90, 104, 0.2);}
+    
+    /* Ajuste de Texto nos Cards */
+    .card-excelencia div:first-child, .card-meta div:first-child, .card-critico div:first-child {color: #C4C4CC !important;}
+    .card-excelencia div:nth-child(2), .card-meta div:nth-child(2), .card-critico div:nth-child(2) {color: #FFF !important;}
+    
+    /* Férias */
+    .vacation-card {background-color: #202024 !important; border-left: 8px solid #00B37E !important; padding: 30px !important; border-radius: 12px !important; text-align: center !important; margin-top: 20px !important;}
+    .vacation-title {color: #E1E1E6 !important;}
+    .vacation-date {color: #00B37E !important; margin: 20px 0 !important;}
+    
+    /* Login e Formulários */
+    [data-testid="stForm"] {padding: 3rem 2rem !important; border-top: 6px solid #F37021 !important;}
+    .login-title {color: #E1E1E6 !important; text-align: center; margin-bottom: 0px;}
+    .login-subtitle {color: #8D8D99 !important; text-align: center; margin-bottom: 25px;}
+    [data-testid="stForm"] input {background-color: #121214 !important; color: #E1E1E6 !important; border: 1px solid #323238 !important; border-radius: 8px !important;}
+    
+    /* Componente Metric (Aquele que mostra as notas) */
+    div.stMetric {border-left: 5px solid #F37021; padding: 10px 15px !important;}
+    div.stMetric label {color: #8D8D99 !important; font-size: 14px !important;}
+    div.stMetric div[data-testid="stMetricValue"] {color: #FFF !important; font-size: 26px !important;}
+    
+    /* Badges e Insight */
+    .update-badge {background-color: #1A1A24; color: #00B37E; padding: 5px 10px; border-radius: 15px; font-size: .85em; font-weight: bold; border: 1px solid #00B37E;}
+    .insight-box {background-color: #20202A !important; border-left: 5px solid #FBA94C !important; padding: 15px; margin-bottom: 20px;}
+    .insight-title {color: #FBA94C; font-weight: bold; display: flex; align-items: center; gap: 8px;}
+    .insight-text {color: #C4C4CC;}
+    
+    /* Tabelas Nativas do Streamlit */
+    [data-testid="stDataFrame"] {background-color: #202024 !important;}
+    
+    .dev-footer {text-align: center; margin-top: 40px; font-size: .8em; color: #555 !important;}
 </style>
 """, unsafe_allow_html=True)
 
