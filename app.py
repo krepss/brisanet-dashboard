@@ -1214,9 +1214,9 @@ Vamos com tudo! 🔥"""
                         """
                         
                         # Chama a IA (usando o mesmo modelo já configurado no seu sistema)
-                        # Conecta com a IA especificamente para esta função
+                        # Conecta com a IA usando o modelo universal garantido
                         import google.generativeai as genai
-                        modelo_ia = genai.GenerativeModel('gemini-1.5-flash') # ou o nome do modelo que vc já usa no app
+                        modelo_ia = genai.GenerativeModel('gemini-pro') 
                         resposta_fcar = modelo_ia.generate_content(prompt_fcar)
                         
                         # Caixinha Clean Glass para exibir o resultado com estilo
