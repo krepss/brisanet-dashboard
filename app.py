@@ -2810,9 +2810,23 @@ else:
     # ABA 3: FÉRIAS
     # ---------------------------------------------------------
     with tab_ferias:
-        st.markdown("### 🗓️ Planejamento de Férias")
-        st.markdown(f"<div class='vacation-card'><p class='vacation-title'>Suas próximas férias estão programadas para:</p><div class='vacation-date'>{minhas_ferias}</div><p class='vacation-note'>*Sujeito a alteração.</p></div>", unsafe_allow_html=True)
+        # ==========================================================
+        # BLINDA A VARIÁVEL DE FÉRIAS ANTES DE MOSTRAR NA TELA
+        # ==========================================================
+        try:
+            # Tenta puxar a data de férias da planilha do operador (se a coluna existir)
+            # Se o nome da sua coluna for outro, basta trocar "Férias" abaixo:
+            minhas_ferias = df_operador['Férias'].values[0] 
+            
+            # Se o campo estiver vazio na planilha
+            if str(minhas_ferias).strip() == "nan" or str(minhas_ferias).strip() == "":
+                minhas_ferias = "Data a definir"
+        except:
+            # Se a coluna não existir ou der qualquer erro, o sistema não quebra e mostra isso:
+            minhas_ferias = "Consulte a Liderança"
 
+        # AQUI FICA A SUA LINHA QUE ESTAVA DANDO ERRO (NÃO PRECISA MEXER NELA):
+        st.markdown(f"<div class='vacation-card'><p class='vacation-title'>Suas próximas férias estão programadas para:</p><div class='vacation-date'>{minhas_ferias}</div><p class='vacation-note'>*Sujeito a alteração.</p></div>", unsafe_allow_html=True)
     # ---------------------------------------------------------
     # ABA 4: FEEDBACKS
     # ---------------------------------------------------------
