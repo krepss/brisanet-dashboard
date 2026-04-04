@@ -675,6 +675,69 @@ def carregar_mensagens_mural():
         try: return pd.read_csv('mural_parabens.csv', dtype=str)
         except: return None
     return None
+import re
+
+def buscar_escala_hoje(nome_operador):
+    try:
+        hoje_wfm = datetime.now().strftime("%d/%m/%Y")
+        with open("escala_wfm.txt", "r", encoding="utf-8") as f:
+            linhas = f.readlines()
+        for linha in linhas:
+            if nome_operador.lower() in linha.lower() and hoje_wfm in linha:
+                if "dia de folga inteiro" in linha:
+                    motivo = linha.split("-")[-1].strip()
+                    return {"tipo": "folga", "motivo": motivo}
+                else:
+                    partes = linha.split(f"{hoje_wfm}, ")
+                    if len(partes) > 1:
+                        resto = partes[1]
+                        turno_eventos = resto.split(": ", 1)
+                        turno = turno_eventos[0]
+                        eventos_str = turno_eventos[1] if len(turno_eventos) > 1 else ""
+                        intervalo_1, refeicao, intervalo_2 = "", "", ""
+                        eventos = eventos_str.split(", ")
+                        intervalos_encontrados = []
+                        for ev in eventos:
+                            if "Intervalo" in ev: intervalos_encontrados.append(ev.replace("Intervalo ", ""))
+                            elif "Refeição" in ev: refeicao = ev.replace("Refeição ", "")
+                        if len(intervalos_encontrados) > 0: intervalo_1 = intervalos_encontrados[0]
+                        if len(intervalos_encontrados) > 1: intervalo_2 = intervalos_encontrados[1]
+                        return {"tipo": "trabalho", "turno": turno, "intervalo_1": intervalo_1, "refeicao": refeicao, "intervalo_2": intervalo_2}
+        return None
+    except:
+        return None
+
+def buscar_escala_completa(nome_operador):
+    escala = []
+    try:
+        with open("escala_wfm.txt", "r", encoding="utf-8") as f:
+            linhas = f.readlines()
+        for linha in linhas:
+            if nome_operador.lower() in linha.lower():
+                match_data = re.search(r'\d{2}/\d{2}/\d{4}', linha)
+                if match_data:
+                    data_str = match_data.group()
+                    dia_semana = ""
+                    match_dia = re.search(r'([a-zA-Zá-úÁ-Ú-]+),\s' + data_str, linha)
+                    if match_dia:
+                        dia_semana = match_dia.group(1).title()
+                    if "dia de folga inteiro" in linha:
+                        motivo = linha.split("-")[-1].strip()
+                        escala.append({"Data": data_str, "Dia": dia_semana, "Turno": "🏖️ Folga", "Detalhes": motivo})
+                    else:
+                        partes = linha.split(f"{data_str}, ")
+                        if len(partes) > 1:
+                            resto = partes[1]
+                            turno_eventos = resto.split(": ", 1)
+                            turno = turno_eventos[0]
+                            detalhes = turno_eventos[1].strip() if len(turno_eventos) > 1 else ""
+                            escala.append({"Data": data_str, "Dia": dia_semana, "Turno": turno, "Detalhes": detalhes})
+        if escala:
+            import pandas as pd
+            return pd.DataFrame(escala)
+    except:
+        pass
+    return None
 # ==========================================
 # --- 4. LOGIN RENOVADO (SEM DELAY E SEM PISCAR) ---
 # ==========================================
@@ -2229,6 +2292,45 @@ else:
         st.markdown(f"## 🚀 Olá, **{primeiro_nome}**!")
         st.markdown(f"<div style='display: flex; align-items: center; margin-top:-15px; color: #666; font-size:0.9em;'><span style='margin-right: 15px;'>📅 Referência: <b>{periodo_label}</b></span><span class='update-badge' style='background-color:#e0f7fa; color:#006064;'>🕒 Atualizado em: {obter_data_atualizacao()}</span>{tempo_empresa_str}</div>", unsafe_allow_html=True)
                  
+    # --- 🕒 CARTÃO DE PAUSAS DO WFM ---
+        escala_hoje = buscar_escala_hoje(nome_logado)
+        
+        if escala_hoje:
+            if escala_hoje["tipo"] == "folga":
+                # Cartão quando ele está de Folga ou Férias
+                st.markdown(f"""
+                <div style='background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%); padding: 15px 25px; border-radius: 20px; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-top: 20px; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;'>
+                    <div style='font-size: 30px;'>🏖️</div>
+                    <div>
+                        <p style='margin: 0; color: #4B5563; font-size: 0.9em; font-weight: 600;'>Status WFM de Hoje</p>
+                        <h4 style='margin: 0; color: #111827; font-weight: 800;'>{escala_hoje['motivo']}</h4>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                # Cartão Flutuante de Escala Normal (Clean Glass)
+                st.markdown(f"""
+                <div style='background-color: #FFFFFF; padding: 20px 25px; border-radius: 20px; border: none; box-shadow: 0 8px 24px rgba(0,0,0,0.04); margin-top: 20px; margin-bottom: 25px;'>
+                    <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap;'>
+                        <p style='margin: 0; color: #6B7280; font-size: 0.95em; font-weight: 600;'>🕒 Seu Turno Hoje:</p>
+                        <span style='background-color: #F3F4F6; color: #111827; padding: 4px 12px; border-radius: 12px; font-weight: 800; font-size: 1.1em;'>{escala_hoje['turno']}</span>
+                    </div>
+                    <div style='display: flex; gap: 10px; flex-wrap: wrap;'>
+                        <div style='flex: 1; background-color: #F9FAFB; border: 1px solid #E5E7EB; padding: 10px 15px; border-radius: 12px; text-align: center; min-width: 100px;'>
+                            <div style='color: #F37021; font-weight: 700; font-size: 0.8em; margin-bottom: 3px;'>☕ PAUSA 1</div>
+                            <div style='color: #111827; font-weight: 800; font-size: 1.1em;'>{escala_hoje['intervalo_1'] or '--:--'}</div>
+                        </div>
+                        <div style='flex: 1; background-color: #FFFBEB; border: 1px solid #FDE68A; padding: 10px 15px; border-radius: 12px; text-align: center; min-width: 100px;'>
+                            <div style='color: #D97706; font-weight: 700; font-size: 0.8em; margin-bottom: 3px;'>🥪 REFEIÇÃO</div>
+                            <div style='color: #111827; font-weight: 800; font-size: 1.1em;'>{escala_hoje['refeicao'] or '--:--'}</div>
+                        </div>
+                        <div style='flex: 1; background-color: #F9FAFB; border: 1px solid #E5E7EB; padding: 10px 15px; border-radius: 12px; text-align: center; min-width: 100px;'>
+                            <div style='color: #F37021; font-weight: 700; font-size: 0.8em; margin-bottom: 3px;'>☕ PAUSA 2</div>
+                            <div style='color: #111827; font-weight: 800; font-size: 1.1em;'>{escala_hoje['intervalo_2'] or '--:--'}</div>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
     # --- 🎂 VERIFICAÇÃO DE ANIVERSÁRIO ---
     if df_users_cadastrados is not None:
         try:
