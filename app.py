@@ -2569,23 +2569,40 @@ else:
 
             with col_avatar:
                 st.markdown("##### 🎭 Escolher Avatar")
-                opcoes_avatares = {
-                    "Leão 🦁": "🦁", "Astronauta 👨‍🚀": "👨‍🚀", "Gamer 🎮": "🎮", 
-                    "Foguete 🚀": "🚀", "Ninja 🥷": "🥷", "Gato 🐱": "🐱"
-                }
-                selecao = st.selectbox("Escolha um ícone:", list(opcoes_avatares.keys()))
                 
-                if st.button("Definir Avatar", use_container_width=True):
+                # Mapeamento dos nomes amigáveis para os nomes dos arquivos que você subiu
+                opcoes_avatares = {
+                    "Ninja (M) 🥷": "ninja.png",
+                    "Ninja (F) 🥷": "ninjaf.png",
+                    "Gato 🐱": "gato.png",
+                    "Gamer (M) 🎮": "gamer.png",
+                    "Gamer (F) 🎮": "gamerf.png",
+                    "Leão 🦁": "leao.png",
+                    "Astronauta 👨‍🚀": "astronauta.png",
+                    "Foguete 🚀": "foguete.png"
+                }
+                
+                selecao = st.selectbox("Escolha seu novo visual:", list(opcoes_avatares.keys()))
+                nome_arquivo_avatar = opcoes_avatares[selecao]
+                
+                # Pré-visualização do avatar escolhido antes de salvar
+                caminho_preview = os.path.join("avatares", nome_arquivo_avatar)
+                if os.path.exists(caminho_preview):
+                    st.image(caminho_preview, width=70)
+
+                if st.button("Definir este Avatar", use_container_width=True):
+                    # Salvamos o NOME do arquivo escolhido num TXT de referência
                     caminho_avatar_txt = caminho_foto_user.replace(".png", "_avatar.txt")
                     with open(caminho_avatar_txt, "w", encoding="utf-8") as f:
-                        f.write(opcoes_avatares[selecao])
+                        f.write(nome_arquivo_avatar)
+                    
+                    # Remove a foto real se existir, para não dar conflito
                     if os.path.exists(caminho_foto_user):
                         os.remove(caminho_foto_user)
-                    st.success(f"Avatar {selecao} definido!")
-                    time.sleep(1)
+                    
+                    st.success(f"Avatar {selecao} definido com sucesso!")
+                    time.sleep(1.2)
                     st.rerun()
-            
-            st.divider()
             # Botão de remover logo abaixo das colunas
             if st.button("🗑️ Remover Imagem Atual", use_container_width=True):
                 if os.path.exists(caminho_foto_user): os.remove(caminho_foto_user)
