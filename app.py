@@ -1917,11 +1917,17 @@ Vamos com tudo! 🔥"""
                     # Lê o conteúdo do arquivo que você subiu
                     conteudo_wfm = arquivo_wfm.getvalue().decode("utf-8")
                     
-                    # Salva (e sobrescreve) o arquivo no servidor
+                    # 1. Salva na memória do painel
                     with open("escala_wfm.txt", "w", encoding="utf-8") as f:
                         f.write(conteudo_wfm)
+                        
+                    # 2. 🚨 O PULO DO GATO: Salva permanentemente no seu banco de dados/GitHub!
+                    sincronizar_com_github("escala_wfm.txt", "Gestor atualizou a Escala WFM da Equipe")
                     
-                    st.success("✅ Escala WFM atualizada com sucesso! A equipe já pode visualizar as novas pausas.")
+                    st.success("✅ Escala WFM salva e guardada no banco de dados com sucesso!")
+                    import time
+                    time.sleep(1.5)
+                    st.rerun()
                 except Exception as e:
                     st.error(f"⚠️ Erro ao processar o arquivo: {e}")
         st.markdown("---")
