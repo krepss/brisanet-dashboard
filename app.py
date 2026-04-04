@@ -2304,48 +2304,6 @@ else:
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
-    import re # Garante que a biblioteca de busca de textos está ativa
-    
-    def buscar_escala_completa(nome_operador):
-    escala = []
-    try:
-        with open("escala_wfm.txt", "r", encoding="utf-8") as f:
-            linhas = f.readlines()
-            
-        for linha in linhas:
-            if nome_operador.lower() in linha.lower():
-                # Caça a data no formato DD/MM/YYYY no meio do texto
-                match_data = re.search(r'\d{2}/\d{2}/\d{4}', linha)
-                if match_data:
-                    data_str = match_data.group()
-                    
-                    # Caça o dia da semana (ex: "segunda-feira") que vem antes da data
-                    dia_semana = ""
-                    match_dia = re.search(r'([a-zA-Zá-úÁ-Ú-]+),\s' + data_str, linha)
-                    if match_dia:
-                        dia_semana = match_dia.group(1).title()
-    
-                    # Separa se é folga ou dia de trabalho
-                    if "dia de folga inteiro" in linha:
-                        motivo = linha.split("-")[-1].strip()
-                        escala.append({"Data": data_str, "Dia": dia_semana, "Turno": "🏖️ Folga", "Detalhes": motivo})
-                    else:
-                        partes = linha.split(f"{data_str}, ")
-                        if len(partes) > 1:
-                            resto = partes[1]
-                            turno_eventos = resto.split(": ", 1)
-                            turno = turno_eventos[0]
-                            # Pega todos os intervalos e refeições do dia
-                            detalhes = turno_eventos[1].strip() if len(turno_eventos) > 1 else ""
-                            escala.append({"Data": data_str, "Dia": dia_semana, "Turno": turno, "Detalhes": detalhes})
-        
-        # Transforma a lista numa tabela bonita do Pandas
-        if escala:
-            import pandas as pd
-            return pd.DataFrame(escala)
-    except:
-        pass
-    return None
     # --- BUSCA FÉRIAS DO OPERADOR ---
     minhas_ferias = "Não informado"
     if df_users_cadastrados is not None:
