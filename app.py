@@ -135,77 +135,7 @@ st.markdown("""
 
 # --- 3. FUNÇÕES DE BACKEND ---
 
-def gerar_radar_wfm_data(data_alvo):
-    try:
-        import pandas as pd
-        import re
-        
-        # 1. Puxa a BASE OFICIAL de usuários cadastrados
-        df_users = carregar_usuarios()
-        if df_users is None or df_users.empty:
-            return None
-            
-        # 2. Cria uma lista de chamada assumindo que todo mundo está de Folga inicialmente
-        usuarios_ativos = {}
-        for _, row in df_users.iterrows():
-            nome_norm = str(row['nome']) 
-            nome_bonito = nome_norm.title()
-            usuarios_ativos[nome_norm] = {"Colaborador": nome_bonito, "Status": "Folga", "Turno": "Ausente"}
-            
-        # 3. Lê o arquivo WFM e checa a data escolhida pelo gestor
-        with open("escala_wfm.txt", "r", encoding="utf-8") as f:
-            linhas = f.readlines()
-            
-        dias_semana = ['segunda-feira, ', 'terça-feira, ', 'quarta-feira, ', 'quinta-feira, ', 'sexta-feira, ', 'sábado, ', 'domingo, ']
-        
-        for linha in linhas:
-            if data_alvo in linha:
-                # Isola o nome cortando a linha na data
-                partes = linha.split(data_alvo)
-                nome_cru = partes[0]
-                for d in dias_semana:
-                    nome_cru = nome_cru.replace(d, "")
-                nome_limpo = nome_cru.strip()
-                nome_norm_wfm = normalizar_chave(nome_limpo)
-                
-                # Se a pessoa do WFM estiver na sua base oficial, atualiza o status dela
-                if nome_norm_wfm in usuarios_ativos:
-                    resto = partes[1]
-                    status = "Trabalhando"
-                    turno = "N/A"
-                    
-                    if "dia de folga inteiro" in resto.lower():
-                        if "férias" in resto.lower() or "ferias" in resto.lower(): 
-                            status = "Férias"
-                        else: 
-                            status = "Folga"
-                        turno = "Ausente"
-                    else:
-                        # Extrai o horário de trabalho e as exceções
-                        turno_info = resto.split(":")
-                        if len(turno_info) > 0:
-                            turno = turno_info[0].replace(", ", "").strip()
-                            eventos = ":".join(turno_info[1:])
-                            if "treinamento" in eventos.lower(): status = "Treinamento"
-                            if "questões de saúde" in eventos.lower(): status = "Saúde"
-                            
-                    usuarios_ativos[nome_norm_wfm] = {"Colaborador": nome_limpo.title(), "Status": status, "Turno": turno}
-                    
-        # 4. Transforma a lista de chamada pronta em Tabela
-        escala_final = list(usuarios_ativos.values())
-        if escala_final:
-            df = pd.DataFrame(escala_final)
-            
-            # Ordenação inteligente: Quem trabalha primeiro, depois Treinamento, Saúde, Férias e Folga
-            ordem_status = {"Trabalhando": 1, "Treinamento": 2, "Saúde": 3, "Férias": 4, "Folga": 5}
-            df['Ordem'] = df['Status'].map(ordem_status).fillna(99)
-            df = df.sort_values(by=["Ordem", "Colaborador"]).drop(columns=['Ordem'])
-            
-            return df
-            
-    except Exception as e:
-        pass
-    return None
+
 def sincronizar_com_github(nome_arquivo, mensagem="Atualização via Painel Gestor"):
     if "GITHUB_TOKEN" not in st.secrets or "GITHUB_REPO" not in st.secrets:
         return False
@@ -748,11 +678,26 @@ def carregar_mensagens_mural():
     return None
 import re
 
+import re
+import glob
+
+# Aspirador de Pó: Sugga todos os arquivos WFM do servidor de uma vez só!
+def ler_todas_escalas_wfm():
+    linhas = []
+    # Caça todos os arquivos salvos que começam com "escala_wfm"
+    for arquivo in glob.glob("escala_wfm*.txt"):
+        try:
+            with open(arquivo, "r", encoding="utf-8") as f:
+                linhas.extend(f.readlines())
+        except:
+            pass
+    return linhas
+
 def buscar_escala_hoje(nome_operador):
     try:
         hoje_wfm = datetime.now().strftime("%d/%m/%Y")
-        with open("escala_wfm.txt", "r", encoding="utf-8") as f:
-            linhas = f.readlines()
+        linhas = ler_todas_escalas_wfm()
+        
         for linha in linhas:
             if nome_operador.lower() in linha.lower() and hoje_wfm in linha:
                 if "dia de folga inteiro" in linha:
@@ -781,8 +726,8 @@ def buscar_escala_hoje(nome_operador):
 def buscar_escala_completa(nome_operador):
     escala = []
     try:
-        with open("escala_wfm.txt", "r", encoding="utf-8") as f:
-            linhas = f.readlines()
+        linhas = ler_todas_escalas_wfm()
+        
         for linha in linhas:
             if nome_operador.lower() in linha.lower():
                 match_data = re.search(r'\d{2}/\d{2}/\d{4}', linha)
@@ -805,9 +750,67 @@ def buscar_escala_completa(nome_operador):
                             escala.append({"Data": data_str, "Dia": dia_semana, "Turno": turno, "Detalhes": detalhes})
         if escala:
             import pandas as pd
-            return pd.DataFrame(escala)
+            # Remove duplicatas caso você tenha subido o mesmo mês duas vezes por engano
+            df = pd.DataFrame(escala).drop_duplicates(subset=['Data'])
+            return df
     except:
         pass
+    return None
+
+def gerar_radar_wfm_data(data_alvo):
+    try:
+        import pandas as pd
+        import re
+        
+        df_users = carregar_usuarios()
+        if df_users is None or df_users.empty: return None
+            
+        usuarios_ativos = {}
+        for _, row in df_users.iterrows():
+            nome_norm = str(row['nome']) 
+            nome_bonito = nome_norm.title()
+            usuarios_ativos[nome_norm] = {"Colaborador": nome_bonito, "Status": "Folga", "Turno": "Ausente"}
+            
+        linhas = ler_todas_escalas_wfm()
+        dias_semana = ['segunda-feira, ', 'terça-feira, ', 'quarta-feira, ', 'quinta-feira, ', 'sexta-feira, ', 'sábado, ', 'domingo, ']
+        
+        for linha in linhas:
+            if data_alvo in linha:
+                partes = linha.split(data_alvo)
+                nome_cru = partes[0]
+                for d in dias_semana:
+                    nome_cru = nome_cru.replace(d, "")
+                nome_limpo = nome_cru.strip()
+                nome_norm_wfm = normalizar_chave(nome_limpo)
+                
+                if nome_norm_wfm in usuarios_ativos:
+                    resto = partes[1]
+                    status = "Trabalhando"
+                    turno = "N/A"
+                    
+                    if "dia de folga inteiro" in resto.lower():
+                        if "férias" in resto.lower() or "ferias" in resto.lower(): status = "Férias"
+                        else: status = "Folga"
+                        turno = "Ausente"
+                    else:
+                        turno_info = resto.split(":")
+                        if len(turno_info) > 0:
+                            turno = turno_info[0].replace(", ", "").strip()
+                            eventos = ":".join(turno_info[1:])
+                            if "treinamento" in eventos.lower(): status = "Treinamento"
+                            if "questões de saúde" in eventos.lower(): status = "Saúde"
+                            
+                    usuarios_ativos[nome_norm_wfm] = {"Colaborador": nome_limpo.title(), "Status": status, "Turno": turno}
+                    
+        escala_final = list(usuarios_ativos.values())
+        if escala_final:
+            df = pd.DataFrame(escala_final)
+            ordem_status = {"Trabalhando": 1, "Treinamento": 2, "Saúde": 3, "Férias": 4, "Folga": 5}
+            df['Ordem'] = df['Status'].map(ordem_status).fillna(99)
+            df = df.sort_values(by=["Ordem", "Colaborador"]).drop(columns=['Ordem'])
+            return df
+            
+    except Exception as e: pass
     return None
 # ==========================================
 # --- 4. LOGIN RENOVADO (SEM DELAY E SEM PISCAR) ---
@@ -1907,24 +1910,27 @@ Vamos com tudo! 🔥"""
     # --- 📅 UPLOAD DA ESCALA WFM ---
         st.markdown("---")
         st.markdown("### 📅 Atualizar Escala WFM (Turnos e Pausas)")
-        st.info("Faça o upload do arquivo de texto (.txt) gerado pelo sistema de WFM. Isso atualizará automaticamente o painel de turnos de todos os operadores.")
+        st.info("Faça o upload do arquivo de texto (.txt) gerado pelo sistema de WFM. O sistema guardará o histórico de todos os meses automaticamente.")
         
         arquivo_wfm = st.file_uploader("Selecione o arquivo de turnos (.txt)", type=["txt"])
         
         if arquivo_wfm is not None:
-            if st.button("💾 Salvar Nova Escala", use_container_width=True, type="primary"):
+            if st.button("💾 Salvar Nova Escala no Histórico", use_container_width=True, type="primary"):
                 try:
-                    # Lê o conteúdo do arquivo que você subiu
                     conteudo_wfm = arquivo_wfm.getvalue().decode("utf-8")
                     
-                    # 1. Salva na memória do painel
-                    with open("escala_wfm.txt", "w", encoding="utf-8") as f:
+                    # Cria um nome único baseado no arquivo original para não esmagar os antigos
+                    nome_seguro = arquivo_wfm.name.replace(" ", "_")
+                    nome_arquivo_final = f"escala_wfm_{nome_seguro}"
+                    
+                    # Salva no servidor local
+                    with open(nome_arquivo_final, "w", encoding="utf-8") as f:
                         f.write(conteudo_wfm)
                         
-                    # 2. 🚨 O PULO DO GATO: Salva permanentemente no seu banco de dados/GitHub!
-                    sincronizar_com_github("escala_wfm.txt", "Gestor atualizou a Escala WFM da Equipe")
+                    # Manda o arquivo blindado para a nuvem do GitHub
+                    sincronizar_com_github(nome_arquivo_final, f"Nova escala adicionada: {nome_seguro}")
                     
-                    st.success("✅ Escala WFM salva e guardada no banco de dados com sucesso!")
+                    st.success(f"✅ Escala {nome_seguro} salva no histórico com sucesso!")
                     import time
                     time.sleep(1.5)
                     st.rerun()
