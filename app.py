@@ -1315,9 +1315,9 @@ Vamos com tudo! 🔥"""
             
             st.markdown("<br>", unsafe_allow_html=True)
             
-            # Exibe a tabela interativa com as cores mudando sozinhas baseado no status!
+           # Exibe a tabela interativa com as cores mudando sozinhas baseado no status!
             st.dataframe(
-                df_radar.style.applymap(
+                df_radar.style.map(
                     lambda x: 'color: #2ecc71; font-weight:bold;' if x == 'Trabalhando' 
                     else ('color: #e74c3c; font-weight:bold;' if x in ['Férias', 'Saúde'] else 'color: #3498db; font-weight:bold;'), 
                     subset=['Status']
