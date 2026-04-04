@@ -2356,26 +2356,31 @@ else:
     col_foto_perfil, col_texto_perfil = st.columns([1, 6])
     
     with col_foto_perfil:
+        caminho_avatar_txt = caminho_foto_user.replace(".png", "_avatar.txt")
+        
+        # 1. Prioridade: Foto Real do Colaborador
         if os.path.exists(caminho_foto_user):
-            st.markdown(f"""
-                <style>
-                    .perfil-foto-ponta {{
-                        border-radius: 50%;
-                        width: 75px;
-                        height: 75px;
-                        object-fit: cover;
-                        border: 3px solid #003366;
-                        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-                        display: block;
-                        margin-left: auto;
-                        margin-right: auto;
-                        margin-top: 15px;
-                    }}
-                </style>
-                <img src="data:image/png;base64,{base64.b64encode(open(caminho_foto_user, "rb").read()).decode()}" class="perfil-foto-ponta">
-            """, unsafe_allow_html=True)
+            with open(caminho_foto_user, "rb") as f:
+                img_base64 = base64.b64encode(f.read()).decode()
+            st.markdown(f'<img src="data:image/png;base64,{img_base64}" style="border-radius: 50%; width: 80px; height: 80px; object-fit: cover; border: 3px solid #F37021; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: block; margin: 10px auto;">', unsafe_allow_html=True)
+            
+        # 2. Prioridade: Avatar da pasta /avatares
+        elif os.path.exists(caminho_avatar_txt):
+            with open(caminho_avatar_txt, "r", encoding="utf-8") as f:
+                nome_arq_avatar = f.read().strip()
+            
+            caminho_full_avatar = os.path.join("avatares", nome_arq_avatar)
+            
+            if os.path.exists(caminho_full_avatar):
+                with open(caminho_full_avatar, "rb") as f:
+                    avatar_base64 = base64.b64encode(f.read()).decode()
+                st.markdown(f'<img src="data:image/png;base64,{avatar_base64}" style="border-radius: 50%; width: 80px; height: 80px; object-fit: cover; border: 3px solid #003366; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: block; margin: 10px auto;">', unsafe_allow_html=True)
+            else:
+                st.markdown("<h1 style='font-size: 65px; text-align: center; margin:0;'>👤</h1>", unsafe_allow_html=True)
+                
+        # 3. Padrão: Ícone Vazio
         else:
-            st.markdown("<h1 style='font-size: 65px; text-align: center; margin:0; margin-top: 5px;'>👤</h1>", unsafe_allow_html=True)
+            st.markdown("<h1 style='font-size: 65px; text-align: center; margin:0;'>👤</h1>", unsafe_allow_html=True)
 
     with col_texto_perfil:
         # 1. Cria a variável blindada ANTES de jogar na tela
