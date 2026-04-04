@@ -1719,6 +1719,27 @@ Vamos com tudo! 🔥"""
                 _, log_df = carregar_dados_completo_debug()
                 st.dataframe(log_df)
 
+    # --- 📅 UPLOAD DA ESCALA WFM ---
+        st.markdown("---")
+        st.markdown("### 📅 Atualizar Escala WFM (Turnos e Pausas)")
+        st.info("Faça o upload do arquivo de texto (.txt) gerado pelo sistema de WFM. Isso atualizará automaticamente o painel de turnos de todos os operadores.")
+        
+        arquivo_wfm = st.file_uploader("Selecione o arquivo de turnos (.txt)", type=["txt"])
+        
+        if arquivo_wfm is not None:
+            if st.button("💾 Salvar Nova Escala", use_container_width=True, type="primary"):
+                try:
+                    # Lê o conteúdo do arquivo que você subiu
+                    conteudo_wfm = arquivo_wfm.getvalue().decode("utf-8")
+                    
+                    # Salva (e sobrescreve) o arquivo no servidor
+                    with open("escala_wfm.txt", "w", encoding="utf-8") as f:
+                        f.write(conteudo_wfm)
+                    
+                    st.success("✅ Escala WFM atualizada com sucesso! A equipe já pode visualizar as novas pausas.")
+                except Exception as e:
+                    st.error(f"⚠️ Erro ao processar o arquivo: {e}")
+        st.markdown("---")
     # ------------------ BANCO DE HORAS ------------------
     with tabs[10]:
         st.markdown("### ⏰ Banco de Horas e Agendamentos")
@@ -2207,6 +2228,45 @@ else:
         # 2. Usa a variável segura no Markdown e injeta a medalha de tempo de casa
         st.markdown(f"## 🚀 Olá, **{primeiro_nome}**!")
         st.markdown(f"<div style='display: flex; align-items: center; margin-top:-15px; color: #666; font-size:0.9em;'><span style='margin-right: 15px;'>📅 Referência: <b>{periodo_label}</b></span><span class='update-badge' style='background-color:#e0f7fa; color:#006064;'>🕒 Atualizado em: {obter_data_atualizacao()}</span>{tempo_empresa_str}</div>", unsafe_allow_html=True)
+    # --- 🕒 CARTÃO DE PAUSAS DO WFM ---
+        escala_hoje = buscar_escala_hoje(nome_logado)
+        
+        if escala_hoje:
+            if escala_hoje["tipo"] == "folga":
+                # Cartão quando ele está de Folga ou Férias
+                st.markdown(f"""
+                <div style='background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%); padding: 15px 25px; border-radius: 20px; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-top: 20px; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;'>
+                    <div style='font-size: 30px;'>🏖️</div>
+                    <div>
+                        <p style='margin: 0; color: #4B5563; font-size: 0.9em; font-weight: 600;'>Status WFM de Hoje</p>
+                        <h4 style='margin: 0; color: #111827; font-weight: 800;'>{escala_hoje['motivo']}</h4>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                # Cartão Flutuante de Escala Normal (Clean Glass)
+                st.markdown(f"""
+                <div style='background-color: #FFFFFF; padding: 20px 25px; border-radius: 20px; border: none; box-shadow: 0 8px 24px rgba(0,0,0,0.04); margin-top: 20px; margin-bottom: 25px;'>
+                    <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap;'>
+                        <p style='margin: 0; color: #6B7280; font-size: 0.95em; font-weight: 600;'>🕒 Seu Turno Hoje:</p>
+                        <span style='background-color: #F3F4F6; color: #111827; padding: 4px 12px; border-radius: 12px; font-weight: 800; font-size: 1.1em;'>{escala_hoje['turno']}</span>
+                    </div>
+                    <div style='display: flex; gap: 10px; flex-wrap: wrap;'>
+                        <div style='flex: 1; background-color: #F9FAFB; border: 1px solid #E5E7EB; padding: 10px 15px; border-radius: 12px; text-align: center; min-width: 100px;'>
+                            <div style='color: #F37021; font-weight: 700; font-size: 0.8em; margin-bottom: 3px;'>☕ PAUSA 1</div>
+                            <div style='color: #111827; font-weight: 800; font-size: 1.1em;'>{escala_hoje['intervalo_1'] or '--:--'}</div>
+                        </div>
+                        <div style='flex: 1; background-color: #FFFBEB; border: 1px solid #FDE68A; padding: 10px 15px; border-radius: 12px; text-align: center; min-width: 100px;'>
+                            <div style='color: #D97706; font-weight: 700; font-size: 0.8em; margin-bottom: 3px;'>🥪 REFEIÇÃO</div>
+                            <div style='color: #111827; font-weight: 800; font-size: 1.1em;'>{escala_hoje['refeicao'] or '--:--'}</div>
+                        </div>
+                        <div style='flex: 1; background-color: #F9FAFB; border: 1px solid #E5E7EB; padding: 10px 15px; border-radius: 12px; text-align: center; min-width: 100px;'>
+                            <div style='color: #F37021; font-weight: 700; font-size: 0.8em; margin-bottom: 3px;'>☕ PAUSA 2</div>
+                            <div style='color: #111827; font-weight: 800; font-size: 1.1em;'>{escala_hoje['intervalo_2'] or '--:--'}</div>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
     # --- BUSCA FÉRIAS DO OPERADOR ---
     minhas_ferias = "Não informado"
     if df_users_cadastrados is not None:
