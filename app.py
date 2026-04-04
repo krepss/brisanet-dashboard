@@ -2931,7 +2931,7 @@ else:
                             op_nome = op_data['Colaborador']
                             op_perc = op_data['% Atingimento']
                             
-                            # USANDO A NOVA FUNÇÃO MÁGICA
+                            # 1. CHAMA A FUNÇÃO QUE JÁ SABE SE É FOTO OU AVATAR
                             img_perfil = obter_imagem_perfil(op_nome)
 
                             with col:
@@ -2941,11 +2941,13 @@ else:
                                     <div style="background-color: #FFF; border: 4px solid {cores_borda[i]}; padding: 15px; border-radius: 12px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px;">
                                 """, unsafe_allow_html=True)
                                 
+                                # 2. AQUI ESTAVA O ERRO: AGORA USAMOS A VARIÁVEL img_perfil
                                 if img_perfil:
                                     st.markdown(f"""
                                         <img src="{img_perfil}" style="border-radius: 50%; width: 100px; height: 100px; object-fit: cover; border: 4px solid {cores_borda[i]}; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: block; margin: 0 auto 10px auto;">
                                     """, unsafe_allow_html=True)
                                 else:
+                                    # Se não tiver foto nem avatar, mostra o ícone cinza
                                     st.markdown("<h1 style='font-size: 60px; text-align: center; margin:0;'>👤</h1>", unsafe_allow_html=True)
                                     
                                 st.markdown(f"""
