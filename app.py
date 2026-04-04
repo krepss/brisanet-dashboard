@@ -45,79 +45,91 @@ try:
 except:
     st.set_page_config(page_title="Team Sofistas | Analytics", layout="wide", page_icon="🦁", initial_sidebar_state="collapsed")
 
-# --- 2. CSS COMPACTADO (DARK MODE PREMIUM) ---
+# --- 2. CSS COMPACTADO (CLEAN GLASS PREMIUM) ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;600;800&family=Roboto:wght@300;400;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&family=Roboto:wght@300;400;500;700&display=swap');
     
-    /* Fundo Geral da Tela */
+    /* Fundo Gelo Super Suave (Estilo Apple) */
     html, body {scroll-behavior: smooth !important; font-family: 'Roboto', sans-serif;}
-    .stApp {background-color: #121214 !important;}
+    .stApp {background-color: #F5F7FA !important;}
     
     /* Esconde barra lateral */
     [data-testid="collapsedControl"], [data-testid="stSidebar"] {display: none !important;}
     
     /* Textos Gerais */
-    h1, h2, h3, h4, h5, h6 {color: #E1E1E6 !important; font-family: 'Montserrat', sans-serif !important;}
-    p, li, div {color: #C4C4CC;}
+    h1, h2, h3, h4, h5, h6 {color: #111827 !important; font-family: 'Montserrat', sans-serif !important; letter-spacing: -0.5px;}
+    p, li, div {color: #4B5563;}
     
-    /* Banner Superior Estilo "Cyberpunk/Monitoramento" */
-    .top-banner {background: linear-gradient(135deg, #1A1A24 0%, #20202A 100%); padding: 20px 30px; border-radius: 15px; border: 1px solid #323238; box-shadow: 0 8px 20px rgba(0,0,0,0.5); display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;}
-    .top-banner h2, .top-banner h4 {color: #FFF !important; margin: 0 !important; padding: 0 !important;}
-    .top-banner h2 {font-weight: 800 !important; letter-spacing: 1px !important; font-size: 28px !important;}
-    .top-banner .sub-text {color: #8D8D99 !important; margin: 0 !important; padding: 0 !important; font-size: 14px !important; font-weight: 400 !important;}
+    /* Banner Superior "Vidro Flutuante" */
+    .top-banner {
+        background: rgba(255, 255, 255, 0.85); 
+        backdrop-filter: blur(12px); 
+        -webkit-backdrop-filter: blur(12px);
+        padding: 20px 30px; 
+        border-radius: 24px; 
+        border: 1px solid rgba(255, 255, 255, 0.4); 
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03); 
+        display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;
+    }
+    .top-banner h2, .top-banner h4 {color: #111827 !important; margin: 0 !important; padding: 0 !important;}
+    .top-banner h2 {font-weight: 800 !important; font-size: 28px !important;}
+    .top-banner .sub-text {color: #6B7280 !important; margin: 0 !important; padding: 0 !important; font-size: 14px !important; font-weight: 500 !important;}
     
-    /* Botões */
-    button[kind="primary"] {background-color: #F37021 !important; border: 1px solid #F37021 !important; border-radius: 8px !important;}
-    button[kind="primary"] p {color: #FFF !important; font-weight: bold !important;}
-    button[kind="primary"]:hover {background-color: #D35400 !important; border-color: #D35400 !important;}
-    button[kind="secondary"] {background-color: #202024 !important; border: 1px solid #323238 !important; border-radius: 8px !important;}
-    button[kind="secondary"] p {color: #E1E1E6 !important; font-weight: bold !important;}
-    button[kind="secondary"]:hover {border-color: #F37021 !important;}
+    /* Botões Arredondados (Estilo Nubank/iOS) */
+    button[kind="primary"] {background-color: #F37021 !important; border: none !important; border-radius: 30px !important; box-shadow: 0 4px 14px rgba(243, 112, 33, 0.3) !important; transition: all 0.3s ease;}
+    button[kind="primary"] p {color: #FFF !important; font-weight: 600 !important;}
+    button[kind="primary"]:hover {transform: translateY(-2px); box-shadow: 0 6px 20px rgba(243, 112, 33, 0.4) !important;}
+    button[kind="secondary"] {background-color: #FFFFFF !important; border: 1px solid #E5E7EB !important; color: #111827 !important; border-radius: 30px !important; font-weight: 600 !important; box-shadow: 0 2px 5px rgba(0,0,0,0.02) !important;}
+    button[kind="secondary"] p {color: #111827 !important;}
+    button[kind="secondary"]:hover {border-color: #D1D5DB !important; background-color: #F9FAFB !important;}
     
-    /* Cards e Métricas Base */
-    div.stMetric, .insight-box, .badge-card, [data-testid="stForm"] {background-color: #202024 !important; border: 1px solid #323238 !important; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-radius: 10px;}
+    /* Cartões Base (Métricas, Formulários) - Sombras esfumaçadas e bordas grandes */
+    div.stMetric, .insight-box, .badge-card, [data-testid="stForm"] {
+        background-color: #FFFFFF !important; 
+        border: none !important; 
+        box-shadow: 0 8px 24px rgba(0,0,0,0.04) !important; 
+        border-radius: 20px !important;
+    }
     
-    /* Cards do Semáforo com efeito NEON na borda */
+    /* Cards do Semáforo */
     .card-link {text-decoration: none !important; display: block;}
-    .card-excelencia, .card-meta, .card-critico {background-color: #202024; border-radius: 10px; border: 1px solid #323238; padding: 10px 15px; cursor: pointer; transition: all .3s ease;}
-    .card-excelencia {border-left: 5px solid #00B37E;}
-    .card-excelencia:hover {transform: scale(1.03); box-shadow: 0 6px 15px rgba(0, 179, 126, 0.2);}
-    .card-meta {border-left: 5px solid #FBA94C;}
-    .card-meta:hover {transform: scale(1.03); box-shadow: 0 6px 15px rgba(251, 169, 76, 0.2);}
-    .card-critico {border-left: 5px solid #F75A68;}
-    .card-critico:hover {transform: scale(1.03); box-shadow: 0 6px 15px rgba(247, 90, 104, 0.2);}
+    .card-excelencia, .card-meta, .card-critico {background-color: #FFFFFF; border-radius: 20px; border: 1px solid #F3F4F6; padding: 15px 20px; cursor: pointer; transition: all .3s ease; box-shadow: 0 4px 15px rgba(0,0,0,0.02);}
+    .card-excelencia {border-left: 6px solid #10B981;}
+    .card-excelencia:hover {transform: translateY(-3px); box-shadow: 0 12px 25px rgba(16, 185, 129, 0.15);}
+    .card-meta {border-left: 6px solid #F59E0B;}
+    .card-meta:hover {transform: translateY(-3px); box-shadow: 0 12px 25px rgba(245, 158, 11, 0.15);}
+    .card-critico {border-left: 6px solid #EF4444;}
+    .card-critico:hover {transform: translateY(-3px); box-shadow: 0 12px 25px rgba(239, 68, 68, 0.15);}
     
     /* Ajuste de Texto nos Cards */
-    .card-excelencia div:first-child, .card-meta div:first-child, .card-critico div:first-child {color: #C4C4CC !important;}
-    .card-excelencia div:nth-child(2), .card-meta div:nth-child(2), .card-critico div:nth-child(2) {color: #FFF !important;}
-    
-    /* Férias */
-    .vacation-card {background-color: #202024 !important; border-left: 8px solid #00B37E !important; padding: 30px !important; border-radius: 12px !important; text-align: center !important; margin-top: 20px !important;}
-    .vacation-title {color: #E1E1E6 !important;}
-    .vacation-date {color: #00B37E !important; margin: 20px 0 !important;}
+    .card-excelencia div:first-child, .card-meta div:first-child, .card-critico div:first-child {color: #6B7280 !important; font-weight: 500;}
+    .card-excelencia div:nth-child(2), .card-meta div:nth-child(2), .card-critico div:nth-child(2) {color: #111827 !important;}
     
     /* Login e Formulários */
-    [data-testid="stForm"] {padding: 3rem 2rem !important; border-top: 6px solid #F37021 !important;}
-    .login-title {color: #E1E1E6 !important; text-align: center; margin-bottom: 0px;}
-    .login-subtitle {color: #8D8D99 !important; text-align: center; margin-bottom: 25px;}
-    [data-testid="stForm"] input {background-color: #121214 !important; color: #E1E1E6 !important; border: 1px solid #323238 !important; border-radius: 8px !important;}
+    [data-testid="stForm"] {padding: 3rem 2rem !important; border-top: none !important;}
+    .login-title {color: #111827 !important; text-align: center; margin-bottom: 0px; font-weight: 800;}
+    .login-subtitle {color: #6B7280 !important; text-align: center; margin-bottom: 25px;}
+    [data-testid="stForm"] input {background-color: #F9FAFB !important; color: #111827 !important; border: 1px solid #E5E7EB !important; border-radius: 12px !important; padding: 12px !important;}
     
-    /* Componente Metric (Aquele que mostra as notas) */
-    div.stMetric {border-left: 5px solid #F37021; padding: 10px 15px !important;}
-    div.stMetric label {color: #8D8D99 !important; font-size: 14px !important;}
-    div.stMetric div[data-testid="stMetricValue"] {color: #FFF !important; font-size: 26px !important;}
+    /* Componente Metric Nativo */
+    div.stMetric {border-left: 5px solid #F37021; padding: 15px 20px !important;}
+    div.stMetric label {color: #6B7280 !important; font-size: 14px !important; font-weight: 500;}
+    div.stMetric div[data-testid="stMetricValue"] {color: #111827 !important; font-size: 28px !important; font-weight: 800;}
     
     /* Badges e Insight */
-    .update-badge {background-color: #1A1A24; color: #00B37E; padding: 5px 10px; border-radius: 15px; font-size: .85em; font-weight: bold; border: 1px solid #00B37E;}
-    .insight-box {background-color: #20202A !important; border-left: 5px solid #FBA94C !important; padding: 15px; margin-bottom: 20px;}
-    .insight-title {color: #FBA94C; font-weight: bold; display: flex; align-items: center; gap: 8px;}
-    .insight-text {color: #C4C4CC;}
+    .update-badge {background-color: #F3F4F6; color: #4B5563; padding: 6px 12px; border-radius: 20px; font-size: .85em; font-weight: 600; border: none;}
+    .insight-box {background-color: #FFFBEB !important; border-left: none !important; padding: 20px; margin-bottom: 20px; border-radius: 20px;}
+    .insight-title {color: #D97706; font-weight: 700; display: flex; align-items: center; gap: 8px;}
+    .insight-text {color: #4B5563;}
     
-    /* Tabelas Nativas do Streamlit */
-    [data-testid="stDataFrame"] {background-color: #202024 !important;}
+    /* Tabelas e Abas */
+    [data-testid="stDataFrame"] {background-color: transparent !important;}
+    .stTabs [data-baseweb="tab-list"] {background-color: transparent; border-bottom: 2px solid #E5E7EB;}
+    .stTabs [data-baseweb="tab"] {color: #6B7280; font-weight: 600; padding-top: 15px; padding-bottom: 15px;}
+    .stTabs [aria-selected="true"] {color: #F37021 !important; border-bottom-color: #F37021 !important;}
     
-    .dev-footer {text-align: center; margin-top: 40px; font-size: .8em; color: #555 !important;}
+    .dev-footer {text-align: center; margin-top: 40px; font-size: .85em; color: #9CA3AF !important; font-weight: 500;}
 </style>
 """, unsafe_allow_html=True)
 
