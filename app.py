@@ -1283,49 +1283,7 @@ Vamos com tudo! 🔥"""
                 st.info("Aguardando upload de dados para calcular o resumo executivo.")
         else:
             st.info("Nenhum dado disponível neste período.")
-
-    # ==========================================================
-    # 📡 RADAR WFM DO DIA (VISÃO DO GESTOR)
-    # ==========================================================
-        st.markdown("---")
-        st.markdown(f"### 📡 Radar WFM do Dia ({datetime.now().strftime('%d/%m/%Y')})")
-        
-        df_radar = gerar_radar_wfm_hoje()
-        
-        if df_radar is not None and not df_radar.empty:
-            # Conta a galera de forma automática
-            qtd_trabalho = len(df_radar[df_radar['Status'].isin(['Trabalhando', 'Treinamento'])])
-            qtd_folga = len(df_radar[df_radar['Status'] == 'Folga'])
-            qtd_ausentes = len(df_radar[df_radar['Status'].isin(['Férias', 'Saúde'])])
-            
-            # Desenha os 3 cartões de resumo
-            c_wfm1, c_wfm2, c_wfm3 = st.columns(3)
-            c_wfm1.markdown(f"""<div style='background:#FFFFFF; padding:15px; border-radius:12px; border-left:5px solid #2ecc71; box-shadow:0 4px 10px rgba(0,0,0,0.05);'>
-            <p style='margin:0; color:#6B7280; font-size:0.9em; font-weight:600;'>💻 Logados / Treinamento</p>
-            <h2 style='margin:0; color:#111827;'>{qtd_trabalho}</h2></div>""", unsafe_allow_html=True)
-            
-            c_wfm2.markdown(f"""<div style='background:#FFFFFF; padding:15px; border-radius:12px; border-left:5px solid #3498db; box-shadow:0 4px 10px rgba(0,0,0,0.05);'>
-            <p style='margin:0; color:#6B7280; font-size:0.9em; font-weight:600;'>🏖️ Folgas</p>
-            <h2 style='margin:0; color:#111827;'>{qtd_folga}</h2></div>""", unsafe_allow_html=True)
-            
-            c_wfm3.markdown(f"""<div style='background:#FFFFFF; padding:15px; border-radius:12px; border-left:5px solid #e74c3c; box-shadow:0 4px 10px rgba(0,0,0,0.05);'>
-            <p style='margin:0; color:#6B7280; font-size:0.9em; font-weight:600;'>✈️ Férias / Saúde</p>
-            <h2 style='margin:0; color:#111827;'>{qtd_ausentes}</h2></div>""", unsafe_allow_html=True)
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            # Exibe a tabela interativa com as cores mudando sozinhas baseado no status!
-            st.dataframe(
-                df_radar.style.applymap(
-                    lambda x: 'color: #2ecc71; font-weight:bold;' if x == 'Trabalhando' 
-                    else ('color: #e74c3c; font-weight:bold;' if x in ['Férias', 'Saúde'] else 'color: #3498db; font-weight:bold;'), 
-                    subset=['Status']
-                ), 
-                use_container_width=True, 
-                hide_index=True
-            )
-        else:
-            st.info("Nenhuma escala encontrada para o dia de hoje no arquivo WFM.")    
+   
     # --- 🧠 GERADOR DE INSIGHTS FCAR (IA) ---
         st.markdown("---")
         st.markdown("### 🧠 Análise Estratégica da Operação (Modelo FCAR)")
