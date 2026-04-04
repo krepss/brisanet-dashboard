@@ -2329,12 +2329,63 @@ else:
                 </div>
                 """, unsafe_allow_html=True)
             
-            with st.expander("📅 Ver minha escala completa do mês"):
+            # ==========================================================
+            # CALENDÁRIO INTERATIVO DE ESCALA
+            # ==========================================================
+            with st.expander("📅 Consultar Escala de Outros Dias"):
                 df_escala_mes = buscar_escala_completa(nome_logado)
+                
                 if df_escala_mes is not None and not df_escala_mes.empty:
-                    st.dataframe(df_escala_mes, use_container_width=True, hide_index=True)
+                    # Cria o componente de calendário na tela
+                    data_selecionada = st.date_input("Selecione um dia no calendário para ver sua jornada:", format="DD/MM/YYYY")
+                    data_formatada = data_selecionada.strftime("%d/%m/%Y")
+                    
+                    # Filtra a nossa tabela oculta para pegar só o dia selecionado
+                    escala_dia = df_escala_mes[df_escala_mes['Data'] == data_formatada]
+                    
+                    if not escala_dia.empty:
+                        row = escala_dia.iloc[0]
+                        turno_selec = row['Turno']
+                        detalhes_selec = row['Detalhes']
+                        dia_semana_selec = row['Dia']
+                        
+                        if "Folga" in turno_selec:
+                            st.info(f"🏖️ **{dia_semana_selec}, {data_formatada}:** Dia de descanso ({detalhes_selec}).")
+                        else:
+                            # Tira os horários de dentro do texto para montar o visual
+                            int1, ref, int2 = "--:--", "--:--", "--:--"
+                            eventos = detalhes_selec.split(", ")
+                            ints = [e.replace("Intervalo ", "") for e in eventos if "Intervalo" in e]
+                            if len(ints) > 0: int1 = ints[0]
+                            if len(ints) > 1: int2 = ints[1]
+                            refs = [e.replace("Refeição ", "") for e in eventos if "Refeição" in e]
+                            if len(refs) > 0: ref = refs[0]
+                            
+                            # Desenha o cartão limpo para o dia selecionado
+                            st.markdown(f"""
+                            <div style='background-color: #FFFFFF; padding: 15px; border-radius: 12px; border: 1px solid #E5E7EB; margin-top: 5px;'>
+                                <p style='margin: 0; color: #6B7280; font-size: 0.85em; font-weight: 600;'>{dia_semana_selec}, {data_formatada}</p>
+                                <p style='margin: 0 0 10px 0; color: #111827; font-weight: 800;'>Turno: {turno_selec}</p>
+                                <div style='display: flex; gap: 8px;'>
+                                    <div style='flex: 1; background-color: #F9FAFB; padding: 8px; border-radius: 8px; text-align: center; border: 1px solid #E5E7EB;'>
+                                        <div style='color: #F37021; font-weight: 700; font-size: 0.7em;'>PAUSA 1</div>
+                                        <div style='color: #111827; font-weight: 800;'>{int1}</div>
+                                    </div>
+                                    <div style='flex: 1; background-color: #FFFBEB; padding: 8px; border-radius: 8px; text-align: center; border: 1px solid #FDE68A;'>
+                                        <div style='color: #D97706; font-weight: 700; font-size: 0.7em;'>REFEIÇÃO</div>
+                                        <div style='color: #111827; font-weight: 800;'>{ref}</div>
+                                    </div>
+                                    <div style='flex: 1; background-color: #F9FAFB; padding: 8px; border-radius: 8px; text-align: center; border: 1px solid #E5E7EB;'>
+                                        <div style='color: #F37021; font-weight: 700; font-size: 0.7em;'>PAUSA 2</div>
+                                        <div style='color: #111827; font-weight: 800;'>{int2}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    else:
+                        st.warning(f"⚠️ Nenhuma escala programada encontrada para o dia {data_formatada}.")
                 else:
-                    st.info("Nenhuma escala futura encontrada para você neste arquivo.")
+                    st.info("Nenhuma escala encontrada no sistema.")
     # --- 🎂 VERIFICAÇÃO DE ANIVERSÁRIO ---
     if df_users_cadastrados is not None:
         try:
