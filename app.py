@@ -135,12 +135,10 @@ st.markdown("""
 
 # --- 3. FUNÇÕES DE BACKEND ---
 
-def gerar_radar_wfm_hoje():
+def gerar_radar_wfm_data(data_alvo):
     try:
         import pandas as pd
         import re
-        
-        hoje_wfm = datetime.now().strftime("%d/%m/%Y")
         
         # 1. Puxa a BASE OFICIAL de usuários cadastrados
         df_users = carregar_usuarios()
@@ -150,20 +148,20 @@ def gerar_radar_wfm_hoje():
         # 2. Cria uma lista de chamada assumindo que todo mundo está de Folga inicialmente
         usuarios_ativos = {}
         for _, row in df_users.iterrows():
-            nome_norm = str(row['nome']) # Já está normalizado pela função do painel
+            nome_norm = str(row['nome']) 
             nome_bonito = nome_norm.title()
             usuarios_ativos[nome_norm] = {"Colaborador": nome_bonito, "Status": "Folga", "Turno": "Ausente"}
             
-        # 3. Lê o arquivo WFM e "sobrescreve" quem vai trabalhar ou está de Férias/Atestado
+        # 3. Lê o arquivo WFM e checa a data escolhida pelo gestor
         with open("escala_wfm.txt", "r", encoding="utf-8") as f:
             linhas = f.readlines()
             
         dias_semana = ['segunda-feira, ', 'terça-feira, ', 'quarta-feira, ', 'quinta-feira, ', 'sexta-feira, ', 'sábado, ', 'domingo, ']
         
         for linha in linhas:
-            if hoje_wfm in linha:
+            if data_alvo in linha:
                 # Isola o nome cortando a linha na data
-                partes = linha.split(hoje_wfm)
+                partes = linha.split(data_alvo)
                 nome_cru = partes[0]
                 for d in dias_semana:
                     nome_cru = nome_cru.replace(d, "")
@@ -197,8 +195,13 @@ def gerar_radar_wfm_hoje():
         escala_final = list(usuarios_ativos.values())
         if escala_final:
             df = pd.DataFrame(escala_final)
-            # Ordena bonitinho: Trabalhando primeiro, Treinamento, Folgas, etc...
-            return df.sort_values(by=["Status", "Colaborador"], ascending=[False, True])
+            
+            # Ordenação inteligente: Quem trabalha primeiro, depois Treinamento, Saúde, Férias e Folga
+            ordem_status = {"Trabalhando": 1, "Treinamento": 2, "Saúde": 3, "Férias": 4, "Folga": 5}
+            df['Ordem'] = df['Status'].map(ordem_status).fillna(99)
+            df = df.sort_values(by=["Ordem", "Colaborador"]).drop(columns=['Ordem'])
+            
+            return df
             
     except Exception as e:
         pass
@@ -1307,12 +1310,20 @@ Vamos com tudo! 🔥"""
    
     
         # ==========================================================
-        # 📡 RADAR WFM DO DIA (VISÃO DO GESTOR)
+        # 📡 RADAR WFM INTERATIVO (VISÃO DO GESTOR)
         # ==========================================================
         st.markdown("---")
-        st.markdown(f"### 📡 Radar WFM do Dia ({datetime.now().strftime('%d/%m/%Y')})")
         
-        df_radar = gerar_radar_wfm_hoje()
+        # Coloca o título e o calendário lado a lado
+        c_radar_title, c_radar_date = st.columns([3, 1])
+        with c_radar_title:
+            st.markdown("### 📡 Radar WFM da Equipe")
+        with c_radar_date:
+            data_radar_selecionada = st.date_input("Escolha o dia:", format="DD/MM/YYYY")
+            
+        data_radar_str = data_radar_selecionada.strftime("%d/%m/%Y")
+        
+        df_radar = gerar_radar_wfm_data(data_radar_str)
         
         if df_radar is not None and not df_radar.empty:
             # Conta a galera de forma automática
@@ -1336,7 +1347,7 @@ Vamos com tudo! 🔥"""
             
             st.markdown("<br>", unsafe_allow_html=True)
             
-           # Exibe a tabela interativa com as cores mudando sozinhas baseado no status!
+            # Exibe a tabela interativa com o map colorido
             st.dataframe(
                 df_radar.style.map(
                     lambda x: 'color: #2ecc71; font-weight:bold;' if x == 'Trabalhando' 
@@ -1347,7 +1358,7 @@ Vamos com tudo! 🔥"""
                 hide_index=True
             )
         else:
-            st.info("Nenhuma escala encontrada para o dia de hoje no arquivo WFM.")
+            st.info(f"Nenhuma escala encontrada para o dia {data_radar_str}. Verifique se a base de usuários está populada e se o arquivo WFM cobre este período.")
         # --- 🧠 GERADOR DE INSIGHTS FCAR (IA) ---
         st.markdown("---")
         st.markdown("### 🧠 Análise Estratégica da Operação (Modelo FCAR)")
