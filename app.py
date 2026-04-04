@@ -1174,6 +1174,55 @@ Vamos com tudo! 🔥"""
         else:
             st.info("Nenhum dado disponível neste período.")
 
+    # --- 🧠 GERADOR DE INSIGHTS FCAR (IA) ---
+        st.markdown("---")
+        st.markdown("### 🧠 Análise Estratégica da Operação (Modelo FCAR)")
+        st.write("Gere relatórios automatizados no formato Fato, Causa, Ação e Resultado para colar no sistema oficial da empresa.")
+        
+        contexto_fcar = st.text_area("O que você observou na operação neste período?", placeholder="Ex: A equipe teve muitas falhas de login no sistema X, o que aumentou nosso Tempo Médio de Atendimento...")
+        
+        if st.button("🚀 Gerar Insight FCAR da Equipe", use_container_width=True):
+            if contexto_fcar.strip() == "":
+                st.warning("⚠️ Escreva um breve contexto acima para a IA poder analisar!")
+            else:
+                with st.spinner("Processando dados e gerando análise executiva..."):
+                    try:
+                        # Prompt blindado para gerar o modelo FCAR com perfeição corporativa
+                        prompt_fcar = f"""
+                        Atue como um Coordenador de Operações de Suporte Técnico de Alta Performance.
+                        A partir da minha observação abaixo, estruture um relatório gerencial utilizando ESTRITAMENTE a metodologia FCAR (Fato, Causa, Ação, Resultado).
+                        
+                        Minha observação do cenário atual: "{contexto_fcar}"
+                        
+                        Regras de Ouro:
+                        - Use linguagem corporativa, analítica e objetiva.
+                        - O 'Fato' deve ser baseado no que eu disse, sem invenções.
+                        - A 'Causa' deve ser uma hipótese técnica e lógica.
+                        - A 'Ação' deve conter de 2 a 3 passos táticos para a gestão executar.
+                        - O 'Resultado' deve prever o impacto ou a meta de recuperação.
+                        
+                        Retorne APENAS a estrutura abaixo pronta para copiar e colar:
+                        
+                        **F (Fato):** [Seu texto]
+                        
+                        **C (Causa):** [Seu texto]
+                        
+                        **A (Ação):** - [Ação 1]
+                        - [Ação 2]
+                        
+                        **R (Resultado Esperado):** [Seu texto]
+                        """
+                        
+                        # Chama a IA (usando o mesmo modelo já configurado no seu sistema)
+                        resposta_fcar = model.generate_content(prompt_fcar)
+                        
+                        # Caixinha Clean Glass para exibir o resultado com estilo
+                        st.markdown("<div style='background-color: #FFFFFF; padding: 25px; border-radius: 20px; border-left: 6px solid #F37021; box-shadow: 0 8px 24px rgba(0,0,0,0.04); margin-top: 15px;'>", unsafe_allow_html=True)
+                        st.markdown(resposta_fcar.text)
+                        st.markdown("</div>", unsafe_allow_html=True)
+                        
+                    except Exception as e:
+                        st.error(f"Erro ao conectar com a IA: {e}")
     # ------------------ RANKING ------------------
     with tabs[2]:
         st.markdown(f"### 🏆 Ranking Geral (Consolidado)")
