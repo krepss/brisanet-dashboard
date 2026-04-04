@@ -2956,32 +2956,6 @@ else:
                                     </div>
                                 """, unsafe_allow_html=True)
                                 
-                                if os.path.exists(op_caminho_foto):
-                                    st.markdown(f"""
-                                        <style>
-                                            .podio-foto-{i} {{
-                                                border-radius: 50%;
-                                                width: 100px;
-                                                height: 100px;
-                                                object-fit: cover;
-                                                border: 4px solid {cores_borda[i]};
-                                                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-                                                display: block;
-                                                margin-left: auto;
-                                                margin-right: auto;
-                                                margin-bottom: 10px;
-                                            }}
-                                        </style>
-                                        <img src="data:image/png;base64,{base64.b64encode(open(op_caminho_foto, "rb").read()).decode()}" class="podio-foto-{i}">
-                                    """, unsafe_allow_html=True)
-                                else:
-                                    st.markdown("<h1 style='font-size: 60px; text-align: center; margin:0;'>👤</h1>", unsafe_allow_html=True)
-                                    
-                                st.markdown(f"""
-                                    <p style="font-size: 1.1em; font-weight: bold; color: #333; margin: 5px 0; text-align: center;">{op_nome.title()}</p>
-                                    <p style="font-size: 1.8em; font-weight: 800; color: {cores_borda[i]}; margin: 5px 0; text-align: center;">{op_perc:.2%}</p>
-                                    </div>
-                                """, unsafe_allow_html=True)
             st.markdown("---")
 
             # Display Global
