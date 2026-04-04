@@ -2810,23 +2810,32 @@ else:
     # ABA 3: FÉRIAS
     # ---------------------------------------------------------
     with tab_ferias:
-        # ==========================================================
-        # BLINDA A VARIÁVEL DE FÉRIAS ANTES DE MOSTRAR NA TELA
-        # ==========================================================
-        try:
-            # Tenta puxar a data de férias da planilha do operador (se a coluna existir)
-            # Se o nome da sua coluna for outro, basta trocar "Férias" abaixo:
-            minhas_ferias = df_operador['Férias'].values[0] 
+        minhas_ferias = "Não informado"
+        
+        # 1. Puxa a base oficial de usuários já carregada pelo sistema
+        if df_users_cadastrados is not None and not df_users_cadastrados.empty:
+            # Procura a linha exata do operador logado
+            nome_busca = normalizar_chave(nome_logado)
+            user_info = df_users_cadastrados[df_users_cadastrados['nome'] == nome_busca]
             
-            # Se o campo estiver vazio na planilha
-            if str(minhas_ferias).strip() == "nan" or str(minhas_ferias).strip() == "":
-                minhas_ferias = "Data a definir"
-        except:
-            # Se a coluna não existir ou der qualquer erro, o sistema não quebra e mostra isso:
-            minhas_ferias = "Consulte a Liderança"
+            if not user_info.empty and 'ferias' in user_info.columns:
+                valor_ferias = str(user_info.iloc[0]['ferias']).strip()
+                
+                # Se o campo não estiver vazio na sua planilha de admin
+                if valor_ferias.lower() not in ['nan', 'none', '', 'nat']:
+                    minhas_ferias = valor_ferias
+                else:
+                    minhas_ferias = "Data a definir"
 
-        # AQUI FICA A SUA LINHA QUE ESTAVA DANDO ERRO (NÃO PRECISA MEXER NELA):
-        st.markdown(f"<div class='vacation-card'><p class='vacation-title'>Suas próximas férias estão programadas para:</p><div class='vacation-date'>{minhas_ferias}</div><p class='vacation-note'>*Sujeito a alteração.</p></div>", unsafe_allow_html=True)
+        # 2. Desenha o Card Premium (Clean Glass)
+        st.markdown(f"""
+        <div style='background-color: #FFFFFF; padding: 30px; border-radius: 20px; border-top: 6px solid #003366; box-shadow: 0 8px 24px rgba(0,0,0,0.04); text-align: center; margin-top: 20px;'>
+            <h1 style='font-size: 50px; margin-bottom: 10px;'>🏖️</h1>
+            <p style='color: #6B7280; font-size: 1.1em; font-weight: 600; margin-bottom: 5px;'>Suas próximas férias estão programadas para:</p>
+            <div style='color: #111827; font-size: 2em; font-weight: 800; margin-bottom: 15px;'>{minhas_ferias}</div>
+            <p style='color: #9CA3AF; font-size: 0.85em;'>*Baseado no seu cadastro oficial. Consulte sempre a Liderança para alinhar os detalhes.</p>
+        </div>
+        """, unsafe_allow_html=True)
     # ---------------------------------------------------------
     # ABA 4: FEEDBACKS
     # ---------------------------------------------------------
