@@ -1214,10 +1214,20 @@ Vamos com tudo! 🔥"""
                         """
                         
                         # Chama a IA (usando o mesmo modelo já configurado no seu sistema)
-                        # Conecta com a IA usando o modelo universal garantido
                         import google.generativeai as genai
-                        modelo_ia = genai.GenerativeModel('gemini-pro') 
-                        resposta_fcar = modelo_ia.generate_content(prompt_fcar)
+                        
+                        # Faz o sistema varrer a sua API e pegar o primeiro modelo de texto válido
+                        nome_modelo_valido = None
+                        for m in genai.list_models():
+                            if 'generateContent' in m.supported_generation_methods:
+                                nome_modelo_valido = m.name
+                                break
+                        
+                        if nome_modelo_valido:
+                            modelo_ia = genai.GenerativeModel(nome_modelo_valido)
+                            resposta_fcar = modelo_ia.generate_content(prompt_fcar)
+                        else:
+                            st.error("Nenhum modelo de texto encontrado na sua chave de API.")
                         
                         # Caixinha Clean Glass para exibir o resultado com estilo
                         st.markdown("<div style='background-color: #FFFFFF; padding: 25px; border-radius: 20px; border-left: 6px solid #F37021; box-shadow: 0 8px 24px rgba(0,0,0,0.04); margin-top: 15px;'>", unsafe_allow_html=True)
