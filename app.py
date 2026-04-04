@@ -137,49 +137,70 @@ st.markdown("""
 
 def gerar_radar_wfm_hoje():
     try:
-        # Pega a data de hoje exatamente no mesmo formato do arquivo WFM
-        hoje_wfm = datetime.now().strftime("%d/%m/%Y")
-        escala = []
-        dias_semana = ['segunda-feira, ', 'terça-feira, ', 'quarta-feira, ', 'quinta-feira, ', 'sexta-feira, ', 'sábado, ', 'domingo, ']
+        import pandas as pd
+        import re
         
+        hoje_wfm = datetime.now().strftime("%d/%m/%Y")
+        
+        # 1. Puxa a BASE OFICIAL de usuários cadastrados
+        df_users = carregar_usuarios()
+        if df_users is None or df_users.empty:
+            return None
+            
+        # 2. Cria uma lista de chamada assumindo que todo mundo está de Folga inicialmente
+        usuarios_ativos = {}
+        for _, row in df_users.iterrows():
+            nome_norm = str(row['nome']) # Já está normalizado pela função do painel
+            nome_bonito = nome_norm.title()
+            usuarios_ativos[nome_norm] = {"Colaborador": nome_bonito, "Status": "Folga", "Turno": "Ausente"}
+            
+        # 3. Lê o arquivo WFM e "sobrescreve" quem vai trabalhar ou está de Férias/Atestado
         with open("escala_wfm.txt", "r", encoding="utf-8") as f:
             linhas = f.readlines()
             
+        dias_semana = ['segunda-feira, ', 'terça-feira, ', 'quarta-feira, ', 'quinta-feira, ', 'sexta-feira, ', 'sábado, ', 'domingo, ']
+        
         for linha in linhas:
             if hoje_wfm in linha:
-                # Divide a linha usando a data de hoje como "tesoura"
+                # Isola o nome cortando a linha na data
                 partes = linha.split(hoje_wfm)
-                
-                # Pega o nome e limpa os dias da semana
                 nome_cru = partes[0]
                 for d in dias_semana:
                     nome_cru = nome_cru.replace(d, "")
-                nome = nome_cru.strip().title()
+                nome_limpo = nome_cru.strip()
+                nome_norm_wfm = normalizar_chave(nome_limpo)
                 
-                # Pega o status e o turno
-                resto = partes[1]
-                status = "Trabalhando"
-                turno = "N/A"
-                
-                if "dia de folga inteiro" in resto:
-                    if "Férias" in resto: status = "Férias"
-                    else: status = "Folga"
-                    turno = "Ausente"
-                else:
-                    turno_info = resto.split(":")
-                    if len(turno_info) > 0:
-                        turno = turno_info[0].replace(", ", "").strip()
-                        eventos = ":".join(turno_info[1:])
-                        # Mapeia exceções dentro da escala de trabalho
-                        if "Treinamento" in eventos: status = "Treinamento"
-                        if "Questões de saúde" in eventos: status = "Saúde"
-                        
-                escala.append({"Colaborador": nome, "Status": status, "Turno": turno})
-        
-        if escala:
-            import pandas as pd
-            return pd.DataFrame(escala)
-    except:
+                # Se a pessoa do WFM estiver na sua base oficial, atualiza o status dela
+                if nome_norm_wfm in usuarios_ativos:
+                    resto = partes[1]
+                    status = "Trabalhando"
+                    turno = "N/A"
+                    
+                    if "dia de folga inteiro" in resto.lower():
+                        if "férias" in resto.lower() or "ferias" in resto.lower(): 
+                            status = "Férias"
+                        else: 
+                            status = "Folga"
+                        turno = "Ausente"
+                    else:
+                        # Extrai o horário de trabalho e as exceções
+                        turno_info = resto.split(":")
+                        if len(turno_info) > 0:
+                            turno = turno_info[0].replace(", ", "").strip()
+                            eventos = ":".join(turno_info[1:])
+                            if "treinamento" in eventos.lower(): status = "Treinamento"
+                            if "questões de saúde" in eventos.lower(): status = "Saúde"
+                            
+                    usuarios_ativos[nome_norm_wfm] = {"Colaborador": nome_limpo.title(), "Status": status, "Turno": turno}
+                    
+        # 4. Transforma a lista de chamada pronta em Tabela
+        escala_final = list(usuarios_ativos.values())
+        if escala_final:
+            df = pd.DataFrame(escala_final)
+            # Ordena bonitinho: Trabalhando primeiro, Treinamento, Folgas, etc...
+            return df.sort_values(by=["Status", "Colaborador"], ascending=[False, True])
+            
+    except Exception as e:
         pass
     return None
 def sincronizar_com_github(nome_arquivo, mensagem="Atualização via Painel Gestor"):
