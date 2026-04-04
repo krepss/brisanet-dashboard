@@ -2265,7 +2265,48 @@ else:
                 return None
     import re # Garante que a biblioteca de busca de textos está ativa
 
-def buscar_escala_completa(nome_operador):
+
+    # --- 🕒 CARTÃO DE PAUSAS DO WFM ---
+        escala_hoje = buscar_escala_hoje(nome_logado)
+        
+        if escala_hoje:
+            if escala_hoje["tipo"] == "folga":
+                # Versão Compacta - Folga ou Férias
+                st.markdown(f"""
+                <div style='background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%); padding: 8px 15px; border-radius: 10px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-top: 10px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;'>
+                    <div style='font-size: 20px;'>🏖️</div>
+                    <div>
+                        <p style='margin: 0; color: #4B5563; font-size: 0.75em; font-weight: 600;'>Status WFM de Hoje</p>
+                        <h5 style='margin: 0; color: #111827; font-weight: 700; font-size: 0.95em;'>{escala_hoje['motivo']}</h5>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                # Versão Compacta - Escala Normal
+                st.markdown(f"""
+                <div style='background-color: #FFFFFF; padding: 12px 15px; border-radius: 12px; border: 1px solid #E5E7EB; box-shadow: 0 4px 10px rgba(0,0,0,0.03); margin-top: 10px; margin-bottom: 15px;'>
+                    <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;'>
+                        <p style='margin: 0; color: #6B7280; font-size: 0.8em; font-weight: 600;'>🕒 Seu Turno: <span style='color: #111827; font-weight: 800;'>{escala_hoje['turno']}</span></p>
+                    </div>
+                    <div style='display: flex; gap: 8px; flex-wrap: nowrap; overflow-x: auto;'>
+                        <div style='flex: 1; background-color: #F9FAFB; border: 1px solid #E5E7EB; padding: 5px 8px; border-radius: 8px; text-align: center; min-width: 80px;'>
+                            <div style='color: #F37021; font-weight: 700; font-size: 0.65em; margin-bottom: 2px;'>☕ PAUSA 1</div>
+                            <div style='color: #111827; font-weight: 800; font-size: 0.9em;'>{escala_hoje['intervalo_1'] or '--:--'}</div>
+                        </div>
+                        <div style='flex: 1; background-color: #FFFBEB; border: 1px solid #FDE68A; padding: 5px 8px; border-radius: 8px; text-align: center; min-width: 80px;'>
+                            <div style='color: #D97706; font-weight: 700; font-size: 0.65em; margin-bottom: 2px;'>🥪 REFEIÇÃO</div>
+                            <div style='color: #111827; font-weight: 800; font-size: 0.9em;'>{escala_hoje['refeicao'] or '--:--'}</div>
+                        </div>
+                        <div style='flex: 1; background-color: #F9FAFB; border: 1px solid #E5E7EB; padding: 5px 8px; border-radius: 8px; text-align: center; min-width: 80px;'>
+                            <div style='color: #F37021; font-weight: 700; font-size: 0.65em; margin-bottom: 2px;'>☕ PAUSA 2</div>
+                            <div style='color: #111827; font-weight: 800; font-size: 0.9em;'>{escala_hoje['intervalo_2'] or '--:--'}</div>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+    import re # Garante que a biblioteca de busca de textos está ativa
+
+    def buscar_escala_completa(nome_operador):
     escala = []
     try:
         with open("escala_wfm.txt", "r", encoding="utf-8") as f:
@@ -2305,44 +2346,6 @@ def buscar_escala_completa(nome_operador):
     except:
         pass
     return None
-    # --- 🕒 CARTÃO DE PAUSAS DO WFM ---
-        escala_hoje = buscar_escala_hoje(nome_logado)
-        
-        if escala_hoje:
-            if escala_hoje["tipo"] == "folga":
-                # Versão Compacta - Folga ou Férias
-                st.markdown(f"""
-                <div style='background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%); padding: 8px 15px; border-radius: 10px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-top: 10px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;'>
-                    <div style='font-size: 20px;'>🏖️</div>
-                    <div>
-                        <p style='margin: 0; color: #4B5563; font-size: 0.75em; font-weight: 600;'>Status WFM de Hoje</p>
-                        <h5 style='margin: 0; color: #111827; font-weight: 700; font-size: 0.95em;'>{escala_hoje['motivo']}</h5>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                # Versão Compacta - Escala Normal
-                st.markdown(f"""
-                <div style='background-color: #FFFFFF; padding: 12px 15px; border-radius: 12px; border: 1px solid #E5E7EB; box-shadow: 0 4px 10px rgba(0,0,0,0.03); margin-top: 10px; margin-bottom: 15px;'>
-                    <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;'>
-                        <p style='margin: 0; color: #6B7280; font-size: 0.8em; font-weight: 600;'>🕒 Seu Turno: <span style='color: #111827; font-weight: 800;'>{escala_hoje['turno']}</span></p>
-                    </div>
-                    <div style='display: flex; gap: 8px; flex-wrap: nowrap; overflow-x: auto;'>
-                        <div style='flex: 1; background-color: #F9FAFB; border: 1px solid #E5E7EB; padding: 5px 8px; border-radius: 8px; text-align: center; min-width: 80px;'>
-                            <div style='color: #F37021; font-weight: 700; font-size: 0.65em; margin-bottom: 2px;'>☕ PAUSA 1</div>
-                            <div style='color: #111827; font-weight: 800; font-size: 0.9em;'>{escala_hoje['intervalo_1'] or '--:--'}</div>
-                        </div>
-                        <div style='flex: 1; background-color: #FFFBEB; border: 1px solid #FDE68A; padding: 5px 8px; border-radius: 8px; text-align: center; min-width: 80px;'>
-                            <div style='color: #D97706; font-weight: 700; font-size: 0.65em; margin-bottom: 2px;'>🥪 REFEIÇÃO</div>
-                            <div style='color: #111827; font-weight: 800; font-size: 0.9em;'>{escala_hoje['refeicao'] or '--:--'}</div>
-                        </div>
-                        <div style='flex: 1; background-color: #F9FAFB; border: 1px solid #E5E7EB; padding: 5px 8px; border-radius: 8px; text-align: center; min-width: 80px;'>
-                            <div style='color: #F37021; font-weight: 700; font-size: 0.65em; margin-bottom: 2px;'>☕ PAUSA 2</div>
-                            <div style='color: #111827; font-weight: 800; font-size: 0.9em;'>{escala_hoje['intervalo_2'] or '--:--'}</div>
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
     # --- BUSCA FÉRIAS DO OPERADOR ---
     minhas_ferias = "Não informado"
     if df_users_cadastrados is not None:
