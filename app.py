@@ -2297,40 +2297,44 @@ else:
         
         if escala_hoje:
             if escala_hoje["tipo"] == "folga":
-                # Cartão quando ele está de Folga ou Férias
                 st.markdown(f"""
-                <div style='background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%); padding: 15px 25px; border-radius: 20px; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-top: 20px; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;'>
-                    <div style='font-size: 30px;'>🏖️</div>
+                <div style='background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%); padding: 8px 15px; border-radius: 10px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-top: 10px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;'>
+                    <div style='font-size: 20px;'>🏖️</div>
                     <div>
-                        <p style='margin: 0; color: #4B5563; font-size: 0.9em; font-weight: 600;'>Status WFM de Hoje</p>
-                        <h4 style='margin: 0; color: #111827; font-weight: 800;'>{escala_hoje['motivo']}</h4>
+                        <p style='margin: 0; color: #4B5563; font-size: 0.75em; font-weight: 600;'>Status WFM de Hoje</p>
+                        <h5 style='margin: 0; color: #111827; font-weight: 700; font-size: 0.95em;'>{escala_hoje['motivo']}</h5>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
             else:
-                # Cartão Flutuante de Escala Normal (Clean Glass)
                 st.markdown(f"""
-                <div style='background-color: #FFFFFF; padding: 20px 25px; border-radius: 20px; border: none; box-shadow: 0 8px 24px rgba(0,0,0,0.04); margin-top: 20px; margin-bottom: 25px;'>
-                    <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap;'>
-                        <p style='margin: 0; color: #6B7280; font-size: 0.95em; font-weight: 600;'>🕒 Seu Turno Hoje:</p>
-                        <span style='background-color: #F3F4F6; color: #111827; padding: 4px 12px; border-radius: 12px; font-weight: 800; font-size: 1.1em;'>{escala_hoje['turno']}</span>
+                <div style='background-color: #FFFFFF; padding: 12px 15px; border-radius: 12px; border: 1px solid #E5E7EB; box-shadow: 0 4px 10px rgba(0,0,0,0.03); margin-top: 10px; margin-bottom: 15px;'>
+                    <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;'>
+                        <p style='margin: 0; color: #6B7280; font-size: 0.8em; font-weight: 600;'>🕒 Seu Turno: <span style='color: #111827; font-weight: 800;'>{escala_hoje['turno']}</span></p>
                     </div>
-                    <div style='display: flex; gap: 10px; flex-wrap: wrap;'>
-                        <div style='flex: 1; background-color: #F9FAFB; border: 1px solid #E5E7EB; padding: 10px 15px; border-radius: 12px; text-align: center; min-width: 100px;'>
-                            <div style='color: #F37021; font-weight: 700; font-size: 0.8em; margin-bottom: 3px;'>☕ PAUSA 1</div>
-                            <div style='color: #111827; font-weight: 800; font-size: 1.1em;'>{escala_hoje['intervalo_1'] or '--:--'}</div>
+                    <div style='display: flex; gap: 8px; flex-wrap: nowrap; overflow-x: auto;'>
+                        <div style='flex: 1; background-color: #F9FAFB; border: 1px solid #E5E7EB; padding: 5px 8px; border-radius: 8px; text-align: center; min-width: 80px;'>
+                            <div style='color: #F37021; font-weight: 700; font-size: 0.65em; margin-bottom: 2px;'>☕ PAUSA 1</div>
+                            <div style='color: #111827; font-weight: 800; font-size: 0.9em;'>{escala_hoje['intervalo_1'] or '--:--'}</div>
                         </div>
-                        <div style='flex: 1; background-color: #FFFBEB; border: 1px solid #FDE68A; padding: 10px 15px; border-radius: 12px; text-align: center; min-width: 100px;'>
-                            <div style='color: #D97706; font-weight: 700; font-size: 0.8em; margin-bottom: 3px;'>🥪 REFEIÇÃO</div>
-                            <div style='color: #111827; font-weight: 800; font-size: 1.1em;'>{escala_hoje['refeicao'] or '--:--'}</div>
+                        <div style='flex: 1; background-color: #FFFBEB; border: 1px solid #FDE68A; padding: 5px 8px; border-radius: 8px; text-align: center; min-width: 80px;'>
+                            <div style='color: #D97706; font-weight: 700; font-size: 0.65em; margin-bottom: 2px;'>🥪 REFEIÇÃO</div>
+                            <div style='color: #111827; font-weight: 800; font-size: 0.9em;'>{escala_hoje['refeicao'] or '--:--'}</div>
                         </div>
-                        <div style='flex: 1; background-color: #F9FAFB; border: 1px solid #E5E7EB; padding: 10px 15px; border-radius: 12px; text-align: center; min-width: 100px;'>
-                            <div style='color: #F37021; font-weight: 700; font-size: 0.8em; margin-bottom: 3px;'>☕ PAUSA 2</div>
-                            <div style='color: #111827; font-weight: 800; font-size: 1.1em;'>{escala_hoje['intervalo_2'] or '--:--'}</div>
+                        <div style='flex: 1; background-color: #F9FAFB; border: 1px solid #E5E7EB; padding: 5px 8px; border-radius: 8px; text-align: center; min-width: 80px;'>
+                            <div style='color: #F37021; font-weight: 700; font-size: 0.65em; margin-bottom: 2px;'>☕ PAUSA 2</div>
+                            <div style='color: #111827; font-weight: 800; font-size: 0.9em;'>{escala_hoje['intervalo_2'] or '--:--'}</div>
                         </div>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
+            
+            with st.expander("📅 Ver minha escala completa do mês"):
+                df_escala_mes = buscar_escala_completa(nome_logado)
+                if df_escala_mes is not None and not df_escala_mes.empty:
+                    st.dataframe(df_escala_mes, use_container_width=True, hide_index=True)
+                else:
+                    st.info("Nenhuma escala futura encontrada para você neste arquivo.")
     # --- 🎂 VERIFICAÇÃO DE ANIVERSÁRIO ---
     if df_users_cadastrados is not None:
         try:
