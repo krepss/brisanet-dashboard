@@ -2546,26 +2546,29 @@ else:
     # ABA 1: MEUS RESULTADOS
     # ---------------------------------------------------------
     with tab_results:
-        # UPLOAD E REMOÇÃO DA FOTO DO OPERADOR
-        # --- SELEÇÃO DE FOTO OU AVATAR ---
+        # --- SELEÇÃO DE FOTO OU AVATAR (VERSÃO CORRIGIDA) ---
         with st.expander("👤 Personalizar Minha Imagem de Perfil", expanded=False):
+            # Primeiro, declaramos as colunas principais (Foto vs Avatar)
             col_foto, col_avatar = st.columns(2)
             
             with col_foto:
                 st.markdown("##### 📤 Subir Foto")
                 upload_foto = st.file_uploader("PNG ou JPG:", type=['png', 'jpg', 'jpeg'], key="up_foto_propria")
-                if st.button("Salvar Foto", type="primary", use_container_width=True):
-                    if upload_foto:
-                        with open(caminho_foto_user, "wb") as f:
-                            f.write(upload_foto.getbuffer())
-                        sincronizar_com_github(caminho_foto_user, f"Foto: {nome_logado}")
-                        st.success("Foto salva!")
-                        time.sleep(1)
-                        st.rerun()
+                
+                # Criamos a variável col_up EXATAMENTE aqui antes do botão
+                col_up, col_espaco = st.columns([1, 0.01]) 
+                with col_up:
+                    if st.button("Salvar Foto", type="primary", use_container_width=True):
+                        if upload_foto:
+                            with open(caminho_foto_user, "wb") as f:
+                                f.write(upload_foto.getbuffer())
+                            sincronizar_com_github(caminho_foto_user, f"Foto: {nome_logado}")
+                            st.success("Foto salva!")
+                            time.sleep(1)
+                            st.rerun()
 
             with col_avatar:
                 st.markdown("##### 🎭 Escolher Avatar")
-                # Lista de Avatares (Emojis ou nomes de arquivos na pasta /avatares)
                 opcoes_avatares = {
                     "Leão 🦁": "🦁", "Astronauta 👨‍🚀": "👨‍🚀", "Gamer 🎮": "🎮", 
                     "Foguete 🚀": "🚀", "Ninja 🥷": "🥷", "Gato 🐱": "🐱"
@@ -2573,60 +2576,22 @@ else:
                 selecao = st.selectbox("Escolha um ícone:", list(opcoes_avatares.keys()))
                 
                 if st.button("Definir Avatar", use_container_width=True):
-                    # Criamos uma imagem simples com o Emoji (ou apenas salvamos o texto)
-                    # Para simplificar, vamos salvar um arquivo de texto que o sistema lerá como avatar
                     caminho_avatar_txt = caminho_foto_user.replace(".png", "_avatar.txt")
                     with open(caminho_avatar_txt, "w", encoding="utf-8") as f:
                         f.write(opcoes_avatares[selecao])
-                    
-                    # Se houver foto antiga, removemos para priorizar o avatar
                     if os.path.exists(caminho_foto_user):
                         os.remove(caminho_foto_user)
-                    
                     st.success(f"Avatar {selecao} definido!")
                     time.sleep(1)
                     st.rerun()
             
             st.divider()
+            # Botão de remover logo abaixo das colunas
             if st.button("🗑️ Remover Imagem Atual", use_container_width=True):
                 if os.path.exists(caminho_foto_user): os.remove(caminho_foto_user)
-                if os.path.exists(caminho_foto_user.replace(".png", "_avatar.txt")): 
-                    os.remove(caminho_foto_user.replace(".png", "_avatar.txt"))
+                caminho_av = caminho_foto_user.replace(".png", "_avatar.txt")
+                if os.path.exists(caminho_av): os.remove(caminho_av)
                 st.rerun()
-            
-            with col_up:
-                if st.button("📤 Salvar Minha Foto", type="primary", use_container_width=True):
-                    if not upload_foto:
-                        st.error("⚠️ Por favor, escolha uma imagem primeiro.")
-                    else:
-                        try:
-                            with open(caminho_foto_user, "wb") as w_foto:
-                                w_foto.write(upload_foto.getbuffer())
-                            if sincronizar_com_github(caminho_foto_user, f"Foto atualizada pelo usuário: {nome_logado}"):
-                                st.success("✅ Sua foto foi atualizada com sucesso!")
-                                import time
-                                time.sleep(1.5)
-                                st.rerun()
-                            else:
-                                st.error("❌ Erro ao sincronizar com o GitHub.")
-                        except Exception as e:
-                            st.error(f"Erro no upload: {e}")
-            
-            with col_del:
-                if st.button("🗑️ Remover Foto", use_container_width=True):
-                    if os.path.exists(caminho_foto_user):
-                        try:
-                            os.remove(caminho_foto_user)
-                            st.success("✅ Foto removida com sucesso!")
-                            import time
-                            time.sleep(1.5)
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Erro ao deletar: {e}")
-                    else:
-                        st.warning("⚠️ Você não tem uma foto cadastrada para remover.")
-
-        st.markdown("---")
         
         # CÁLCULO DE RANKING
         ranking_msg = "Não classificado"
