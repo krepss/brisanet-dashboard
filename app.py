@@ -2547,11 +2547,52 @@ else:
     # ---------------------------------------------------------
     with tab_results:
         # UPLOAD E REMOÇÃO DA FOTO DO OPERADOR
-        with st.expander("📸 Atualizar Minha Foto de Perfil", expanded=False):
-            upload_foto = st.file_uploader("Escolha sua foto (PNG ou JPG):", type=['png', 'jpg', 'jpeg'], key="up_foto_propria")
+        # --- SELEÇÃO DE FOTO OU AVATAR ---
+        with st.expander("👤 Personalizar Minha Imagem de Perfil", expanded=False):
+            col_foto, col_avatar = st.columns(2)
             
-            # Criamos duas colunas para colocar os botões lado a lado
-            col_up, col_del = st.columns(2)
+            with col_foto:
+                st.markdown("##### 📤 Subir Foto")
+                upload_foto = st.file_uploader("PNG ou JPG:", type=['png', 'jpg', 'jpeg'], key="up_foto_propria")
+                if st.button("Salvar Foto", type="primary", use_container_width=True):
+                    if upload_foto:
+                        with open(caminho_foto_user, "wb") as f:
+                            f.write(upload_foto.getbuffer())
+                        sincronizar_com_github(caminho_foto_user, f"Foto: {nome_logado}")
+                        st.success("Foto salva!")
+                        time.sleep(1)
+                        st.rerun()
+
+            with col_avatar:
+                st.markdown("##### 🎭 Escolher Avatar")
+                # Lista de Avatares (Emojis ou nomes de arquivos na pasta /avatares)
+                opcoes_avatares = {
+                    "Leão 🦁": "🦁", "Astronauta 👨‍🚀": "👨‍🚀", "Gamer 🎮": "🎮", 
+                    "Foguete 🚀": "🚀", "Ninja 🥷": "🥷", "Gato 🐱": "🐱"
+                }
+                selecao = st.selectbox("Escolha um ícone:", list(opcoes_avatares.keys()))
+                
+                if st.button("Definir Avatar", use_container_width=True):
+                    # Criamos uma imagem simples com o Emoji (ou apenas salvamos o texto)
+                    # Para simplificar, vamos salvar um arquivo de texto que o sistema lerá como avatar
+                    caminho_avatar_txt = caminho_foto_user.replace(".png", "_avatar.txt")
+                    with open(caminho_avatar_txt, "w", encoding="utf-8") as f:
+                        f.write(opcoes_avatares[selecao])
+                    
+                    # Se houver foto antiga, removemos para priorizar o avatar
+                    if os.path.exists(caminho_foto_user):
+                        os.remove(caminho_foto_user)
+                    
+                    st.success(f"Avatar {selecao} definido!")
+                    time.sleep(1)
+                    st.rerun()
+            
+            st.divider()
+            if st.button("🗑️ Remover Imagem Atual", use_container_width=True):
+                if os.path.exists(caminho_foto_user): os.remove(caminho_foto_user)
+                if os.path.exists(caminho_foto_user.replace(".png", "_avatar.txt")): 
+                    os.remove(caminho_foto_user.replace(".png", "_avatar.txt"))
+                st.rerun()
             
             with col_up:
                 if st.button("📤 Salvar Minha Foto", type="primary", use_container_width=True):
