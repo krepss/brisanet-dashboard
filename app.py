@@ -2304,9 +2304,8 @@ else:
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
-    import re # Garante que a biblioteca de busca de textos está ativa
-
-    def buscar_escala_completa(nome_operador):
+        import re # Garante que a biblioteca de busca de textos está ativa
+        def buscar_escala_completa(nome_operador):
     escala = []
     try:
         with open("escala_wfm.txt", "r", encoding="utf-8") as f:
@@ -2345,7 +2344,7 @@ else:
             return pd.DataFrame(escala)
     except:
         pass
-    return None
+    return None    
     # --- BUSCA FÉRIAS DO OPERADOR ---
     minhas_ferias = "Não informado"
     if df_users_cadastrados is not None:
