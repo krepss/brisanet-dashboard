@@ -2228,6 +2228,41 @@ else:
         # 2. Usa a variável segura no Markdown e injeta a medalha de tempo de casa
         st.markdown(f"## 🚀 Olá, **{primeiro_nome}**!")
         st.markdown(f"<div style='display: flex; align-items: center; margin-top:-15px; color: #666; font-size:0.9em;'><span style='margin-right: 15px;'>📅 Referência: <b>{periodo_label}</b></span><span class='update-badge' style='background-color:#e0f7fa; color:#006064;'>🕒 Atualizado em: {obter_data_atualizacao()}</span>{tempo_empresa_str}</div>", unsafe_allow_html=True)
+    # 1. PRIMEIRO O PYTHON LÊ A FUNÇÃO (COLE ISTO AQUI)
+        # ==========================================================
+        def buscar_escala_hoje(nome_operador):
+            try:
+                hoje_wfm = datetime.now().strftime("%d/%m/%Y")
+                with open("escala_wfm.txt", "r", encoding="utf-8") as f:
+                    linhas = f.readlines()
+                    
+                for linha in linhas:
+                    if nome_operador.lower() in linha.lower() and hoje_wfm in linha:
+                        if "dia de folga inteiro" in linha:
+                            motivo = linha.split("-")[-1].strip()
+                            return {"tipo": "folga", "motivo": motivo}
+                        else:
+                            partes = linha.split(f"{hoje_wfm}, ")
+                            if len(partes) > 1:
+                                resto = partes[1]
+                                turno_eventos = resto.split(": ", 1)
+                                turno = turno_eventos[0]
+                                eventos_str = turno_eventos[1] if len(turno_eventos) > 1 else ""
+                                
+                                intervalo_1, refeicao, intervalo_2 = "", "", ""
+                                eventos = eventos_str.split(", ")
+                                intervalos_encontrados = []
+                                for ev in eventos:
+                                    if "Intervalo" in ev: intervalos_encontrados.append(ev.replace("Intervalo ", ""))
+                                    elif "Refeição" in ev: refeicao = ev.replace("Refeição ", "")
+                                
+                                if len(intervalos_encontrados) > 0: intervalo_1 = intervalos_encontrados[0]
+                                if len(intervalos_encontrados) > 1: intervalo_2 = intervalos_encontrados[1]
+                                
+                                return {"tipo": "trabalho", "turno": turno, "intervalo_1": intervalo_1, "refeicao": refeicao, "intervalo_2": intervalo_2}
+                return None
+            except:
+                return None
     # --- 🕒 CARTÃO DE PAUSAS DO WFM ---
         escala_hoje = buscar_escala_hoje(nome_logado)
         
