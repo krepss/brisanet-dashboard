@@ -135,6 +135,53 @@ st.markdown("""
 
 # --- 3. FUNÇÕES DE BACKEND ---
 
+def gerar_radar_wfm_hoje():
+    try:
+        # Pega a data de hoje exatamente no mesmo formato do arquivo WFM
+        hoje_wfm = datetime.now().strftime("%d/%m/%Y")
+        escala = []
+        dias_semana = ['segunda-feira, ', 'terça-feira, ', 'quarta-feira, ', 'quinta-feira, ', 'sexta-feira, ', 'sábado, ', 'domingo, ']
+        
+        with open("escala_wfm.txt", "r", encoding="utf-8") as f:
+            linhas = f.readlines()
+            
+        for linha in linhas:
+            if hoje_wfm in linha:
+                # Divide a linha usando a data de hoje como "tesoura"
+                partes = linha.split(hoje_wfm)
+                
+                # Pega o nome e limpa os dias da semana
+                nome_cru = partes[0]
+                for d in dias_semana:
+                    nome_cru = nome_cru.replace(d, "")
+                nome = nome_cru.strip().title()
+                
+                # Pega o status e o turno
+                resto = partes[1]
+                status = "Trabalhando"
+                turno = "N/A"
+                
+                if "dia de folga inteiro" in resto:
+                    if "Férias" in resto: status = "Férias"
+                    else: status = "Folga"
+                    turno = "Ausente"
+                else:
+                    turno_info = resto.split(":")
+                    if len(turno_info) > 0:
+                        turno = turno_info[0].replace(", ", "").strip()
+                        eventos = ":".join(turno_info[1:])
+                        # Mapeia exceções dentro da escala de trabalho
+                        if "Treinamento" in eventos: status = "Treinamento"
+                        if "Questões de saúde" in eventos: status = "Saúde"
+                        
+                escala.append({"Colaborador": nome, "Status": status, "Turno": turno})
+        
+        if escala:
+            import pandas as pd
+            return pd.DataFrame(escala)
+    except:
+        pass
+    return None
 def sincronizar_com_github(nome_arquivo, mensagem="Atualização via Painel Gestor"):
     if "GITHUB_TOKEN" not in st.secrets or "GITHUB_REPO" not in st.secrets:
         return False
@@ -1237,6 +1284,48 @@ Vamos com tudo! 🔥"""
         else:
             st.info("Nenhum dado disponível neste período.")
 
+    # ==========================================================
+    # 📡 RADAR WFM DO DIA (VISÃO DO GESTOR)
+    # ==========================================================
+        st.markdown("---")
+        st.markdown(f"### 📡 Radar WFM do Dia ({datetime.now().strftime('%d/%m/%Y')})")
+        
+        df_radar = gerar_radar_wfm_hoje()
+        
+        if df_radar is not None and not df_radar.empty:
+            # Conta a galera de forma automática
+            qtd_trabalho = len(df_radar[df_radar['Status'].isin(['Trabalhando', 'Treinamento'])])
+            qtd_folga = len(df_radar[df_radar['Status'] == 'Folga'])
+            qtd_ausentes = len(df_radar[df_radar['Status'].isin(['Férias', 'Saúde'])])
+            
+            # Desenha os 3 cartões de resumo
+            c_wfm1, c_wfm2, c_wfm3 = st.columns(3)
+            c_wfm1.markdown(f"""<div style='background:#FFFFFF; padding:15px; border-radius:12px; border-left:5px solid #2ecc71; box-shadow:0 4px 10px rgba(0,0,0,0.05);'>
+            <p style='margin:0; color:#6B7280; font-size:0.9em; font-weight:600;'>💻 Logados / Treinamento</p>
+            <h2 style='margin:0; color:#111827;'>{qtd_trabalho}</h2></div>""", unsafe_allow_html=True)
+            
+            c_wfm2.markdown(f"""<div style='background:#FFFFFF; padding:15px; border-radius:12px; border-left:5px solid #3498db; box-shadow:0 4px 10px rgba(0,0,0,0.05);'>
+            <p style='margin:0; color:#6B7280; font-size:0.9em; font-weight:600;'>🏖️ Folgas</p>
+            <h2 style='margin:0; color:#111827;'>{qtd_folga}</h2></div>""", unsafe_allow_html=True)
+            
+            c_wfm3.markdown(f"""<div style='background:#FFFFFF; padding:15px; border-radius:12px; border-left:5px solid #e74c3c; box-shadow:0 4px 10px rgba(0,0,0,0.05);'>
+            <p style='margin:0; color:#6B7280; font-size:0.9em; font-weight:600;'>✈️ Férias / Saúde</p>
+            <h2 style='margin:0; color:#111827;'>{qtd_ausentes}</h2></div>""", unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            # Exibe a tabela interativa com as cores mudando sozinhas baseado no status!
+            st.dataframe(
+                df_radar.style.applymap(
+                    lambda x: 'color: #2ecc71; font-weight:bold;' if x == 'Trabalhando' 
+                    else ('color: #e74c3c; font-weight:bold;' if x in ['Férias', 'Saúde'] else 'color: #3498db; font-weight:bold;'), 
+                    subset=['Status']
+                ), 
+                use_container_width=True, 
+                hide_index=True
+            )
+        else:
+            st.info("Nenhuma escala encontrada para o dia de hoje no arquivo WFM.")    
     # --- 🧠 GERADOR DE INSIGHTS FCAR (IA) ---
         st.markdown("---")
         st.markdown("### 🧠 Análise Estratégica da Operação (Modelo FCAR)")
