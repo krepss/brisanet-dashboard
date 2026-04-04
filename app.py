@@ -812,6 +812,31 @@ def gerar_radar_wfm_data(data_alvo):
             
     except Exception as e: pass
     return None
+
+def obter_imagem_perfil(nome_colaborador):
+    """Retorna a imagem (Base64) ou None se não encontrar nada."""
+    import base64
+    nome_seguro = normalizar_chave(nome_colaborador).replace(" ", ".")
+    caminho_foto = os.path.join(PASTA_FOTOS, f"{nome_seguro}.png")
+    caminho_avatar_txt = caminho_foto.replace(".png", "_avatar.txt")
+    
+    try:
+        # 1. Tenta Foto Real
+        if os.path.exists(caminho_foto):
+            with open(caminho_foto, "rb") as f:
+                return f"data:image/png;base64,{base64.b64encode(f.read()).decode()}"
+        
+        # 2. Tenta Avatar Escolhido
+        elif os.path.exists(caminho_avatar_txt):
+            with open(caminho_avatar_txt, "r", encoding="utf-8") as f:
+                nome_arq_avatar = f.read().strip()
+            caminho_full_avatar = os.path.join("avatares", nome_arq_avatar)
+            if os.path.exists(caminho_full_avatar):
+                with open(caminho_full_avatar, "rb") as f:
+                    return f"data:image/png;base64,{base64.b64encode(f.read()).decode()}"
+    except:
+        pass
+    return None
 # ==========================================
 # --- 4. LOGIN RENOVADO (SEM DELAY E SEM PISCAR) ---
 # ==========================================
@@ -2906,22 +2931,27 @@ else:
                             op_nome = op_data['Colaborador']
                             op_perc = op_data['% Atingimento']
                             
-                            op_seguro_foto = normalizar_chave(op_nome).replace(" ", ".")
-                            op_caminho_foto = os.path.join(PASTA_FOTOS, f"{op_seguro_foto}.png")
+                            # USANDO A NOVA FUNÇÃO MÁGICA
+                            img_perfil = obter_imagem_perfil(op_nome)
 
                             with col:
                                 st.markdown(f"<h4 style='text-align: center; color: #003366;'>{posicoes_legenda[i]}</h4>", unsafe_allow_html=True)
                                 
                                 st.markdown(f"""
-                                    <div style="
-                                        background-color: #FFF;
-                                        border: 4px solid {cores_borda[i]};
-                                        padding: 15px;
-                                        border-radius: 12px;
-                                        text-align: center;
-                                        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-                                        margin-bottom: 20px;
-                                    ">
+                                    <div style="background-color: #FFF; border: 4px solid {cores_borda[i]}; padding: 15px; border-radius: 12px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px;">
+                                """, unsafe_allow_html=True)
+                                
+                                if img_perfil:
+                                    st.markdown(f"""
+                                        <img src="{img_perfil}" style="border-radius: 50%; width: 100px; height: 100px; object-fit: cover; border: 4px solid {cores_borda[i]}; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: block; margin: 0 auto 10px auto;">
+                                    """, unsafe_allow_html=True)
+                                else:
+                                    st.markdown("<h1 style='font-size: 60px; text-align: center; margin:0;'>👤</h1>", unsafe_allow_html=True)
+                                    
+                                st.markdown(f"""
+                                    <p style="font-size: 1.1em; font-weight: bold; color: #333; margin: 5px 0; text-align: center;">{op_nome.title()}</p>
+                                    <p style="font-size: 1.8em; font-weight: 800; color: {cores_borda[i]}; margin: 5px 0; text-align: center;">{op_perc:.2%}</p>
+                                    </div>
                                 """, unsafe_allow_html=True)
                                 
                                 if os.path.exists(op_caminho_foto):
