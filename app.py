@@ -2753,99 +2753,75 @@ else:
             st.session_state[f'etapa_popup_{nome_logado}'] = 1 # Garante que recomece da escolha
             st.rerun()
     # --- 🕒 CARTÃO DE PAUSAS DO WFM ---
+        # ==========================================================
+        # 🕒 ESCALA E PAUSAS (WFM) - MODO COMPACTO COM POPUP
+        # ==========================================================
         escala_hoje = buscar_escala_hoje(nome_logado)
         
-        if escala_hoje:
-            if escala_hoje["tipo"] == "folga":
-                st.markdown(f"""
-                <div style='background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%); padding: 8px 15px; border-radius: 10px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-top: 10px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;'>
-                    <div style='font-size: 20px;'>🏖️</div>
-                    <div>
-                        <p style='margin: 0; color: #4B5563; font-size: 0.75em; font-weight: 600;'>Status WFM de Hoje</p>
-                        <h5 style='margin: 0; color: #111827; font-weight: 700; font-size: 0.95em;'>{escala_hoje['motivo']}</h5>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown(f"""
-                <div style='background-color: #FFFFFF; padding: 12px 15px; border-radius: 12px; border: 1px solid #E5E7EB; box-shadow: 0 4px 10px rgba(0,0,0,0.03); margin-top: 10px; margin-bottom: 15px;'>
-                    <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;'>
-                        <p style='margin: 0; color: #6B7280; font-size: 0.8em; font-weight: 600;'>🕒 Seu Turno: <span style='color: #111827; font-weight: 800;'>{escala_hoje['turno']}</span></p>
-                    </div>
-                    <div style='display: flex; gap: 8px; flex-wrap: nowrap; overflow-x: auto;'>
-                        <div style='flex: 1; background-color: #F9FAFB; border: 1px solid #E5E7EB; padding: 5px 8px; border-radius: 8px; text-align: center; min-width: 80px;'>
-                            <div style='color: #F37021; font-weight: 700; font-size: 0.65em; margin-bottom: 2px;'>☕ PAUSA 1</div>
-                            <div style='color: #111827; font-weight: 800; font-size: 0.9em;'>{escala_hoje['intervalo_1'] or '--:--'}</div>
-                        </div>
-                        <div style='flex: 1; background-color: #FFFBEB; border: 1px solid #FDE68A; padding: 5px 8px; border-radius: 8px; text-align: center; min-width: 80px;'>
-                            <div style='color: #D97706; font-weight: 700; font-size: 0.65em; margin-bottom: 2px;'>🥪 REFEIÇÃO</div>
-                            <div style='color: #111827; font-weight: 800; font-size: 0.9em;'>{escala_hoje['refeicao'] or '--:--'}</div>
-                        </div>
-                        <div style='flex: 1; background-color: #F9FAFB; border: 1px solid #E5E7EB; padding: 5px 8px; border-radius: 8px; text-align: center; min-width: 80px;'>
-                            <div style='color: #F37021; font-weight: 700; font-size: 0.65em; margin-bottom: 2px;'>☕ PAUSA 2</div>
-                            <div style='color: #111827; font-weight: 800; font-size: 0.9em;'>{escala_hoje['intervalo_2'] or '--:--'}</div>
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            # ==========================================================
-            # CALENDÁRIO INTERATIVO DE ESCALA
-            # ==========================================================
-            with st.expander("📅 Consultar Escala de Outros Dias"):
-                df_escala_mes = buscar_escala_completa(nome_logado)
-                
-                if df_escala_mes is not None and not df_escala_mes.empty:
-                    # Cria o componente de calendário na tela
-                    data_selecionada = st.date_input("Selecione um dia no calendário para ver sua jornada:", format="DD/MM/YYYY")
-                    data_formatada = data_selecionada.strftime("%d/%m/%Y")
-                    
-                    # Filtra a nossa tabela oculta para pegar só o dia selecionado
-                    escala_dia = df_escala_mes[df_escala_mes['Data'] == data_formatada]
-                    
-                    if not escala_dia.empty:
-                        row = escala_dia.iloc[0]
-                        turno_selec = row['Turno']
-                        detalhes_selec = row['Detalhes']
-                        dia_semana_selec = row['Dia']
-                        
-                        if "Folga" in turno_selec:
-                            st.info(f"🏖️ **{dia_semana_selec}, {data_formatada}:** Dia de descanso ({detalhes_selec}).")
-                        else:
-                            # Tira os horários de dentro do texto para montar o visual
-                            int1, ref, int2 = "--:--", "--:--", "--:--"
-                            eventos = detalhes_selec.split(", ")
-                            ints = [e.replace("Intervalo ", "") for e in eventos if "Intervalo" in e]
-                            if len(ints) > 0: int1 = ints[0]
-                            if len(ints) > 1: int2 = ints[1]
-                            refs = [e.replace("Refeição ", "") for e in eventos if "Refeição" in e]
-                            if len(refs) > 0: ref = refs[0]
-                            
-                            # Desenha o cartão limpo para o dia selecionado
-                            st.markdown(f"""
-                            <div style='background-color: #FFFFFF; padding: 15px; border-radius: 12px; border: 1px solid #E5E7EB; margin-top: 5px;'>
-                                <p style='margin: 0; color: #6B7280; font-size: 0.85em; font-weight: 600;'>{dia_semana_selec}, {data_formatada}</p>
-                                <p style='margin: 0 0 10px 0; color: #111827; font-weight: 800;'>Turno: {turno_selec}</p>
-                                <div style='display: flex; gap: 8px;'>
-                                    <div style='flex: 1; background-color: #F9FAFB; padding: 8px; border-radius: 8px; text-align: center; border: 1px solid #E5E7EB;'>
-                                        <div style='color: #F37021; font-weight: 700; font-size: 0.7em;'>PAUSA 1</div>
-                                        <div style='color: #111827; font-weight: 800;'>{int1}</div>
-                                    </div>
-                                    <div style='flex: 1; background-color: #FFFBEB; padding: 8px; border-radius: 8px; text-align: center; border: 1px solid #FDE68A;'>
-                                        <div style='color: #D97706; font-weight: 700; font-size: 0.7em;'>REFEIÇÃO</div>
-                                        <div style='color: #111827; font-weight: 800;'>{ref}</div>
-                                    </div>
-                                    <div style='flex: 1; background-color: #F9FAFB; padding: 8px; border-radius: 8px; text-align: center; border: 1px solid #E5E7EB;'>
-                                        <div style='color: #F37021; font-weight: 700; font-size: 0.7em;'>PAUSA 2</div>
-                                        <div style='color: #111827; font-weight: 800;'>{int2}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            """, unsafe_allow_html=True)
-                    else:
-                        st.warning(f"⚠️ Nenhuma escala programada encontrada para o dia {data_formatada}.")
+        # 1. Definindo a Janela do Popup
+        @st.dialog("🕒 Minha Escala e Pausas", width="large")
+        def exibir_popup_wfm():
+            st.markdown("#### ☕ Suas Pausas de Hoje")
+            if escala_hoje:
+                if escala_hoje.get("tipo") == "trabalho":
+                    cp1, cp2, cp3 = st.columns(3)
+                    with cp1:
+                        st.info(f"**Pausa 1:**\n\n{escala_hoje.get('intervalo_1', '--')}")
+                    with cp2:
+                        st.warning(f"**Refeição:**\n\n{escala_hoje.get('refeicao', '--')}")
+                    with cp3:
+                        st.info(f"**Pausa 2:**\n\n{escala_hoje.get('intervalo_2', '--')}")
                 else:
-                    st.info("Nenhuma escala encontrada no sistema.")
+                    st.success(f"🏖️ Hoje é seu dia de descanso! Motivo: {escala_hoje.get('motivo', 'Folga')}")
+            else:
+                st.info("Nenhuma escala encontrada para você no dia de hoje.")
+                
+            st.divider()
+            
+            st.markdown("#### 📅 Escala Completa do Mês")
+            df_escala_mes = buscar_escala_completa(nome_logado)
+            if df_escala_mes is not None and not df_escala_mes.empty:
+                st.dataframe(df_escala_mes, use_container_width=True, hide_index=True)
+            else:
+                st.warning("Nenhum histórico de escala mensal encontrado.")
+
+        # 2. Exibição Ultra-Compacta na Tela Principal
+        if escala_hoje and escala_hoje.get("tipo") == "trabalho":
+            turno_txt = escala_hoje.get('turno', '--')
+            icone_status = "💼 Turno Ativo"
+            cor_status = "#3b82f6" # Azul
+        elif escala_hoje and escala_hoje.get("tipo") == "folga":
+            turno_txt = "Folga"
+            icone_status = "🏖️ Descanso"
+            cor_status = "#10b981" # Verde
+        else:
+            turno_txt = "Sem dados"
+            icone_status = "❓ Indisponível"
+            cor_status = "#64748b" # Cinza
+
+        # Um mini-card HTML super elegante só para o resumo do turno
+        st.markdown(f"""
+        <div style='background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); margin-bottom: 10px; margin-top: 15px;'>
+            <div style='display: flex; align-items: center; gap: 15px;'>
+                <div style='background-color: #f1f5f9; padding: 10px; border-radius: 50%; display: flex; align-items: center; justify-content: center;'>
+                    <span style='font-size: 1.2em;'>🕒</span>
+                </div>
+                <div>
+                    <p style='margin: 0; color: #64748b; font-size: 0.8em; font-weight: 600; text-transform: uppercase;'>Meu Turno Hoje</p>
+                    <p style='margin: 0; color: #0f172a; font-size: 1.1em; font-weight: 800;'>{turno_txt}</p>
+                </div>
+            </div>
+            <div style='text-align: right;'>
+                <p style='margin: 0; color: {cor_status}; font-size: 0.9em; font-weight: 700; background-color: {cor_status}15; padding: 4px 10px; border-radius: 20px;'>{icone_status}</p>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Botão para abrir o Popup
+        if st.button("☕ Ver Pausas e Escala do Mês", use_container_width=True):
+            exibir_popup_wfm()
+            
+        st.markdown("<br>", unsafe_allow_html=True)
     # --- 🎂 VERIFICAÇÃO DE ANIVERSÁRIO ---
     if df_users_cadastrados is not None:
         try:
