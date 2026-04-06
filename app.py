@@ -2544,15 +2544,23 @@ else:
         # 🏛️ REFLEXÃO DIÁRIA (POPUP FILOSÓFICO DE 2 ETAPAS)
         # ==========================================================
         
-        # 1. Definimos a "cara" da janela do Popup
+        # 1. Variável Mestra (Decide se a janela deve abrir/ficar aberta)
+        if 'mostrar_popup_humor' not in st.session_state:
+            humor_banco = carregar_humor_hoje(nome_logado)
+            if humor_banco is None:
+                st.session_state['mostrar_popup_humor'] = True # Abre sozinho se não votou
+            else:
+                st.session_state['mostrar_popup_humor'] = False # Fica fechado
+
+        # 2. A "Cara" e as Etapas do Popup
         @st.dialog("Reflexão Diária 🏛️")
         def exibir_popup_humor():
-            # Criamos uma memória temporária para saber se mostramos os botões ou a mensagem
-            if f'tela_msg_{nome_logado}' not in st.session_state:
-                st.session_state[f'tela_msg_{nome_logado}'] = False
+            # Memória para saber se estamos na tela 1 (votar) ou 2 (ler)
+            if f'etapa_popup_{nome_logado}' not in st.session_state:
+                st.session_state[f'etapa_popup_{nome_logado}'] = 1
 
-            # ETAPA 1: ESCOLHA DO HUMOR
-            if not st.session_state[f'tela_msg_{nome_logado}']:
+            # --- ETAPA 1: ESCOLHA DO HUMOR ---
+            if st.session_state[f'etapa_popup_{nome_logado}'] == 1:
                 st.markdown(f"<p style='text-align: center; color: #4B5563; margin-bottom: 20px;'>Como você está se sentindo hoje, {primeiro_nome}?</p>", unsafe_allow_html=True)
                 
                 opcoes_humor = ["🤩 Incrível", "🙂 Bem", "😐 Normal", "😫 Cansado", "😡 Estressado"]
@@ -2562,10 +2570,11 @@ else:
                 escolha_humor = st.radio("Selecione:", opcoes_humor, index=idx_padrao, horizontal=True, label_visibility="collapsed")
                 
                 st.markdown("<br>", unsafe_allow_html=True)
+                
+                # AQUI ESTAVA O ERRO! Sem st.rerun() neste botão, a janela NÃO fecha.
                 if st.button("Salvar e Refletir", type="primary", use_container_width=True):
                     registrar_humor_dia(nome_logado, escolha_humor)
                     
-                    # Mensagem Padrão (Plano B)
                     mensagem_final = f"O universo muda constantemente; nossa vida é o que nossos pensamentos fazem dela. Um excelente turno, {primeiro_nome}."
                     
                     if "GEMINI_API_KEY" in st.secrets:
@@ -2574,8 +2583,6 @@ else:
                                 import google.generativeai as genai
                                 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
                                 model = genai.GenerativeModel('gemini-2.5-flash')
-                                
-                                # O NOVO PROMPT FILOSÓFICO
                                 prompt_humor = f"""
                                 Você é um sábio filósofo antigo (estilo Sêneca ou Marco Aurélio), acolhedor e profundo. 
                                 O operador de suporte técnico {primeiro_nome} acabou de registrar que seu humor hoje é '{escolha_humor}'. 
@@ -2590,37 +2597,34 @@ else:
                             except:
                                 pass
                     
-                    # Salva a mensagem e avança a "página" do popup
+                    # Salva a mensagem e manda a tela ir para a Etapa 2
                     st.session_state[f'msg_humor_ia_{nome_logado}'] = mensagem_final
-                    st.session_state[f'tela_msg_{nome_logado}'] = True
-                    st.rerun()
-            
-            # ETAPA 2: A MENSAGEM FILOSÓFICA
-            else:
+                    st.session_state[f'etapa_popup_{nome_logado}'] = 2
+                    st.rerun() # <--- ISSO RECARREGA APENAS O POPUP AGORA, MOSTRANDO A ETAPA 2
+
+            # --- ETAPA 2: A MENSAGEM FILOSÓFICA ---
+            elif st.session_state[f'etapa_popup_{nome_logado}'] == 2:
                 st.markdown(f"""
                 <div style='background-color: #f8fafc; border-left: 4px solid #64748b; padding: 25px; border-radius: 8px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>
                     <p style='margin: 0; color: #334155; font-size: 1.1em; font-style: italic; line-height: 1.6; text-align: center;'>"{st.session_state[f'msg_humor_ia_{nome_logado}']}"</p>
                 </div>
                 """, unsafe_allow_html=True)
                 
+                # AQUI SIM, o st.rerun() serve para FECHAR o popup definitivamente
                 if st.button("Ir para o meu painel 🚀", type="primary", use_container_width=True):
-                    # Marca que já viu e fecha tudo
-                    st.session_state['popup_humor_respondido'] = True
-                    st.session_state[f'tela_msg_{nome_logado}'] = False # Reseta para amanhã
+                    st.session_state['mostrar_popup_humor'] = False # Desativa o popup
                     st.rerun()
 
-        # 2. Lógica de Disparo Automático
-        humor_atual = carregar_humor_hoje(nome_logado)
-        
-        if humor_atual is None and not st.session_state.get('popup_humor_respondido', False):
+        # 3. Disparador do Popup
+        if st.session_state.get('mostrar_popup_humor', False):
             exibir_popup_humor()
-            st.session_state['popup_humor_respondido'] = True
             
-        # 3. Botão discreto no painel para reabrir o popup
+        # 4. Botão discreto no painel caso ele queira refazer
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("🏛️ Refletir sobre meu Humor"):
-            st.session_state[f'tela_msg_{nome_logado}'] = False # Garante que abra na tela 1
-            exibir_popup_humor()
+            st.session_state['mostrar_popup_humor'] = True
+            st.session_state[f'etapa_popup_{nome_logado}'] = 1 # Garante que recomece da escolha
+            st.rerun()
     # --- 🕒 CARTÃO DE PAUSAS DO WFM ---
         escala_hoje = buscar_escala_hoje(nome_logado)
         
