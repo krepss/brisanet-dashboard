@@ -1715,6 +1715,51 @@ Vamos com tudo! 🔥"""
             # Botão opcional para baixar o histórico completo
             with open('historico_abs_consolidado.csv', 'rb') as f:
                 st.download_button("⬇️ Baixar Relatório de ABS (CSV)", f, "historico_abs_detalhado.csv", "text/csv")
+        # ==========================================================
+        # 🔍 CONSULTOR DE RELATÓRIOS SALVOS (SCOREPLAN RETRÔ)
+        # ==========================================================
+        if os.path.exists("historico_abs_consolidado.csv"):
+            st.markdown("---")
+            st.markdown("### 🔍 Consultar Relatórios Anteriores")
+            
+            df_hist_abs = pd.read_csv("historico_abs_consolidado.csv")
+            
+            # Criamos uma lista de meses únicos para o seletor
+            lista_meses = df_hist_abs['Mes_Referencia'].unique().tolist()
+            
+            c_sel1, c_sel2 = st.columns([1, 2])
+            mes_selecionado = c_sel1.selectbox("Escolha o Mês:", options=lista_meses, index=len(lista_meses)-1)
+            
+            if mes_selecionado:
+                # Filtramos os dados daquele mês específico
+                dados_mes = df_hist_abs[df_hist_abs['Mes_Referencia'] == mes_selecionado].iloc[0]
+                
+                # Reconstruindo o texto para o ScorePlan daquele mês
+                status_retro = "🟢 DENTRO DA META" if dados_mes['ABS_Percentual'] <= 5 else "🟡 ALERTA" if dados_mes['ABS_Percentual'] <= 8 else "🔴 CRÍTICO"
+                
+                texto_retro = f"""📊 RELATÓRIO DE ABSENTEÍSMO - REFERÊNCIA: {mes_selecionado}
+--------------------------------------------------
+📈 INDICADORES DO PERÍODO:
+- Tempo Total de Escala: {dados_mes['Tempo_Escala_Min']:,} min
+- Tempo Total de Perda: {dados_mes['Tempo_Perda_Min']:,} min
+- ÍNDICE DE ABS FINAL: {dados_mes['ABS_Percentual']}%
+
+🚩 ANÁLISE DE IMPACTO:
+- Maior detrator registrado: {dados_mes['Maior_Detrator']}
+
+💡 STATUS FINAL: {status_retro}
+--------------------------------------------------"""
+
+                with st.container(border=True):
+                    st.markdown(f"**Relatório Consolidado de {mes_selecionado}**")
+                    st.text_area("Texto salvo para o ScorePlan:", value=texto_retro, height=220, key=f"retro_{mes_selecionado}")
+                    
+                    # Botão para remover um registro errado, caso precise
+                    if st.button(f"🗑️ Excluir Registro de {mes_selecionado}", type="secondary"):
+                        df_hist_abs = df_hist_abs[df_hist_abs['Mes_Referencia'] != mes_selecionado]
+                        df_hist_abs.to_csv("historico_abs_consolidado.csv", index=False)
+                        sincronizar_com_github("historico_abs_consolidado.csv", f"Remoção de registro ABS: {mes_selecionado}")
+                        st.rerun()
         
         # --- 🧠 GERADOR DE INSIGHTS FCAR (IA) ---
         st.markdown("---")
