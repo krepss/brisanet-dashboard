@@ -875,12 +875,14 @@ def obter_imagem_perfil(nome_colaborador):
     return None
 
 def registrar_humor_dia(nome_colaborador, humor_escolhido):
-    """Salva o humor diário do colaborador em um CSV."""
+    """Salva o humor diário e a hora exata em um CSV."""
     ARQUIVO_HUMOR = 'humor_diario.csv'
-    hoje = datetime.now().strftime("%d/%m/%Y")
+    hoje_data = datetime.now().strftime("%d/%m/%Y")
+    hoje_hora = datetime.now().strftime("%H:%M") # Captura a hora exata
     
     novo_registro = {
-        "Data": hoje, 
+        "Data": hoje_data, 
+        "Hora": hoje_hora, # Nova coluna adicionada
         "Colaborador": nome_colaborador.title(), 
         "Humor": humor_escolhido
     }
@@ -889,10 +891,11 @@ def registrar_humor_dia(nome_colaborador, humor_escolhido):
     if os.path.exists(ARQUIVO_HUMOR):
         try:
             df_base = pd.read_csv(ARQUIVO_HUMOR)
-            # Se a pessoa já votou hoje, a gente acha a linha dela e substitui (para evitar duplicatas)
-            mask = (df_base['Data'] == hoje) & (df_base['Colaborador'].str.upper() == nome_colaborador.upper())
+            # Se já votou hoje, atualizamos o humor e a hora do último voto
+            mask = (df_base['Data'] == hoje_data) & (df_base['Colaborador'].str.upper() == nome_colaborador.upper())
             if mask.any():
                 df_base.loc[mask, 'Humor'] = humor_escolhido
+                df_base.loc[mask, 'Hora'] = hoje_hora
                 df_final = df_base
             else:
                 df_final = pd.concat([df_base, df_novo], ignore_index=True)
@@ -1500,17 +1503,20 @@ Vamos com tudo! 🔥"""
                     
                 with c_lista:
                     st.markdown("##### 👥 Quem é Quem")
-                    # Traz o nome e o humor, ordenando para os estressados aparecerem no topo
+                    
+                    # Traz o nome, humor e HORA, ordenando pelos estressados primeiro
                     ordem_peso = {"😡 Estressado": 1, "😫 Cansado": 2, "😐 Normal": 3, "🙂 Bem": 4, "🤩 Incrível": 5}
                     df_hoje_sorted = df_hoje.copy()
                     df_hoje_sorted['Peso'] = df_hoje_sorted['Humor'].map(ordem_peso)
-                    df_hoje_sorted = df_hoje_sorted.sort_values(by='Peso').drop(columns=['Peso', 'Data'])
+                    
+                    # Ordena pela gravidade do humor e depois pela hora do registro
+                    if 'Hora' in df_hoje_sorted.columns:
+                        df_hoje_sorted = df_hoje_sorted.sort_values(by=['Peso', 'Hora'], ascending=[True, False])
+                        df_hoje_sorted = df_hoje_sorted[['Hora', 'Colaborador', 'Humor']] # Define a ordem visual das colunas
+                    else:
+                        df_hoje_sorted = df_hoje_sorted.sort_values(by='Peso').drop(columns=['Peso', 'Data'])
                     
                     st.dataframe(df_hoje_sorted, use_container_width=True, hide_index=True)
-            else:
-                st.info("Nenhum operador registrou o humor no dia de hoje ainda. Aguarde os primeiros logins.")
-        else:
-            st.info("O banco de dados de humor ainda está vazio. Os dados aparecerão aqui assim que a equipe começar a usar.")
         # --- 🧠 GERADOR DE INSIGHTS FCAR (IA) ---
         st.markdown("---")
         st.markdown("### 🧠 Análise Estratégica da Operação (Modelo FCAR)")
