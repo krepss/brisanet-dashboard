@@ -2819,68 +2819,6 @@ else:
     # ABA 1: MEUS RESULTADOS
     # ---------------------------------------------------------
     with tab_results:
-        # --- SELEÇÃO DE FOTO OU AVATAR (VERSÃO CORRIGIDA) ---
-        with st.expander("👤 Personalizar Minha Imagem de Perfil", expanded=False):
-            # Primeiro, declaramos as colunas principais (Foto vs Avatar)
-            col_foto, col_avatar = st.columns(2)
-            
-            with col_foto:
-                st.markdown("##### 📤 Subir Foto")
-                upload_foto = st.file_uploader("PNG ou JPG:", type=['png', 'jpg', 'jpeg'], key="up_foto_propria")
-                
-                # Criamos a variável col_up EXATAMENTE aqui antes do botão
-                col_up, col_espaco = st.columns([1, 0.01]) 
-                with col_up:
-                    if st.button("Salvar Foto", type="primary", use_container_width=True):
-                        if upload_foto:
-                            with open(caminho_foto_user, "wb") as f:
-                                f.write(upload_foto.getbuffer())
-                            sincronizar_com_github(caminho_foto_user, f"Foto: {nome_logado}")
-                            st.success("Foto salva!")
-                            time.sleep(1)
-                            st.rerun()
-
-            with col_avatar:
-                st.markdown("##### 🎭 Escolher Avatar")
-                
-                # 1. VARREDURA AUTOMÁTICA DA PASTA
-                pasta_avatares = "avatares"
-                if os.path.exists(pasta_avatares):
-                    # Lista todos os arquivos da pasta que são imagens
-                    arquivos_disponiveis = [f for f in os.listdir(pasta_avatares) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
-                else:
-                    arquivos_disponiveis = []
-
-                if arquivos_disponiveis:
-                    # Criamos nomes amigáveis para a lista (ex: 'ninja.png' vira 'Ninja')
-                    formatar_nome = lambda x: x.split('.')[0].replace('_', ' ').title()
-                    mapa_avatares = {formatar_nome(f): f for f in arquivos_disponiveis}
-                    
-                    selecao_nome = st.selectbox("Novos estilos disponíveis:", list(mapa_avatares.keys()))
-                    nome_arquivo_avatar = mapa_avatares[selecao_nome]
-                    
-                    # Pré-visualização automática
-                    st.image(os.path.join(pasta_avatares, nome_arquivo_avatar), width=80)
-
-                    if st.button("Definir este Avatar", use_container_width=True):
-                        caminho_avatar_txt = caminho_foto_user.replace(".png", "_avatar.txt")
-                        with open(caminho_avatar_txt, "w", encoding="utf-8") as f:
-                            f.write(nome_arquivo_avatar)
-                        
-                        if os.path.exists(caminho_foto_user):
-                            os.remove(caminho_foto_user)
-                        
-                        st.success(f"Visual '{selecao_nome}' definido!")
-                        time.sleep(1)
-                        st.rerun()
-                else:
-                    st.warning("Nenhum avatar encontrado na pasta /avatares")
-            # Botão de remover logo abaixo das colunas
-            if st.button("🗑️ Remover Imagem Atual", use_container_width=True):
-                if os.path.exists(caminho_foto_user): os.remove(caminho_foto_user)
-                caminho_av = caminho_foto_user.replace(".png", "_avatar.txt")
-                if os.path.exists(caminho_av): os.remove(caminho_av)
-                st.rerun()
         
         # CÁLCULO DE RANKING
         ranking_msg = "Não classificado"
