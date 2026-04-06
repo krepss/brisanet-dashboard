@@ -2746,12 +2746,34 @@ else:
         if st.session_state.get('mostrar_popup_humor', False):
             exibir_popup_humor()
             
-        # 4. Botão discreto no painel caso ele queira refazer
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("🏛️ Refletir sobre meu Humor"):
-            st.session_state['mostrar_popup_humor'] = True
-            st.session_state[f'etapa_popup_{nome_logado}'] = 1 # Garante que recomece da escolha
-            st.rerun()
+        # ==========================================================
+        # 4. Exibição Dinâmica do Humor no Painel
+        # ==========================================================
+        humor_atual = carregar_humor_hoje(nome_logado)
+        
+        if humor_atual:
+            # Divide no mesmo padrão do WFM: 75% texto, 25% botão
+            c_humor_txt, c_humor_btn = st.columns([3, 1])
+            
+            with c_humor_txt:
+                st.markdown(f"""
+                <div style='background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0 15px; display: flex; align-items: center; height: 41px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);'>
+                    <span style='color: #64748b; font-size: 0.9em; margin-right: 5px;'>Você disse que hoje se sente:</span>
+                    <span style='color: #0f172a; font-size: 1em; font-weight: 700;'>{humor_atual}</span>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            with c_humor_btn:
+                if st.button("🔄 Mudou?", use_container_width=True):
+                    st.session_state['mostrar_popup_humor'] = True
+                    st.session_state[f'etapa_popup_{nome_logado}'] = 1
+                    st.rerun()
+        else:
+            # Caso ele ainda não tenha votado (ou fechou o popup sem querer)
+            if st.button("🌡️ Registrar meu Humor"):
+                st.session_state['mostrar_popup_humor'] = True
+                st.session_state[f'etapa_popup_{nome_logado}'] = 1
+                st.rerun()
     # --- 🕒 CARTÃO DE PAUSAS DO WFM ---
         # ==========================================================
         # 🕒 ESCALA E PAUSAS (WFM) - MODO COMPACTO COM POPUP
