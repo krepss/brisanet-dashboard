@@ -2785,10 +2785,12 @@ else:
             else:
                 st.warning("Nenhum histórico de escala mensal encontrado.")
 
-        # 2. Exibição Ultra-Compacta na Tela Principal
+        # ==========================================================
+        # 2. Exibição Ultra-Compacta na Tela Principal (TUDO NA MESMA LINHA)
+        # ==========================================================
         if escala_hoje and escala_hoje.get("tipo") == "trabalho":
             turno_txt = escala_hoje.get('turno', '--')
-            icone_status = "💼 Turno Ativo"
+            icone_status = "💼 Ativo"
             cor_status = "#3b82f6" # Azul
         elif escala_hoje and escala_hoje.get("tipo") == "folga":
             turno_txt = "Folga"
@@ -2796,32 +2798,32 @@ else:
             cor_status = "#10b981" # Verde
         else:
             turno_txt = "Sem dados"
-            icone_status = "❓ Indisponível"
+            icone_status = "❓ N/A"
             cor_status = "#64748b" # Cinza
 
-        # Um mini-card HTML super elegante só para o resumo do turno
-        st.markdown(f"""
-        <div style='background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); margin-bottom: 10px; margin-top: 15px;'>
-            <div style='display: flex; align-items: center; gap: 15px;'>
-                <div style='background-color: #f1f5f9; padding: 10px; border-radius: 50%; display: flex; align-items: center; justify-content: center;'>
-                    <span style='font-size: 1.2em;'>🕒</span>
+        # Divide a tela: 75% para o mini-card do turno, 25% para o botão
+        c_turno, c_botao = st.columns([3, 1])
+        
+        with c_turno:
+            # Card achatado: height de 40px para alinhar perfeitamente com a altura do botão do Streamlit
+            st.markdown(f"""
+            <div style='background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0 15px; display: flex; justify-content: space-between; align-items: center; height: 42px; margin-top: 5px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);'>
+                <div style='display: flex; align-items: center; gap: 8px;'>
+                    <span style='font-size: 1.1em; margin-top: -2px;'>🕒</span>
+                    <span style='color: #64748b; font-size: 0.85em; font-weight: 600;'>MEU TURNO:</span>
+                    <span style='color: #0f172a; font-size: 0.95em; font-weight: 800;'>{turno_txt}</span>
                 </div>
                 <div>
-                    <p style='margin: 0; color: #64748b; font-size: 0.8em; font-weight: 600; text-transform: uppercase;'>Meu Turno Hoje</p>
-                    <p style='margin: 0; color: #0f172a; font-size: 1.1em; font-weight: 800;'>{turno_txt}</p>
+                    <span style='color: {cor_status}; font-size: 0.75em; font-weight: 700; background-color: {cor_status}15; padding: 3px 8px; border-radius: 10px;'>{icone_status}</span>
                 </div>
             </div>
-            <div style='text-align: right;'>
-                <p style='margin: 0; color: {cor_status}; font-size: 0.9em; font-weight: 700; background-color: {cor_status}15; padding: 4px 10px; border-radius: 20px;'>{icone_status}</p>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Botão para abrir o Popup
-        if st.button("☕ Ver Pausas e Escala do Mês", use_container_width=True):
-            exibir_popup_wfm()
+            """, unsafe_allow_html=True)
             
-        st.markdown("<br>", unsafe_allow_html=True)
+        with c_botao:
+            # Um pequeno empurrãozinho para alinhar o botão com o card
+            st.markdown("<div style='margin-top: 5px;'></div>", unsafe_allow_html=True)
+            if st.button("☕ Ver Pausas", use_container_width=True):
+                exibir_popup_wfm()
     # --- 🎂 VERIFICAÇÃO DE ANIVERSÁRIO ---
     if df_users_cadastrados is not None:
         try:
