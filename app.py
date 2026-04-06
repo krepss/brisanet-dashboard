@@ -2637,11 +2637,11 @@ else:
             if st.session_state[f'etapa_popup_{nome_logado}'] == 1:
                 st.markdown(f"<p style='text-align: center; color: #4B5563; margin-bottom: 20px;'>Como você está se sentindo hoje, {primeiro_nome}?</p>", unsafe_allow_html=True)
                 
-                opcoes_humor = ["🤩 Incrível", "🙂 Bem", "😐 Normal", "😫 Cansado", "😡 Estressado"]
+                opcoes_humor = ["🤩 Incrível ", "🙂 Bem ", "😐 Normal ", "😫 Cansado ", "😡 Estressado "]
                 humor_banco = carregar_humor_hoje(nome_logado)
                 idx_padrao = opcoes_humor.index(humor_banco) if humor_banco in opcoes_humor else 0
                 
-                escolha_humor = st.radio("Selecione:", opcoes_humor, index=idx_padrao, horizontal=True, label_visibility="collapsed")
+                escolha_humor = st.radio("Selecione:", opcoes_humor, index=idx_padrao, horizontal=False, label_visibility="collapsed")
                 
                 st.markdown("<br>", unsafe_allow_html=True)
                 
