@@ -1535,32 +1535,38 @@ Vamos com tudo! 🔥"""
 
             if arquivo_abs:
                 try:
+                    # Lendo o arquivo de indicadores
                     df_abs = pd.read_csv(arquivo_abs)
                     
                     if 'Conformidade' in df_abs.columns:
-                        # --- 🧮 CÁLCULOS MATEMÁTICOS (NÃO APAGAR) ---
-                        MINUTOS_TURNO = 380 # 6h 20min padrão
+                        # ==========================================================
+                        # 🧮 1. CÁLCULOS MATEMÁTICOS DE BASE
+                        # ==========================================================
+                        MINUTOS_TURNO = 380 # Padrão 6h 20min
                         
-                        # 1. Base da Escala
+                        # Base da Escala (Total de registros no CSV)
                         total_linhas = len(df_abs)
                         tempo_escala_total = total_linhas * MINUTOS_TURNO
                         
-                        # 2. Faltas Integrais (Apenas Conformidade 0.0)
+                        # Faltas Integrais (Apenas Conformidade EXATAMENTE 0.0)
                         faltas_totais_df = df_abs[df_abs['Conformidade'] == 0.0]
                         qtd_faltas = len(faltas_totais_df)
                         tempo_perda_faltas = qtd_faltas * MINUTOS_TURNO
                         
-                        # 3. Resultado Final
+                        # Cálculo do ABS Final (Faltas + Atrasos Manuais digitados no campo acima)
                         perda_total_minutos = tempo_perda_faltas + minutos_atraso_manual
                         abs_percentual = (perda_total_minutos / tempo_escala_total) * 100 if tempo_escala_total > 0 else 0
                         
-                        # --- 📊 EXIBIÇÃO DOS RESULTADOS ---
+                        # ==========================================================
+                        # 📊 2. EXIBIÇÃO DOS RESULTADOS (METRICS)
+                        # ==========================================================
                         st.divider()
-                        
                         m1, m2, m3 = st.columns(3)
+                        
                         m1.metric("Faltas Detectadas (0.0)", f"{qtd_faltas} dias")
                         m2.metric("Atrasos Informados", f"{minutos_atraso_manual} min")
                         
+                        # Cor dinâmica conforme a meta (Meta sugerida: 5%)
                         cor_v = "green" if abs_percentual <= 5 else "#F37021" if abs_percentual <= 8 else "red"
                         
                         m3.markdown(f"""
@@ -1570,12 +1576,17 @@ Vamos com tudo! 🔥"""
                             </div>
                         """, unsafe_allow_html=True)
                         
-                        # --- 🚩 RANKING DE CONTRIBUINTES ---
+                        # ==========================================================
+                        # 🚩 3. RANKING DE CONTRIBUINTES (DETRATORES)
+                        # ==========================================================
                         if qtd_faltas > 0:
                             st.markdown("#### 🚩 Maiores Contribuintes (Faltas 0.0)")
                             
+                            # Agrupando por agente para ver quem mais faltou
                             ranking_faltas = faltas_totais_df.groupby('Agente').size().reset_index(name='Qtd_Faltas')
                             ranking_faltas = ranking_faltas.sort_values(by='Qtd_Faltas', ascending=False)
+                            
+                            # Cálculo do impacto individual de cada faltoso no ABS total do time
                             ranking_faltas['Impacto_no_ABS'] = (ranking_faltas['Qtd_Faltas'] * MINUTOS_TURNO / tempo_escala_total) * 100
                             
                             st.dataframe(
@@ -1589,28 +1600,21 @@ Vamos com tudo! 🔥"""
                                 use_container_width=True
                             )
                             
-                            maior_faltoso = ranking_faltas.iloc[0]
-                            st.warning(f"💡 **Insight:** O colaborador **{maior_faltoso['Agente']}** é o maior contribuinte, representando **{maior_faltoso['Impacto_no_ABS']:.2f}%** do ABS.")
-                        else:
-                            st.success("🙌 **Excelente!** Ninguém teve faltas integrais (0.0).")
+                            # Variáveis para o texto do ScorePlan
+                            maior_faltoso_nome = ranking_faltas.iloc[0]['Agente']
+                            maior_faltoso_impacto = f"{ranking_faltas.iloc[0]['Impacto_no_ABS']:.2f}%"
                             
-                        # ... (Aqui termina o seu st.dataframe do ranking) ...
-                            
-                            maior_faltoso = ranking_faltas.iloc[0]
-                            st.warning(f"💡 **Insight:** O colaborador **{maior_faltoso['Agente']}** é o maior contribuinte, representando **{maior_faltoso['Impacto_no_ABS']:.2f}%** do ABS.")
+                            st.warning(f"💡 **Insight de Gestão:** O colaborador **{maior_faltoso_nome}** é quem mais impacta seu indicador, sendo responsável por **{maior_faltoso_impacto}** do ABS total.")
                             
                             # ==========================================================
-                            # 📝 NOVO: GERADOR DE TEXTO PARA SCOREPLAN
+                            # 📝 4. GERADOR DE TEXTO PARA SCOREPLAN
                             # ==========================================================
                             st.markdown("---")
                             st.markdown("#### 📝 Texto para Copiar (ScorePlan)")
                             
-                            # Preparando as variáveis para o texto
-                            maior_c = maior_faltoso['Agente']
-                            impacto_c = f"{maior_faltoso['Impacto_no_ABS']:.2f}%"
                             status_texto = "🟢 DENTRO DA META" if abs_percentual <= 5 else "🟡 ALERTA" if abs_percentual <= 8 else "🔴 CRÍTICO"
 
-                            texto_scoreplan = f"""📊 RELATÓRIO DE ABSENTEÍSMO OPERACIONAL - WFM
+                            texto_para_copiar = f"""📊 RELATÓRIO DE ABSENTEÍSMO OPERACIONAL - WFM
 --------------------------------------------------
 METODOLOGIA: Faltas Integrais (0.0) + Atrasos Manuais
 
@@ -1621,29 +1625,25 @@ METODOLOGIA: Faltas Integrais (0.0) + Atrasos Manuais
 - ÍNDICE DE ABS FINAL: {abs_percentual:.2f}%
 
 🚩 ANÁLISE DE CONTRIBUINTES:
-- Maior detrator: {maior_c}
-- Impacto individual no ABS: {impacto_c}
+- Maior detrator: {maior_faltoso_nome}
+- Impacto individual no ABS: {maior_faltoso_impacto}
 
 💡 PARECER DA GESTÃO:
 - Status: {status_texto}
 - Diagnóstico: Calculado via Sistema de Gestão Interna.
 --------------------------------------------------"""
 
-                            # Caixa de texto pronta para copiar
-                            st.text_area("Selecione e copie para o ScorePlan:", value=texto_scoreplan, height=250)
-                            
-                        else:
-                            st.success("🙌 **Excelente!** Ninguém teve faltas integrais (0.0).")
-
-                        # O final do bloco deve ter essa legenda:
-                        st.caption(f"Cálculo baseado em {total_linhas} registros.")
+                            # Campo de texto área para facilitar a cópia
+                            st.text_area("Selecione e copie para o ScorePlan:", value=texto_para_copiar, height=250)
                         
-                except Exception as e:
-                    st.error(f"Erro ao processar o cálculo: {e}")
-                        st.caption(f"Cálculo baseado em {total_linhas} registros (Total: {tempo_escala_total:,.0f} min).")
+                        else:
+                            st.success("🙌 **Excelente!** Ninguém teve faltas integrais (0.0) no arquivo enviado.")
+
+                        # Rodapé com dados técnicos do cálculo
+                        st.caption(f"Cálculo baseado em {total_linhas} registros de escala (Total: {tempo_escala_total:,.0f} min).")
                         
                     else:
-                        st.error("❌ Coluna 'Conformidade' não encontrada no CSV.")
+                        st.error("❌ O arquivo não possui a coluna 'Conformidade'. Verifique o relatório exportado do WFM.")
                         
                 except Exception as e:
                     st.error(f"Erro ao processar o cálculo: {e}")
