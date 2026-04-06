@@ -2078,8 +2078,7 @@ Vamos com tudo! 🔥"""
             if st.button("Rodar Diagnóstico"):
                 _, log_df = carregar_dados_completo_debug()
                 st.dataframe(log_df)
-
-    # --- 📅 GESTÃO CONSOLIDADA WFM ---
+        # --- 📅 GESTÃO CONSOLIDADA WFM ---
         st.markdown("---")
         st.markdown("### 📅 Central de Escalas WFM")
         
@@ -2120,6 +2119,8 @@ Vamos com tudo! 🔥"""
                             st.rerun()
                 else:
                     st.error("⚠️ A base de dados WFM está com colunas incompatíveis. Por favor, faça um novo upload.")
+
+    
     # ------------------ BANCO DE HORAS ------------------
     with tabs[10]:
         st.markdown("### ⏰ Banco de Horas e Agendamentos")
