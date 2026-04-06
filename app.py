@@ -681,137 +681,44 @@ import re
 import re
 import glob
 
-# Aspirador de Pó: Sugga todos os arquivos WFM do servidor de uma vez só!
+def salvar_escala_no_csv(conteudo_txt, data_inicio, data_fim):
+    """Transforma o TXT em linhas de um CSV consolidado com data de validade."""
+    ARQUIVO_CSV = "base_wfm_consolidada.csv"
+    linhas_processadas = []
+    hoje_registro = datetime.now().strftime("%d/%m/%Y %H:%M")
+    
+    # Processa o texto para virar colunas
+    linhas_txt = conteudo_txt.split('\n')
+    for linha in linhas_txt:
+        if "," in linha and ":" in linha: # Filtro básico de linha válida
+            linhas_processadas.append({
+                "ID_Upload": f"{data_inicio}_{data_fim}",
+                "Data_Registro": hoje_registro,
+                "Inicio_Vigencia": data_inicio.strftime("%d/%m/%Y"),
+                "Fim_Vigencia": data_fim.strftime("%d/%m/%Y"),
+                "Conteudo_Linha": linha.strip()
+            })
+    
+    df_novo = pd.DataFrame(linhas_processadas)
+    
+    if os.path.exists(ARQUIVO_CSV):
+        df_antigo = pd.read_csv(ARQUIVO_CSV)
+        # Remove se o gestor estiver subindo o mesmo intervalo (sobrescrever)
+        df_antigo = df_antigo[df_antigo['ID_Upload'] != f"{data_inicio}_{data_fim}"]
+        df_final = pd.concat([df_antigo, df_novo], ignore_index=True)
+    else:
+        df_final = df_novo
+        
+    df_final.to_csv(ARQUIVO_CSV, index=False)
+    sincronizar_com_github(ARQUIVO_CSV, f"WFM Consolidado: Período {data_inicio} a {data_fim}")
+
 def ler_todas_escalas_wfm():
-    linhas = []
-    # Caça todos os arquivos salvos que começam com "escala_wfm"
-    for arquivo in glob.glob("escala_wfm*.txt"):
-        try:
-            with open(arquivo, "r", encoding="utf-8") as f:
-                linhas.extend(f.readlines())
-        except:
-            pass
-    return linhas
-
-def buscar_escala_hoje(nome_operador):
-    try:
-        hoje_wfm = datetime.now().strftime("%d/%m/%Y")
-        linhas = ler_todas_escalas_wfm()
-        
-        for linha in linhas:
-            if nome_operador.lower() in linha.lower() and hoje_wfm in linha:
-                if "dia de folga inteiro" in linha:
-                    motivo = linha.split("-")[-1].strip()
-                    return {"tipo": "folga", "motivo": motivo}
-                else:
-                    partes = linha.split(f"{hoje_wfm}, ")
-                    if len(partes) > 1:
-                        resto = partes[1]
-                        turno_eventos = resto.split(": ", 1)
-                        turno = turno_eventos[0]
-                        eventos_str = turno_eventos[1] if len(turno_eventos) > 1 else ""
-                        intervalo_1, refeicao, intervalo_2 = "", "", ""
-                        eventos = eventos_str.split(", ")
-                        intervalos_encontrados = []
-                        for ev in eventos:
-                            if "Intervalo" in ev: intervalos_encontrados.append(ev.replace("Intervalo ", ""))
-                            elif "Refeição" in ev: refeicao = ev.replace("Refeição ", "")
-                        if len(intervalos_encontrados) > 0: intervalo_1 = intervalos_encontrados[0]
-                        if len(intervalos_encontrados) > 1: intervalo_2 = intervalos_encontrados[1]
-                        return {"tipo": "trabalho", "turno": turno, "intervalo_1": intervalo_1, "refeicao": refeicao, "intervalo_2": intervalo_2}
-        return None
-    except:
-        return None
-
-def buscar_escala_completa(nome_operador):
-    escala = []
-    try:
-        linhas = ler_todas_escalas_wfm()
-        
-        for linha in linhas:
-            if nome_operador.lower() in linha.lower():
-                match_data = re.search(r'\d{2}/\d{2}/\d{4}', linha)
-                if match_data:
-                    data_str = match_data.group()
-                    dia_semana = ""
-                    match_dia = re.search(r'([a-zA-Zá-úÁ-Ú-]+),\s' + data_str, linha)
-                    if match_dia:
-                        dia_semana = match_dia.group(1).title()
-                    if "dia de folga inteiro" in linha:
-                        motivo = linha.split("-")[-1].strip()
-                        escala.append({"Data": data_str, "Dia": dia_semana, "Turno": "🏖️ Folga", "Detalhes": motivo})
-                    else:
-                        partes = linha.split(f"{data_str}, ")
-                        if len(partes) > 1:
-                            resto = partes[1]
-                            turno_eventos = resto.split(": ", 1)
-                            turno = turno_eventos[0]
-                            detalhes = turno_eventos[1].strip() if len(turno_eventos) > 1 else ""
-                            escala.append({"Data": data_str, "Dia": dia_semana, "Turno": turno, "Detalhes": detalhes})
-        if escala:
-            import pandas as pd
-            # Remove duplicatas caso você tenha subido o mesmo mês duas vezes por engano
-            df = pd.DataFrame(escala).drop_duplicates(subset=['Data'])
-            return df
-    except:
-        pass
-    return None
-
-def gerar_radar_wfm_data(data_alvo):
-    try:
-        import pandas as pd
-        import re
-        
-        df_users = carregar_usuarios()
-        if df_users is None or df_users.empty: return None
-            
-        usuarios_ativos = {}
-        for _, row in df_users.iterrows():
-            nome_norm = str(row['nome']) 
-            nome_bonito = nome_norm.title()
-            usuarios_ativos[nome_norm] = {"Colaborador": nome_bonito, "Status": "Folga", "Turno": "Ausente"}
-            
-        linhas = ler_todas_escalas_wfm()
-        dias_semana = ['segunda-feira, ', 'terça-feira, ', 'quarta-feira, ', 'quinta-feira, ', 'sexta-feira, ', 'sábado, ', 'domingo, ']
-        
-        for linha in linhas:
-            if data_alvo in linha:
-                partes = linha.split(data_alvo)
-                nome_cru = partes[0]
-                for d in dias_semana:
-                    nome_cru = nome_cru.replace(d, "")
-                nome_limpo = nome_cru.strip()
-                nome_norm_wfm = normalizar_chave(nome_limpo)
-                
-                if nome_norm_wfm in usuarios_ativos:
-                    resto = partes[1]
-                    status = "Trabalhando"
-                    turno = "N/A"
-                    
-                    if "dia de folga inteiro" in resto.lower():
-                        if "férias" in resto.lower() or "ferias" in resto.lower(): status = "Férias"
-                        else: status = "Folga"
-                        turno = "Ausente"
-                    else:
-                        turno_info = resto.split(":")
-                        if len(turno_info) > 0:
-                            turno = turno_info[0].replace(", ", "").strip()
-                            eventos = ":".join(turno_info[1:])
-                            if "treinamento" in eventos.lower(): status = "Treinamento"
-                            if "questões de saúde" in eventos.lower(): status = "Saúde"
-                            
-                    usuarios_ativos[nome_norm_wfm] = {"Colaborador": nome_limpo.title(), "Status": status, "Turno": turno}
-                    
-        escala_final = list(usuarios_ativos.values())
-        if escala_final:
-            df = pd.DataFrame(escala_final)
-            ordem_status = {"Trabalhando": 1, "Treinamento": 2, "Saúde": 3, "Férias": 4, "Folga": 5}
-            df['Ordem'] = df['Status'].map(ordem_status).fillna(99)
-            df = df.sort_values(by=["Ordem", "Colaborador"]).drop(columns=['Ordem'])
-            return df
-            
-    except Exception as e: pass
-    return None
+    """Lê do CSV em vez de vários arquivos TXT."""
+    ARQUIVO_CSV = "base_wfm_consolidada.csv"
+    if os.path.exists(ARQUIVO_CSV):
+        df = pd.read_csv(ARQUIVO_CSV)
+        return df['Conteudo_Linha'].tolist()
+    return []
 
 def obter_imagem_perfil(nome_colaborador):
     """Retorna a imagem (Base64) ou None se não encontrar nada."""
@@ -1932,36 +1839,45 @@ Vamos com tudo! 🔥"""
                 _, log_df = carregar_dados_completo_debug()
                 st.dataframe(log_df)
 
-    # --- 📅 UPLOAD DA ESCALA WFM ---
+    # --- 📅 GESTÃO CONSOLIDADA WFM ---
         st.markdown("---")
-        st.markdown("### 📅 Atualizar Escala WFM (Turnos e Pausas)")
-        st.info("Faça o upload do arquivo de texto (.txt) gerado pelo sistema de WFM. O sistema guardará o histórico de todos os meses automaticamente.")
+        st.markdown("### 📅 Central de Escalas WFM")
         
-        arquivo_wfm = st.file_uploader("Selecione o arquivo de turnos (.txt)", type=["txt"])
+        tab_up_wfm, tab_gerenciar_wfm = st.tabs(["📤 Subir Nova Escala", "🗑️ Gerenciar Histórico"])
         
-        if arquivo_wfm is not None:
-            if st.button("💾 Salvar Nova Escala no Histórico", use_container_width=True, type="primary"):
-                try:
-                    conteudo_wfm = arquivo_wfm.getvalue().decode("utf-8")
-                    
-                    # Cria um nome único baseado no arquivo original para não esmagar os antigos
-                    nome_seguro = arquivo_wfm.name.replace(" ", "_")
-                    nome_arquivo_final = f"escala_wfm_{nome_seguro}"
-                    
-                    # Salva no servidor local
-                    with open(nome_arquivo_final, "w", encoding="utf-8") as f:
-                        f.write(conteudo_wfm)
-                        
-                    # Manda o arquivo blindado para a nuvem do GitHub
-                    sincronizar_com_github(nome_arquivo_final, f"Nova escala adicionada: {nome_seguro}")
-                    
-                    st.success(f"✅ Escala {nome_seguro} salva no histórico com sucesso!")
-                    import time
-                    time.sleep(1.5)
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"⚠️ Erro ao processar o arquivo: {e}")
-        st.markdown("---")
+        with tab_up_wfm:
+            st.info("O arquivo será processado e guardado na base de dados única.")
+            c_data1, c_data2 = st.columns(2)
+            d_ini = c_data1.date_input("Início do Período", key="wfm_ini")
+            d_fim = c_data2.date_input("Fim do Período", key="wfm_fim")
+            
+            arquivo_wfm = st.file_uploader("Arquivo de turnos (.txt)", type=["txt"], key="file_wfm_novo")
+            
+            if arquivo_wfm and st.button("🚀 Consolidar no Banco de Dados", type="primary"):
+                conteudo = arquivo_wfm.getvalue().decode("utf-8")
+                salvar_escala_no_csv(conteudo, d_ini, d_fim)
+                st.success(f"✅ Período {d_ini} a {d_fim} integrado com sucesso!")
+                time.sleep(1)
+                st.rerun()
+
+        with tab_gerenciar_wfm:
+            if os.path.exists("base_wfm_consolidada.csv"):
+                df_wfm = pd.read_csv("base_wfm_consolidada.csv")
+                resumo_wfm = df_wfm.groupby(['ID_Upload', 'Inicio_Vigencia', 'Fim_Vigencia']).size().reset_index(name='Linhas')
+                
+                st.write("Intervalos carregados no sistema:")
+                for i, row in resumo_wfm.iterrows():
+                    c_info, c_del = st.columns([3, 1])
+                    c_info.warning(f"📅 **Período:** {row['Inicio_Vigencia']} até {row['Fim_Vigencia']} ({row['Linhas']} escalas)")
+                    if c_del.button("Excluir Mês", key=f"del_wfm_{i}"):
+                        df_wfm = df_wfm[df_wfm['ID_Upload'] != row['ID_Upload']]
+                        df_wfm.to_csv("base_wfm_consolidada.csv", index=False)
+                        sincronizar_com_github("base_wfm_consolidada.csv", "Exclusão de período WFM")
+                        st.success("Removido!")
+                        time.sleep(1)
+                        st.rerun()
+            else:
+                st.info("Nenhuma escala consolidada no banco de dados.")
     # ------------------ BANCO DE HORAS ------------------
     with tabs[10]:
         st.markdown("### ⏰ Banco de Horas e Agendamentos")
