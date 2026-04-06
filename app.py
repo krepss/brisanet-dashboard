@@ -2541,71 +2541,68 @@ else:
         st.markdown(f"<div style='display: flex; align-items: center; margin-top:-15px; color: #666; font-size:0.9em;'><span style='margin-right: 15px;'>📅 Referência: <b>{periodo_label}</b></span><span class='update-badge' style='background-color:#e0f7fa; color:#006064;'>🕒 Atualizado em: {obter_data_atualizacao()}</span>{tempo_empresa_str}</div>", unsafe_allow_html=True)
                  
         # ==========================================================
-        # 🌡️ TERMÔMETRO DE HUMOR DIÁRIO
+        # 🌡️ TERMÔMETRO DE HUMOR DIÁRIO (POPUP INTERATIVO)
         # ==========================================================
-        humor_atual = carregar_humor_hoje(nome_logado)
         
-        st.markdown("""
-        <div style='background-color: #FFFFFF; padding: 15px 20px; border-radius: 12px; border: 1px solid #E5E7EB; box-shadow: 0 4px 10px rgba(0,0,0,0.03); margin-top: 20px; margin-bottom: 20px;'>
-            <p style='margin: 0 0 10px 0; color: #4B5563; font-weight: 700; font-size: 0.95em;'>🌡️ Termômetro da Equipe: Como você está se sentindo hoje?</p>
-        """, unsafe_allow_html=True)
-        
-        opcoes_humor = ["🤩 Incrível", "🙂 Bem", "😐 Normal", "😫 Cansado", "😡 Estressado"]
-        
-        # Descobre qual foi o último voto (para deixar marcado) ou deixa vazio
-        idx_padrao = opcoes_humor.index(humor_atual) if humor_atual in opcoes_humor else 0
-        
-        c_humor1, c_humor2 = st.columns([3, 1])
-        with c_humor1:
-            escolha_humor = st.radio(
-                "Humor", 
-                opcoes_humor, 
-                index=idx_padrao, 
-                horizontal=True, 
-                label_visibility="collapsed"
-            )
-        
-        with c_humor2:
-            if st.button("Salvar Humor", type="primary", use_container_width=True):
-                # 1. Salva no banco de dados
+        # 1. Definimos a "cara" da janela do Popup
+        @st.dialog("Termômetro da Equipe 🌡️")
+        def exibir_popup_humor():
+            st.markdown("<p style='text-align: center; color: #4B5563; margin-bottom: 20px;'>Como você está se sentindo hoje para o nosso turno?</p>", unsafe_allow_html=True)
+            
+            opcoes_humor = ["🤩 Incrível", "🙂 Bem", "😐 Normal", "😫 Cansado", "😡 Estressado"]
+            humor_banco = carregar_humor_hoje(nome_logado)
+            idx_padrao = opcoes_humor.index(humor_banco) if humor_banco in opcoes_humor else 0
+            
+            escolha_humor = st.radio("Selecione:", opcoes_humor, index=idx_padrao, horizontal=True, label_visibility="collapsed")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("Salvar meu Humor", type="primary", use_container_width=True):
+                # Salva no banco
                 registrar_humor_dia(nome_logado, escolha_humor)
                 
-                # 2. Chama a IA para dar um recadinho personalizado
+                # Inteligência Artificial (Motivação)
                 if "GEMINI_API_KEY" in st.secrets:
-                    with st.spinner("✨"):
+                    with st.spinner("Sofistas AI está digitando... ✨"):
                         try:
                             import google.generativeai as genai
                             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
                             model = genai.GenerativeModel('gemini-2.5-flash')
                             
                             prompt_humor = f"""
-                            Você é um líder inspirador de suporte técnico, muito empático e humano. 
-                            O operador {primeiro_nome} acabou de registrar que seu humor hoje é '{escolha_humor}'. 
-                            Escreva uma mensagem motivacional EXTREMAMENTE CURTA (máximo 2 linhas) para ele ler agora.
-                            Se ele estiver mal ou estressado, dê apoio e mostre que dias difíceis passam. 
-                            Se ele estiver bem, impulsione ele a ter um dia focado em bater metas e diamantes!
+                            Você é um líder inspirador de suporte técnico. 
+                            O operador {primeiro_nome} registrou que seu humor hoje é '{escolha_humor}'. 
+                            Escreva uma mensagem motivacional EXTREMAMENTE CURTA (1 a 2 frases) para ele ler agora na tela.
                             """
-                            
                             resposta = model.generate_content(prompt_humor)
-                            # Guarda a mensagem na memória curta para ela sobreviver ao recarregamento da página
                             st.session_state[f'msg_humor_ia_{nome_logado}'] = resposta.text
-                        except Exception as e:
-                            pass # Se a IA falhar (internet, etc), não quebra o app do operador
+                        except:
+                            pass
                 
-                st.success("Registrado!")
-                import time
-                time.sleep(1)
+                # Marca que ele já viu o popup hoje e recarrega para fechar a janela
+                st.session_state['popup_humor_respondido'] = True
                 st.rerun()
-                
-        st.markdown("</div>", unsafe_allow_html=True)
+
+        # 2. Lógica de Disparo do Popup
+        humor_atual = carregar_humor_hoje(nome_logado)
         
-        # 3. Exibe a mensagem da IA logo abaixo do termômetro (se houver uma)
+        # Se ele ainda NÃO votou hoje E a janela ainda não apareceu nesta sessão, abre o popup sozinho!
+        if humor_atual is None and not st.session_state.get('popup_humor_respondido', False):
+            exibir_popup_humor()
+            st.session_state['popup_humor_respondido'] = True
+            
+        # 3. Exibição da mensagem da IA no painel principal
         if st.session_state.get(f'msg_humor_ia_{nome_logado}'):
-            st.markdown(f"""
-            <div style='background-color: #f0fdf4; border-left: 5px solid #2ecc71; padding: 15px; border-radius: 10px; margin-top: -5px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);'>
-                <p style='margin: 0; color: #166534; font-size: 0.95em;'>✨ <b>Sofistas AI diz:</b> {st.session_state[f'msg_humor_ia_{nome_logado}']}</p>
-            </div>
-            """, unsafe_allow_html=True)
+            c_msg, c_btn = st.columns([4, 1])
+            with c_msg:
+                st.markdown(f"""
+                <div style='background-color: #f0fdf4; border-left: 5px solid #2ecc71; padding: 12px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);'>
+                    <p style='margin: 0; color: #166534; font-size: 0.9em;'>✨ <b>Sofistas AI:</b> {st.session_state[f'msg_humor_ia_{nome_logado}']}</p>
+                </div>
+                """, unsafe_allow_html=True)
+            with c_btn:
+                # Um botãozinho discreto caso ele queira abrir o popup de novo
+                if st.button("🌡️ Mudei de Humor"):
+                    exibir_popup_humor()
     # --- 🕒 CARTÃO DE PAUSAS DO WFM ---
         escala_hoje = buscar_escala_hoje(nome_logado)
         
