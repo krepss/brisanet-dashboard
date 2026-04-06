@@ -865,6 +865,51 @@ def obter_imagem_perfil(nome_colaborador):
     except:
         pass
     return None
+
+def registrar_humor_dia(nome_colaborador, humor_escolhido):
+    """Salva o humor diário do colaborador em um CSV."""
+    ARQUIVO_HUMOR = 'humor_diario.csv'
+    hoje = datetime.now().strftime("%d/%m/%Y")
+    
+    novo_registro = {
+        "Data": hoje, 
+        "Colaborador": nome_colaborador.title(), 
+        "Humor": humor_escolhido
+    }
+    df_novo = pd.DataFrame([novo_registro])
+    
+    if os.path.exists(ARQUIVO_HUMOR):
+        try:
+            df_base = pd.read_csv(ARQUIVO_HUMOR)
+            # Se a pessoa já votou hoje, a gente acha a linha dela e substitui (para evitar duplicatas)
+            mask = (df_base['Data'] == hoje) & (df_base['Colaborador'].str.upper() == nome_colaborador.upper())
+            if mask.any():
+                df_base.loc[mask, 'Humor'] = humor_escolhido
+                df_final = df_base
+            else:
+                df_final = pd.concat([df_base, df_novo], ignore_index=True)
+        except:
+            df_final = df_novo
+    else:
+        df_final = df_novo
+        
+    df_final.to_csv(ARQUIVO_HUMOR, index=False)
+    sincronizar_com_github(ARQUIVO_HUMOR, f"Humor atualizado: {nome_colaborador}")
+
+def carregar_humor_hoje(nome_colaborador):
+    """Verifica se o colaborador já registrou o humor hoje."""
+    ARQUIVO_HUMOR = 'humor_diario.csv'
+    hoje = datetime.now().strftime("%d/%m/%Y")
+    
+    if os.path.exists(ARQUIVO_HUMOR):
+        try:
+            df_base = pd.read_csv(ARQUIVO_HUMOR)
+            mask = (df_base['Data'] == hoje) & (df_base['Colaborador'].str.upper() == nome_colaborador.upper())
+            if mask.any():
+                return df_base.loc[mask, 'Humor'].values[0]
+        except:
+            pass
+    return None
 # ==========================================
 # --- 4. LOGIN RENOVADO (SEM DELAY E SEM PISCAR) ---
 # ==========================================
@@ -2495,6 +2540,40 @@ else:
         st.markdown(f"## 🚀 Olá, **{primeiro_nome}**!")
         st.markdown(f"<div style='display: flex; align-items: center; margin-top:-15px; color: #666; font-size:0.9em;'><span style='margin-right: 15px;'>📅 Referência: <b>{periodo_label}</b></span><span class='update-badge' style='background-color:#e0f7fa; color:#006064;'>🕒 Atualizado em: {obter_data_atualizacao()}</span>{tempo_empresa_str}</div>", unsafe_allow_html=True)
                  
+        # ==========================================================
+        # 🌡️ TERMÔMETRO DE HUMOR DIÁRIO
+        # ==========================================================
+        humor_atual = carregar_humor_hoje(nome_logado)
+        
+        st.markdown("""
+        <div style='background-color: #FFFFFF; padding: 15px 20px; border-radius: 12px; border: 1px solid #E5E7EB; box-shadow: 0 4px 10px rgba(0,0,0,0.03); margin-top: 20px; margin-bottom: 20px;'>
+            <p style='margin: 0 0 10px 0; color: #4B5563; font-weight: 700; font-size: 0.95em;'>🌡️ Termômetro da Equipe: Como você está se sentindo hoje?</p>
+        """, unsafe_allow_html=True)
+        
+        opcoes_humor = ["🤩 Incrível", "🙂 Bem", "😐 Normal", "😫 Cansado", "😡 Estressado"]
+        
+        # Descobre qual foi o último voto (para deixar marcado) ou deixa vazio
+        idx_padrao = opcoes_humor.index(humor_atual) if humor_atual in opcoes_humor else 0
+        
+        c_humor1, c_humor2 = st.columns([3, 1])
+        with c_humor1:
+            escolha_humor = st.radio(
+                "Humor", 
+                opcoes_humor, 
+                index=idx_padrao, 
+                horizontal=True, 
+                label_visibility="collapsed"
+            )
+        
+        with c_humor2:
+            if st.button("Salvar Humor", type="primary", use_container_width=True):
+                registrar_humor_dia(nome_logado, escolha_humor)
+                st.success("Registrado!")
+                import time
+                time.sleep(1)
+                st.rerun()
+                
+        st.markdown("</div>", unsafe_allow_html=True)
     # --- 🕒 CARTÃO DE PAUSAS DO WFM ---
         escala_hoje = buscar_escala_hoje(nome_logado)
         
