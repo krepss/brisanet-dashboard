@@ -12,7 +12,7 @@ import unicodedata
 import extra_streamlit_components as stx
 import google.generativeai as genai
 import time
-
+st.title("TESTE DE ATUALIZAÇÃO")
 # --- CONFIGURAÇÃO DE ARQUIVOS E ACESSOS ---
 LOGO_FILE = "logo.png"
 PASTA_FOTOS = "fotos_perfil" 
