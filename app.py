@@ -725,18 +725,35 @@ def buscar_escala_hoje(nome_operador):
 def salvar_escala_no_csv(conteudo_txt, data_inicio, data_fim):
     ARQUIVO_CSV = "base_wfm_consolidada.csv"
     hoje = datetime.now().strftime("%d/%m/%Y %H:%M")
-    id_up = f"{data_inicio}_{data_fim}"
+    # Criamos o ID usando as datas formatadas
+    id_up = f"{data_inicio.strftime('%d%m%Y')}_{data_fim.strftime('%d%m%Y')}"
     
-    linhas = [{"ID_Upload": id_up, "Data_Registro": hoje, "Inicio": data_inicio, "Fim": data_fim, "Conteudo_Linha": l.strip()} 
-              for l in conteudo_txt.split('\n') if "," in l and ":" in l]
+    # Processa as linhas do TXT
+    linhas = []
+    for l in conteudo_txt.split('\n'):
+        if "," in l and ":" in l:
+            linhas.append({
+                "ID_Upload": id_up, 
+                "Data_Registro": hoje, 
+                "Inicio_Vigencia": data_inicio.strftime("%d/%m/%Y"), # Nome corrigido aqui
+                "Fim_Vigencia": data_fim.strftime("%d/%m/%Y"),       # Nome corrigido aqui
+                "Conteudo_Linha": l.strip()
+            })
     
     df_novo = pd.DataFrame(linhas)
-    if os.path.exists(ARQUIVO_CSV):
-        df_base = pd.read_csv(ARQUIVO_CSV)
-        df_base = df_base[df_base['ID_Upload'] != id_up] # Sobrescreve se repetir data
-        df_novo = pd.concat([df_base, df_novo], ignore_index=True)
     
-    df_novo.to_csv(ARQUIVO_CSV, index=False)
+    if os.path.exists(ARQUIVO_CSV):
+        try:
+            df_base = pd.read_csv(ARQUIVO_CSV)
+            # Remove o período se já existir para evitar duplicidade
+            df_base = df_base[df_base['ID_Upload'] != id_up]
+            df_final = pd.concat([df_base, df_novo], ignore_index=True)
+        except:
+            df_final = df_novo
+    else:
+        df_final = df_novo
+    
+    df_final.to_csv(ARQUIVO_CSV, index=False)
     sincronizar_com_github(ARQUIVO_CSV, f"Update WFM: {id_up}")
     
 def gerar_radar_wfm_data(data_alvo):
