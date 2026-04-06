@@ -1515,6 +1515,75 @@ Vamos com tudo! 🔥"""
                         df_hoje_sorted = df_hoje_sorted.sort_values(by='Peso').drop(columns=['Peso', 'Data'])
                     
                     st.dataframe(df_hoje_sorted, use_container_width=True, hide_index=True)
+
+        # ==========================================================
+        # 📈 CÁLCULO DE ABS (ABSENTEÍSMO) DO TIME
+        # ==========================================================
+        st.markdown("---")
+        st.markdown("### 📈 Cálculo de ABS do Time (%)")
+        
+        with st.expander("Calcular Absenteísmo Mensal", expanded=True):
+            st.info("Suba o relatório de Indicadores WFM e informe o total de atrasos em minutos.")
+            
+            c_abs1, c_abs2 = st.columns([2, 1])
+            
+            with c_abs1:
+                arquivo_abs = st.file_uploader("Subir CSV de Indicadores (WFM):", type=['csv'], key="abs_uploader")
+            
+            with c_abs2:
+                minutos_atraso_manual = st.number_input("Atrasos do mês (em minutos):", min_value=0, value=0, help="Soma total de todos os minutos de atraso dos colaboradores no mês.")
+
+            if arquivo_abs:
+                try:
+                    df_abs = pd.read_csv(arquivo_abs)
+                    
+                    # Verificamos se a coluna necessária existe
+                    if 'Conformidade' in df_abs.columns:
+                        # Consideramos o turno padrão como 6h 20min (380 minutos)
+                        MINUTOS_TURNO = 380 
+                        
+                        # 1. Total de minutos que deveriam ter sido trabalhados
+                        total_dias_escalados = len(df_abs)
+                        tempo_escala_total = total_dias_escalados * MINUTOS_TURNO
+                        
+                        # 2. Calculamos o tempo de ausência baseado na Conformidade (Adherence)
+                        # Se Conformidade é 0.8, a ausência é 0.2 (20%) do turno.
+                        df_abs['Minutos_Ausencia'] = (1 - df_abs['Conformidade'].clip(0, 1)) * MINUTOS_TURNO
+                        tempo_ausencia_total = df_abs['Minutos_Ausencia'].sum()
+                        
+                        # 3. Cálculo Final do ABS
+                        # Somamos as ausências do relatório + atrasos manuais
+                        perda_total = tempo_ausencia_total + minutos_atraso_manual
+                        abs_percentual = (perda_total / tempo_escala_total) * 100
+                        
+                        # --- EXIBIÇÃO DOS RESULTADOS ---
+                        st.divider()
+                        m1, m2, m3 = st.columns(3)
+                        
+                        # Definindo a cor do ABS (Meta comum é abaixo de 5% ou 7%)
+                        cor_abs = "green" if abs_percentual <= 5 else "orange" if abs_percentual <= 8 else "red"
+                        
+                        m1.metric("Escala Total", f"{tempo_escala_total:,.0f} min")
+                        m2.metric("Total Perdido", f"{perda_total:,.0f} min")
+                        m3.markdown(f"""
+                            <div style='text-align: center; background-color: {cor_abs}15; padding: 10px; border-radius: 10px; border: 1px solid {cor_abs};'>
+                                <p style='margin:0; font-size: 0.8em; color: {cor_abs}; font-weight: bold;'>ABS TOTAL</p>
+                                <h2 style='margin:0; color: {cor_abs};'>{abs_percentual:.2f}%</h2>
+                            </div>
+                        """, unsafe_allow_html=True)
+                        
+                        if abs_percentual > 8:
+                            st.error("🚨 **Alerta:** O ABS está acima do limite crítico. Verifique as causas com a equipe.")
+                        elif abs_percentual > 5:
+                            st.warning("⚠️ **Atenção:** O ABS está em nível de alerta.")
+                        else:
+                            st.success("✅ **Excelente!** O absenteísmo está dentro da meta saudável.")
+                            
+                    else:
+                        st.error("❌ O arquivo enviado não contém a coluna 'Conformidade'. Verifique o relatório.")
+                except Exception as e:
+                    st.error(f"Erro ao processar o cálculo: {e}")
+        
         # --- 🧠 GERADOR DE INSIGHTS FCAR (IA) ---
         st.markdown("---")
         st.markdown("### 🧠 Análise Estratégica da Operação (Modelo FCAR)")
