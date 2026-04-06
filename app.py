@@ -134,7 +134,15 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- 3. FUNÇÕES DE BACKEND ---
-
+def carregar_base_humor():
+    """Lê o histórico completo de humor da equipe."""
+    ARQUIVO_HUMOR = 'humor_diario.csv'
+    if os.path.exists(ARQUIVO_HUMOR):
+        try:
+            return pd.read_csv(ARQUIVO_HUMOR)
+        except:
+            return None
+    return None
 
 def sincronizar_com_github(nome_arquivo, mensagem="Atualização via Painel Gestor"):
     if "GITHUB_TOKEN" not in st.secrets or "GITHUB_REPO" not in st.secrets:
@@ -1460,6 +1468,49 @@ Vamos com tudo! 🔥"""
             )
         else:
             st.info(f"Nenhuma escala encontrada para o dia {data_radar_str}. Verifique se a base de usuários está populada e se o arquivo WFM cobre este período.")
+
+        # ==========================================================
+        # 🌡️ PAINEL DO GESTOR: TERMÔMETRO DA EQUIPE
+        # ==========================================================
+        st.markdown("---")
+        st.markdown("### 🌡️ Termômetro da Equipe (Clima de Hoje)")
+        
+        df_humor = carregar_base_humor()
+        
+        if df_humor is not None and not df_humor.empty:
+            hoje_str = datetime.now().strftime("%d/%m/%Y")
+            df_hoje = df_humor[df_humor['Data'] == hoje_str]
+            
+            if not df_hoje.empty:
+                # Alerta Inteligente para o Gestor
+                alertas = df_hoje[df_hoje['Humor'].isin(["😡 Estressado", "😫 Cansado"])]
+                if not alertas.empty:
+                    st.warning(f"⚠️ **Atenção Líder:** {len(alertas)} colaborador(es) reportaram estar sob estresse ou cansaço hoje. Considere uma abordagem mais acolhedora.")
+                else:
+                    st.success("✅ Excelente! Ninguém reportou estresse extremo ou cansaço até o momento.")
+                
+                c_grafico, c_lista = st.columns([1, 2])
+                
+                with c_grafico:
+                    st.markdown("##### 📊 Resumo do Dia")
+                    # Conta quantos de cada humor
+                    contagem_humor = df_hoje['Humor'].value_counts().reset_index()
+                    contagem_humor.columns = ['Humor', 'Operadores']
+                    st.dataframe(contagem_humor, use_container_width=True, hide_index=True)
+                    
+                with c_lista:
+                    st.markdown("##### 👥 Quem é Quem")
+                    # Traz o nome e o humor, ordenando para os estressados aparecerem no topo
+                    ordem_peso = {"😡 Estressado": 1, "😫 Cansado": 2, "😐 Normal": 3, "🙂 Bem": 4, "🤩 Incrível": 5}
+                    df_hoje_sorted = df_hoje.copy()
+                    df_hoje_sorted['Peso'] = df_hoje_sorted['Humor'].map(ordem_peso)
+                    df_hoje_sorted = df_hoje_sorted.sort_values(by='Peso').drop(columns=['Peso', 'Data'])
+                    
+                    st.dataframe(df_hoje_sorted, use_container_width=True, hide_index=True)
+            else:
+                st.info("Nenhum operador registrou o humor no dia de hoje ainda. Aguarde os primeiros logins.")
+        else:
+            st.info("O banco de dados de humor ainda está vazio. Os dados aparecerão aqui assim que a equipe começar a usar.")
         # --- 🧠 GERADOR DE INSIGHTS FCAR (IA) ---
         st.markdown("---")
         st.markdown("### 🧠 Análise Estratégica da Operação (Modelo FCAR)")
