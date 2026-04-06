@@ -1942,50 +1942,7 @@ Vamos com tudo! 🔥"""
                 st.warning("⚠️ A base de usuários ainda não existe. Faça o upload na aba 'Upload'.")
 
         with st1:
-            # ==========================================================
-            # 📅 CENTRAL DE ESCALAS WFM (DENTRO DA ABA UPLOAD)
-            # ==========================================================
-            st.markdown("---")
-            st.markdown("### 📅 Central de Escalas WFM")
             
-            # Criamos abas internas para não bagunçar a tela de upload de indicadores
-            tab_up_wfm, tab_gerenciar_wfm = st.tabs(["📤 Subir Nova Escala", "🗑️ Gerenciar Histórico WFM"])
-            
-            with tab_up_wfm:
-                st.info("O arquivo será processado e guardado na base de dados única de escalas.")
-                c_data1, c_data2 = st.columns(2)
-                d_ini = c_data1.date_input("Início do Período", key="wfm_ini_new")
-                d_fim = c_data2.date_input("Fim do Período", key="wfm_fim_new")
-                
-                arquivo_wfm = st.file_uploader("Arquivo de turnos (.txt)", type=["txt"], key="file_wfm_new")
-                
-                if arquivo_wfm and st.button("🚀 Consolidar Escala", type="primary"):
-                    conteudo = arquivo_wfm.getvalue().decode("utf-8")
-                    salvar_escala_no_csv(conteudo, d_ini, d_fim)
-                    st.success(f"✅ Escala de {d_ini} a {d_fim} integrada!")
-                    time.sleep(1)
-                    st.rerun()
-
-            with tab_gerenciar_wfm:
-                if os.path.exists("base_wfm_consolidada.csv"):
-                    df_wfm = pd.read_csv("base_wfm_consolidada.csv")
-                    colunas_necessarias = ['ID_Upload', 'Inicio_Vigencia', 'Fim_Vigencia']
-                    
-                    if all(col in df_wfm.columns for col in colunas_necessarias):
-                        resumo_wfm = df_wfm.groupby(colunas_necessarias).size().reset_index(name='Linhas')
-                        st.write("#### Períodos ativos no sistema:")
-                        for i, row in resumo_wfm.iterrows():
-                            c_txt, c_btn = st.columns([3, 1])
-                            c_txt.info(f"📅 **{row['Inicio_Vigencia']}** até **{row['Fim_Vigencia']}**")
-                            if c_btn.button("Excluir", key=f"del_wfm_aba_{i}"):
-                                df_wfm = df_wfm[df_wfm['ID_Upload'] != row['ID_Upload']]
-                                df_wfm.to_csv("base_wfm_consolidada.csv", index=False)
-                                sincronizar_com_github("base_wfm_consolidada.csv", "Remoção WFM via Admin")
-                                st.rerun()
-                    else:
-                        st.error("Arquivo WFM corrompido. Recomenda-se resetar.")
-                else:
-                    st.info("Nenhuma escala WFM consolidada ainda.")
             data_sugestao = obter_data_hoje()
             nova_data = st.text_input("Mês/Ano de Referência:", value=data_sugestao)
             
@@ -2074,7 +2031,51 @@ Vamos com tudo! 🔥"""
                                 lista_diag.append({"Arquivo": f.name, "Status": "✅ OK", "KPIs": str(kpis)})
                             else: lista_diag.append({"Arquivo": f.name, "Status": "❌ Erro", "Detalhe": msg})
                     except Exception as e: lista_diag.append({"Arquivo": f.name, "Status": "❌ Erro", "Detalhe": str(e)})
-                st.dataframe(pd.DataFrame(lista_diag))    
+                st.dataframe(pd.DataFrame(lista_diag)) 
+            # ==========================================================
+            # 📅 CENTRAL DE ESCALAS WFM (DENTRO DA ABA UPLOAD)
+            # ==========================================================
+            st.markdown("---")
+            st.markdown("### 📅 Central de Escalas WFM")
+            
+            # Criamos abas internas para não bagunçar a tela de upload de indicadores
+            tab_up_wfm, tab_gerenciar_wfm = st.tabs(["📤 Subir Nova Escala", "🗑️ Gerenciar Histórico WFM"])
+            
+            with tab_up_wfm:
+                st.info("O arquivo será processado e guardado na base de dados única de escalas.")
+                c_data1, c_data2 = st.columns(2)
+                d_ini = c_data1.date_input("Início do Período", key="wfm_ini_new")
+                d_fim = c_data2.date_input("Fim do Período", key="wfm_fim_new")
+                
+                arquivo_wfm = st.file_uploader("Arquivo de turnos (.txt)", type=["txt"], key="file_wfm_new")
+                
+                if arquivo_wfm and st.button("🚀 Consolidar Escala", type="primary"):
+                    conteudo = arquivo_wfm.getvalue().decode("utf-8")
+                    salvar_escala_no_csv(conteudo, d_ini, d_fim)
+                    st.success(f"✅ Escala de {d_ini} a {d_fim} integrada!")
+                    time.sleep(1)
+                    st.rerun()
+
+            with tab_gerenciar_wfm:
+                if os.path.exists("base_wfm_consolidada.csv"):
+                    df_wfm = pd.read_csv("base_wfm_consolidada.csv")
+                    colunas_necessarias = ['ID_Upload', 'Inicio_Vigencia', 'Fim_Vigencia']
+                    
+                    if all(col in df_wfm.columns for col in colunas_necessarias):
+                        resumo_wfm = df_wfm.groupby(colunas_necessarias).size().reset_index(name='Linhas')
+                        st.write("#### Períodos ativos no sistema:")
+                        for i, row in resumo_wfm.iterrows():
+                            c_txt, c_btn = st.columns([3, 1])
+                            c_txt.info(f"📅 **{row['Inicio_Vigencia']}** até **{row['Fim_Vigencia']}**")
+                            if c_btn.button("Excluir", key=f"del_wfm_aba_{i}"):
+                                df_wfm = df_wfm[df_wfm['ID_Upload'] != row['ID_Upload']]
+                                df_wfm.to_csv("base_wfm_consolidada.csv", index=False)
+                                sincronizar_com_github("base_wfm_consolidada.csv", "Remoção WFM via Admin")
+                                st.rerun()
+                    else:
+                        st.error("Arquivo WFM corrompido. Recomenda-se resetar.")
+                else:
+                    st.info("Nenhuma escala WFM consolidada ainda.")
             
         with st2:
             st.markdown("#### 🗑️ Gerenciar Meses")
