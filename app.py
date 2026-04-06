@@ -2541,68 +2541,86 @@ else:
         st.markdown(f"<div style='display: flex; align-items: center; margin-top:-15px; color: #666; font-size:0.9em;'><span style='margin-right: 15px;'>📅 Referência: <b>{periodo_label}</b></span><span class='update-badge' style='background-color:#e0f7fa; color:#006064;'>🕒 Atualizado em: {obter_data_atualizacao()}</span>{tempo_empresa_str}</div>", unsafe_allow_html=True)
                  
         # ==========================================================
-        # 🌡️ TERMÔMETRO DE HUMOR DIÁRIO (POPUP INTERATIVO)
+        # 🏛️ REFLEXÃO DIÁRIA (POPUP FILOSÓFICO DE 2 ETAPAS)
         # ==========================================================
         
         # 1. Definimos a "cara" da janela do Popup
-        @st.dialog("Termômetro da Equipe 🌡️")
+        @st.dialog("Reflexão Diária 🏛️")
         def exibir_popup_humor():
-            st.markdown("<p style='text-align: center; color: #4B5563; margin-bottom: 20px;'>Como você está se sentindo hoje para o nosso turno?</p>", unsafe_allow_html=True)
-            
-            opcoes_humor = ["🤩 Incrível", "🙂 Bem", "😐 Normal", "😫 Cansado", "😡 Estressado"]
-            humor_banco = carregar_humor_hoje(nome_logado)
-            idx_padrao = opcoes_humor.index(humor_banco) if humor_banco in opcoes_humor else 0
-            
-            escolha_humor = st.radio("Selecione:", opcoes_humor, index=idx_padrao, horizontal=True, label_visibility="collapsed")
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("Salvar meu Humor", type="primary", use_container_width=True):
-                # Salva no banco
-                registrar_humor_dia(nome_logado, escolha_humor)
-                
-                # Inteligência Artificial (Motivação)
-                if "GEMINI_API_KEY" in st.secrets:
-                    with st.spinner("Sofistas AI está digitando... ✨"):
-                        try:
-                            import google.generativeai as genai
-                            genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-                            model = genai.GenerativeModel('gemini-2.5-flash')
-                            
-                            prompt_humor = f"""
-                            Você é um líder inspirador de suporte técnico. 
-                            O operador {primeiro_nome} registrou que seu humor hoje é '{escolha_humor}'. 
-                            Escreva uma mensagem motivacional EXTREMAMENTE CURTA (1 a 2 frases) para ele ler agora na tela.
-                            """
-                            resposta = model.generate_content(prompt_humor)
-                            st.session_state[f'msg_humor_ia_{nome_logado}'] = resposta.text
-                        except:
-                            pass
-                
-                # Marca que ele já viu o popup hoje e recarrega para fechar a janela
-                st.session_state['popup_humor_respondido'] = True
-                st.rerun()
+            # Criamos uma memória temporária para saber se mostramos os botões ou a mensagem
+            if f'tela_msg_{nome_logado}' not in st.session_state:
+                st.session_state[f'tela_msg_{nome_logado}'] = False
 
-        # 2. Lógica de Disparo do Popup
+            # ETAPA 1: ESCOLHA DO HUMOR
+            if not st.session_state[f'tela_msg_{nome_logado}']:
+                st.markdown(f"<p style='text-align: center; color: #4B5563; margin-bottom: 20px;'>Como você está se sentindo hoje, {primeiro_nome}?</p>", unsafe_allow_html=True)
+                
+                opcoes_humor = ["🤩 Incrível", "🙂 Bem", "😐 Normal", "😫 Cansado", "😡 Estressado"]
+                humor_banco = carregar_humor_hoje(nome_logado)
+                idx_padrao = opcoes_humor.index(humor_banco) if humor_banco in opcoes_humor else 0
+                
+                escolha_humor = st.radio("Selecione:", opcoes_humor, index=idx_padrao, horizontal=True, label_visibility="collapsed")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                if st.button("Salvar e Refletir", type="primary", use_container_width=True):
+                    registrar_humor_dia(nome_logado, escolha_humor)
+                    
+                    # Mensagem Padrão (Plano B)
+                    mensagem_final = f"O universo muda constantemente; nossa vida é o que nossos pensamentos fazem dela. Um excelente turno, {primeiro_nome}."
+                    
+                    if "GEMINI_API_KEY" in st.secrets:
+                        with st.spinner("Buscando sabedoria para o seu dia... 🏛️"):
+                            try:
+                                import google.generativeai as genai
+                                genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+                                model = genai.GenerativeModel('gemini-2.5-flash')
+                                
+                                # O NOVO PROMPT FILOSÓFICO
+                                prompt_humor = f"""
+                                Você é um sábio filósofo antigo (estilo Sêneca ou Marco Aurélio), acolhedor e profundo. 
+                                O operador de suporte técnico {primeiro_nome} acabou de registrar que seu humor hoje é '{escolha_humor}'. 
+                                Escreva uma reflexão profundamente FILOSÓFICA e madura (máximo 3 frases curtas) para ele ler agora. 
+                                Se ele estiver estressado/cansado, traga sabedoria sobre controle, resiliência e a transitoriedade das dificuldades. 
+                                Se ele estiver bem/incrível, traga uma reflexão sobre manter a virtude, foco e humildade. 
+                                Não use aspas no início e no fim.
+                                """
+                                resposta = model.generate_content(prompt_humor)
+                                if resposta and resposta.text:
+                                    mensagem_final = resposta.text.replace('"', '').strip()
+                            except:
+                                pass
+                    
+                    # Salva a mensagem e avança a "página" do popup
+                    st.session_state[f'msg_humor_ia_{nome_logado}'] = mensagem_final
+                    st.session_state[f'tela_msg_{nome_logado}'] = True
+                    st.rerun()
+            
+            # ETAPA 2: A MENSAGEM FILOSÓFICA
+            else:
+                st.markdown(f"""
+                <div style='background-color: #f8fafc; border-left: 4px solid #64748b; padding: 25px; border-radius: 8px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>
+                    <p style='margin: 0; color: #334155; font-size: 1.1em; font-style: italic; line-height: 1.6; text-align: center;'>"{st.session_state[f'msg_humor_ia_{nome_logado}']}"</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                if st.button("Ir para o meu painel 🚀", type="primary", use_container_width=True):
+                    # Marca que já viu e fecha tudo
+                    st.session_state['popup_humor_respondido'] = True
+                    st.session_state[f'tela_msg_{nome_logado}'] = False # Reseta para amanhã
+                    st.rerun()
+
+        # 2. Lógica de Disparo Automático
         humor_atual = carregar_humor_hoje(nome_logado)
         
-        # Se ele ainda NÃO votou hoje E a janela ainda não apareceu nesta sessão, abre o popup sozinho!
         if humor_atual is None and not st.session_state.get('popup_humor_respondido', False):
             exibir_popup_humor()
             st.session_state['popup_humor_respondido'] = True
             
-        # 3. Exibição da mensagem da IA no painel principal
-        if st.session_state.get(f'msg_humor_ia_{nome_logado}'):
-            c_msg, c_btn = st.columns([4, 1])
-            with c_msg:
-                st.markdown(f"""
-                <div style='background-color: #f0fdf4; border-left: 5px solid #2ecc71; padding: 12px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);'>
-                    <p style='margin: 0; color: #166534; font-size: 0.9em;'>✨ <b>Sofistas AI:</b> {st.session_state[f'msg_humor_ia_{nome_logado}']}</p>
-                </div>
-                """, unsafe_allow_html=True)
-            with c_btn:
-                # Um botãozinho discreto caso ele queira abrir o popup de novo
-                if st.button("🌡️ Mudei de Humor"):
-                    exibir_popup_humor()
+        # 3. Botão discreto no painel para reabrir o popup
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("🏛️ Refletir sobre meu Humor"):
+            st.session_state[f'tela_msg_{nome_logado}'] = False # Garante que abra na tela 1
+            exibir_popup_humor()
     # --- 🕒 CARTÃO DE PAUSAS DO WFM ---
         escala_hoje = buscar_escala_hoje(nome_logado)
         
