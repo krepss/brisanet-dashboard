@@ -2805,9 +2805,9 @@ else:
         c_turno, c_botao = st.columns([3, 1])
         
         with c_turno:
-            # Card achatado: height de 40px para alinhar perfeitamente com a altura do botão do Streamlit
+            # Ajuste fino: height em exatos 41px (tamanho do botão) e sem margin-top
             st.markdown(f"""
-            <div style='background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0 15px; display: flex; justify-content: space-between; align-items: center; height: 42px; margin-top: 5px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);'>
+            <div style='background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0 15px; display: flex; justify-content: space-between; align-items: center; height: 41px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);'>
                 <div style='display: flex; align-items: center; gap: 8px;'>
                     <span style='font-size: 1.1em; margin-top: -2px;'>🕒</span>
                     <span style='color: #64748b; font-size: 0.85em; font-weight: 600;'>MEU TURNO:</span>
@@ -2820,8 +2820,7 @@ else:
             """, unsafe_allow_html=True)
             
         with c_botao:
-            # Um pequeno empurrãozinho para alinhar o botão com o card
-            st.markdown("<div style='margin-top: 5px;'></div>", unsafe_allow_html=True)
+            # Removido o código de espaço invisível. Agora o botão nasce colado no topo da coluna.
             if st.button("☕ Ver Pausas", use_container_width=True):
                 exibir_popup_wfm()
     # --- 🎂 VERIFICAÇÃO DE ANIVERSÁRIO ---
