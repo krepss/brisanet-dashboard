@@ -1538,22 +1538,23 @@ Vamos com tudo! 🔥"""
                     df_abs = pd.read_csv(arquivo_abs)
                     
                     if 'Conformidade' in df_abs.columns:
+                        # --- 🧮 CÁLCULOS MATEMÁTICOS (NÃO APAGAR) ---
                         MINUTOS_TURNO = 380 # 6h 20min padrão
                         
-                        # 1. Base da Escala (Total de registros no arquivo)
-                        total_registros = len(df_abs)
-                        tempo_escala_total = total_registros * MINUTOS_TURNO
+                        # 1. Base da Escala
+                        total_linhas = len(df_abs)
+                        tempo_escala_total = total_linhas * MINUTOS_TURNO
                         
-                        # 2. Contagem de Faltas Integrais (Apenas quem está com 0.0)
+                        # 2. Faltas Integrais (Apenas Conformidade 0.0)
                         faltas_totais_df = df_abs[df_abs['Conformidade'] == 0.0]
                         qtd_faltas = len(faltas_totais_df)
                         tempo_perda_faltas = qtd_faltas * MINUTOS_TURNO
                         
-                        # 3. Cálculo Final: Faltas (CSV) + Atrasos (Manual)
+                        # 3. Resultado Final
                         perda_total_minutos = tempo_perda_faltas + minutos_atraso_manual
-                        abs_percentual = (perda_total_minutos / tempo_escala_total) * 100
+                        abs_percentual = (perda_total_minutos / tempo_escala_total) * 100 if tempo_escala_total > 0 else 0
                         
-                        # --- EXIBIÇÃO DOS RESULTADOS ---
+                        # --- 📊 EXIBIÇÃO DOS RESULTADOS ---
                         st.divider()
                         
                         m1, m2, m3 = st.columns(3)
@@ -1569,20 +1570,14 @@ Vamos com tudo! 🔥"""
                             </div>
                         """, unsafe_allow_html=True)
                         
-                        # ==========================================================
-                        # 🕵️ RANKING DE QUEM MAIS FALTOU (CONTRIBUINTES)
-                        # ==========================================================
+                        # --- 🚩 RANKING DE CONTRIBUINTES ---
                         if qtd_faltas > 0:
                             st.markdown("#### 🚩 Maiores Contribuintes (Faltas 0.0)")
                             
-                            # Agrupamos por Agente e contamos as faltas
                             ranking_faltas = faltas_totais_df.groupby('Agente').size().reset_index(name='Qtd_Faltas')
                             ranking_faltas = ranking_faltas.sort_values(by='Qtd_Faltas', ascending=False)
-                            
-                            # Calculamos o impacto de cada um no ABS Total
                             ranking_faltas['Impacto_no_ABS'] = (ranking_faltas['Qtd_Faltas'] * MINUTOS_TURNO / tempo_escala_total) * 100
                             
-                            # Exibimos a tabela de ranking
                             st.dataframe(
                                 ranking_faltas, 
                                 column_config={
@@ -1595,11 +1590,14 @@ Vamos com tudo! 🔥"""
                             )
                             
                             maior_faltoso = ranking_faltas.iloc[0]
-                            st.warning(f"💡 **Insight de Gestão:** O colaborador **{maior_faltoso['Agente']}** é quem mais impacta seu indicador hoje, sendo responsável sozinho por **{maior_faltoso['Impacto_no_ABS']:.2f}%** do ABS total.")
+                            st.warning(f"💡 **Insight:** O colaborador **{maior_faltoso['Agente']}** é o maior contribuinte, representando **{maior_faltoso['Impacto_no_ABS']:.2f}%** do ABS.")
                         else:
-                            st.success("🙌 **Excelente!** Ninguém teve faltas integrais (0.0) neste período.")
+                            st.success("🙌 **Excelente!** Ninguém teve faltas integrais (0.0).")
 
-                        st.caption(f"Cálculo baseado em {total_linhas} registros de escala (Total: {tempo_escala_total:,.0f} min).")
+                        st.caption(f"Cálculo baseado em {total_linhas} registros (Total: {tempo_escala_total:,.0f} min).")
+                        
+                    else:
+                        st.error("❌ Coluna 'Conformidade' não encontrada no CSV.")
                         
                 except Exception as e:
                     st.error(f"Erro ao processar o cálculo: {e}")
