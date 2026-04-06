@@ -796,6 +796,50 @@ def gerar_radar_wfm_data(data_alvo):
         df['Ordem'] = df['Status'].map(ordem).fillna(99)
         return df.sort_values(by=["Ordem", "Colaborador"]).drop(columns=['Ordem'])
     except: return None
+def buscar_escala_completa(nome_operador):
+    """Gera a tabela completa de escalas para o operador (Linha 2495)."""
+    escala = []
+    try:
+        # Puxa todas as linhas do novo banco de dados CSV
+        linhas = ler_todas_escalas_wfm()
+        
+        for linha in linhas:
+            # Verifica se o nome do operador aparece na linha da escala
+            if nome_operador.lower() in linha.lower():
+                # Busca o padrão de data DD/MM/AAAA
+                match_data = re.search(r'\d{2}/\d{2}/\d{4}', linha)
+                if match_data:
+                    data_str = match_data.group()
+                    dia_semana = ""
+                    # Tenta capturar o dia da semana (ex: Segunda-Feira) que vem antes da data
+                    match_dia = re.search(r'([a-zA-Zá-úÁ-Ú-]+),\s' + data_str, linha)
+                    if match_dia:
+                        dia_semana = match_dia.group(1).title()
+                    
+                    if "dia de folga inteiro" in linha.lower():
+                        motivo = linha.split("-")[-1].strip()
+                        escala.append({"Data": data_str, "Dia": dia_semana, "Turno": "🏖️ Folga", "Detalhes": motivo})
+                    else:
+                        # Corta a linha para pegar os horários e intervalos
+                        partes = linha.split(f"{data_str}, ")
+                        if len(partes) > 1:
+                            resto = partes[1]
+                            turno_eventos = resto.split(": ", 1)
+                            turno = turno_eventos[0]
+                            detalhes = turno_eventos[1].strip() if len(turno_eventos) > 1 else ""
+                            escala.append({"Data": data_str, "Dia": dia_semana, "Turno": turno, "Detalhes": detalhes})
+        
+        if escala:
+            import pandas as pd
+            # Converte para DataFrame e remove duplicatas (caso suba o mesmo período 2x)
+            df_final = pd.DataFrame(escala).drop_duplicates(subset=['Data'])
+            # Ordena pela data para o operador ver em ordem cronológica
+            df_final['Data_Convertida'] = pd.to_datetime(df_final['Data'], format='%d/%m/%Y')
+            df_final = df_final.sort_values(by='Data_Convertida').drop(columns=['Data_Convertida'])
+            return df_final
+    except Exception as e:
+        pass
+    return None
 
 def obter_imagem_perfil(nome_colaborador):
     """Retorna a imagem (Base64) ou None se não encontrar nada."""
