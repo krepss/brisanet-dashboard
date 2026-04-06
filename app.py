@@ -1553,30 +1553,56 @@ Vamos com tudo! 🔥"""
                         perda_total_minutos = tempo_perda_faltas + minutos_atraso_manual
                         abs_percentual = (perda_total_minutos / tempo_escala_total) * 100
                         
-                        # --- EXIBIÇÃO ---
+                        # --- EXIBIÇÃO DOS RESULTADOS ---
                         st.divider()
                         
-                        # KPIs de apoio
-                        k1, k2, k3 = st.columns(3)
-                        k1.metric("Registros no CSV", f"{total_registros}")
-                        k2.metric("Faltas Detectadas (0.0)", f"{qtd_faltas}")
-                        k3.metric("Atrasos Informados", f"{minutos_atraso_manual} min")
-
-                        # Card de Resultado Centralizado
-                        cor_final = "green" if abs_percentual <= 5 else "orange" if abs_percentual <= 8 else "red"
+                        m1, m2, m3 = st.columns(3)
+                        m1.metric("Faltas Detectadas (0.0)", f"{qtd_faltas} dias")
+                        m2.metric("Atrasos Informados", f"{minutos_atraso_manual} min")
                         
-                        st.markdown(f"""
-                            <div style='text-align: center; background-color: {cor_final}15; padding: 20px; border-radius: 12px; border: 2px solid {cor_final}; margin-top: 10px;'>
-                                <p style='margin:0; font-size: 1em; color: {cor_final}; font-weight: bold; text-transform: uppercase;'>Resultado do Absenteísmo</p>
-                                <h1 style='margin:0; color: {cor_final}; font-size: 3em;'>{abs_percentual:.2f}%</h1>
-                                <p style='margin:0; color: #64748b; font-size: 0.9em;'>Perda total de {perda_total_minutos:,.0f} minutos frente a uma escala de {tempo_escala_total:,.0f} min</p>
+                        cor_v = "green" if abs_percentual <= 5 else "#F37021" if abs_percentual <= 8 else "red"
+                        
+                        m3.markdown(f"""
+                            <div style='text-align: center; background-color: {cor_v}15; padding: 15px; border-radius: 10px; border: 2px solid {cor_v};'>
+                                <p style='margin:0; font-size: 0.9em; color: {cor_v}; font-weight: bold;'>ABS TOTAL</p>
+                                <h2 style='margin:0; color: {cor_v};'>{abs_percentual:.2f}%</h2>
                             </div>
                         """, unsafe_allow_html=True)
                         
-                    else:
-                        st.error("❌ Coluna 'Conformidade' não encontrada no CSV.")
+                        # ==========================================================
+                        # 🕵️ RANKING DE QUEM MAIS FALTOU (CONTRIBUINTES)
+                        # ==========================================================
+                        if qtd_faltas > 0:
+                            st.markdown("#### 🚩 Maiores Contribuintes (Faltas 0.0)")
+                            
+                            # Agrupamos por Agente e contamos as faltas
+                            ranking_faltas = faltas_totais_df.groupby('Agente').size().reset_index(name='Qtd_Faltas')
+                            ranking_faltas = ranking_faltas.sort_values(by='Qtd_Faltas', ascending=False)
+                            
+                            # Calculamos o impacto de cada um no ABS Total
+                            ranking_faltas['Impacto_no_ABS'] = (ranking_faltas['Qtd_Faltas'] * MINUTOS_TURNO / tempo_escala_total) * 100
+                            
+                            # Exibimos a tabela de ranking
+                            st.dataframe(
+                                ranking_faltas, 
+                                column_config={
+                                    "Agente": "Colaborador",
+                                    "Qtd_Faltas": "Faltas (Dias)",
+                                    "Impacto_no_ABS": st.column_config.NumberColumn("Impacto no ABS", format="%.2f%%")
+                                },
+                                hide_index=True,
+                                use_container_width=True
+                            )
+                            
+                            maior_faltoso = ranking_faltas.iloc[0]
+                            st.warning(f"💡 **Insight de Gestão:** O colaborador **{maior_faltoso['Agente']}** é quem mais impacta seu indicador hoje, sendo responsável sozinho por **{maior_faltoso['Impacto_no_ABS']:.2f}%** do ABS total.")
+                        else:
+                            st.success("🙌 **Excelente!** Ninguém teve faltas integrais (0.0) neste período.")
+
+                        st.caption(f"Cálculo baseado em {total_linhas} registros de escala (Total: {tempo_escala_total:,.0f} min).")
+                        
                 except Exception as e:
-                    st.error(f"Erro no processamento: {e}")
+                    st.error(f"Erro ao processar o cálculo: {e}")
         
         # --- 🧠 GERADOR DE INSIGHTS FCAR (IA) ---
         st.markdown("---")
