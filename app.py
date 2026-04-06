@@ -1192,25 +1192,6 @@ if perfil == 'admin':
             html_card_critico = f"""<a href="#atencao-prioritaria" class="card-link"><div class="card-critico"><div style="color: #666; font-size: 14px;">🔴 Crítico <span style="font-size:11px; color:#e74c3c;">(Ver detalhes ⬇)</span></div><div style="color: #003366; font-size: 26px; font-weight: 700; margin-top: -2px;">{qtd_vermelho}</div><div style="color: #e74c3c; font-size: 13px; font-weight: bold; margin-top: 5px;">↓ &lt;80%</div></div></a>"""
             c3.markdown(html_card_critico, unsafe_allow_html=True)
 
-            st.markdown("---")
-            st.subheader("💬 Gerador de Feedback Rápido (1:1)")
-            colab_feedback = st.selectbox("Selecione para análise:", sorted(df_dados['Colaborador'].unique()), key="sb_feedback")
-            if colab_feedback:
-                user_kpis = df_dados[df_dados['Colaborador'] == colab_feedback].sort_values(by='% Atingimento', ascending=True)
-                if not user_kpis.empty:
-                    pior = user_kpis.iloc[0]
-                    melhor = user_kpis.iloc[-1]
-                    dica_geral = DICAS_KPI.get(pior['Indicador'], "Verifique os processos operacionais.")
-                    st.markdown(f"""
-                    <div class="insight-box">
-                        <div class="insight-title">⚡ Análise Rápida: {colab_feedback}</div>
-                        <ul style="margin-top:10px; color:#444;">
-                            <li><b>Ponto Forte:</b> {formatar_nome_visual(melhor['Indicador'])} ({melhor['% Atingimento']:.1%}) - <i>Elogie!</i> 👏</li>
-                            <li><b>Ponto de Atenção:</b> {formatar_nome_visual(pior['Indicador'])} ({pior['% Atingimento']:.1%}) - <i>Foque aqui!</i> ⚠️</li>
-                            <li><b>Dica Sugerida:</b> {dica_geral}</li>
-                        </ul>
-                    </div>""", unsafe_allow_html=True)
-            st.markdown("---")
             
             df_dados_farol = df_dados.copy()
             df_dados_farol['Status_Farol'] = df_dados_farol['% Atingimento'].apply(classificar_farol)
