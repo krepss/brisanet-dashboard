@@ -1593,7 +1593,53 @@ Vamos com tudo! 🔥"""
                             st.warning(f"💡 **Insight:** O colaborador **{maior_faltoso['Agente']}** é o maior contribuinte, representando **{maior_faltoso['Impacto_no_ABS']:.2f}%** do ABS.")
                         else:
                             st.success("🙌 **Excelente!** Ninguém teve faltas integrais (0.0).")
+                            
+                        # ... (Aqui termina o seu st.dataframe do ranking) ...
+                            
+                            maior_faltoso = ranking_faltas.iloc[0]
+                            st.warning(f"💡 **Insight:** O colaborador **{maior_faltoso['Agente']}** é o maior contribuinte, representando **{maior_faltoso['Impacto_no_ABS']:.2f}%** do ABS.")
+                            
+                            # ==========================================================
+                            # 📝 NOVO: GERADOR DE TEXTO PARA SCOREPLAN
+                            # ==========================================================
+                            st.markdown("---")
+                            st.markdown("#### 📝 Texto para Copiar (ScorePlan)")
+                            
+                            # Preparando as variáveis para o texto
+                            maior_c = maior_faltoso['Agente']
+                            impacto_c = f"{maior_faltoso['Impacto_no_ABS']:.2f}%"
+                            status_texto = "🟢 DENTRO DA META" if abs_percentual <= 5 else "🟡 ALERTA" if abs_percentual <= 8 else "🔴 CRÍTICO"
 
+                            texto_scoreplan = f"""📊 RELATÓRIO DE ABSENTEÍSMO OPERACIONAL - WFM
+--------------------------------------------------
+METODOLOGIA: Faltas Integrais (0.0) + Atrasos Manuais
+
+📈 INDICADORES CONSOLIDADOS:
+- Tempo Total de Escala: {tempo_escala_total:,.0f} min
+- Tempo de Perda (Faltas): {tempo_perda_faltas:,.0f} min
+- Tempo de Perda (Atrasos): {minutos_atraso_manual:,.0f} min
+- ÍNDICE DE ABS FINAL: {abs_percentual:.2f}%
+
+🚩 ANÁLISE DE CONTRIBUINTES:
+- Maior detrator: {maior_c}
+- Impacto individual no ABS: {impacto_c}
+
+💡 PARECER DA GESTÃO:
+- Status: {status_texto}
+- Diagnóstico: Calculado via Sistema de Gestão Interna.
+--------------------------------------------------"""
+
+                            # Caixa de texto pronta para copiar
+                            st.text_area("Selecione e copie para o ScorePlan:", value=texto_scoreplan, height=250)
+                            
+                        else:
+                            st.success("🙌 **Excelente!** Ninguém teve faltas integrais (0.0).")
+
+                        # O final do bloco deve ter essa legenda:
+                        st.caption(f"Cálculo baseado em {total_linhas} registros.")
+                        
+                except Exception as e:
+                    st.error(f"Erro ao processar o cálculo: {e}")
                         st.caption(f"Cálculo baseado em {total_linhas} registros (Total: {tempo_escala_total:,.0f} min).")
                         
                     else:
