@@ -1516,73 +1516,67 @@ Vamos com tudo! 🔥"""
                     
                     st.dataframe(df_hoje_sorted, use_container_width=True, hide_index=True)
 
-        # ==========================================================
-        # 📈 CÁLCULO DE ABS (ABSENTEÍSMO) DO TIME
+       # ==========================================================
+        # 📈 CÁLCULO DE ABS (ABSENTEÍSMO) - LÓGICA SIMPLIFICADA
         # ==========================================================
         st.markdown("---")
         st.markdown("### 📈 Cálculo de ABS do Time (%)")
         
-        with st.expander("Calcular Absenteísmo Mensal", expanded=True):
-            st.info("Suba o relatório de Indicadores WFM e informe o total de atrasos em minutos.")
+        with st.expander("Calcular Absenteísmo (Faltas 0.0 + Atrasos Manuais)", expanded=True):
+            st.info("O sistema contará apenas as linhas com Conformidade 0.0 como faltas totais.")
             
             c_abs1, c_abs2 = st.columns([2, 1])
             
             with c_abs1:
-                arquivo_abs = st.file_uploader("Subir CSV de Indicadores (WFM):", type=['csv'], key="abs_uploader")
+                arquivo_abs = st.file_uploader("Subir CSV de Indicadores (WFM):", type=['csv'], key="abs_uploader_v2")
             
             with c_abs2:
-                minutos_atraso_manual = st.number_input("Atrasos do mês (em minutos):", min_value=0, value=0, help="Soma total de todos os minutos de atraso dos colaboradores no mês.")
+                minutos_atraso_manual = st.number_input("Total de atrasos (em minutos):", min_value=0, value=0)
 
             if arquivo_abs:
                 try:
                     df_abs = pd.read_csv(arquivo_abs)
                     
-                    # Verificamos se a coluna necessária existe
                     if 'Conformidade' in df_abs.columns:
-                        # Consideramos o turno padrão como 6h 20min (380 minutos)
-                        MINUTOS_TURNO = 380 
+                        MINUTOS_TURNO = 380 # 6h 20min padrão
                         
-                        # 1. Total de minutos que deveriam ter sido trabalhados
-                        total_dias_escalados = len(df_abs)
-                        tempo_escala_total = total_dias_escalados * MINUTOS_TURNO
+                        # 1. Base da Escala (Total de registros no arquivo)
+                        total_registros = len(df_abs)
+                        tempo_escala_total = total_registros * MINUTOS_TURNO
                         
-                        # 2. Calculamos o tempo de ausência baseado na Conformidade (Adherence)
-                        # Se Conformidade é 0.8, a ausência é 0.2 (20%) do turno.
-                        df_abs['Minutos_Ausencia'] = (1 - df_abs['Conformidade'].clip(0, 1)) * MINUTOS_TURNO
-                        tempo_ausencia_total = df_abs['Minutos_Ausencia'].sum()
+                        # 2. Contagem de Faltas Integrais (Apenas quem está com 0.0)
+                        faltas_totais_df = df_abs[df_abs['Conformidade'] == 0.0]
+                        qtd_faltas = len(faltas_totais_df)
+                        tempo_perda_faltas = qtd_faltas * MINUTOS_TURNO
                         
-                        # 3. Cálculo Final do ABS
-                        # Somamos as ausências do relatório + atrasos manuais
-                        perda_total = tempo_ausencia_total + minutos_atraso_manual
-                        abs_percentual = (perda_total / tempo_escala_total) * 100
+                        # 3. Cálculo Final: Faltas (CSV) + Atrasos (Manual)
+                        perda_total_minutos = tempo_perda_faltas + minutos_atraso_manual
+                        abs_percentual = (perda_total_minutos / tempo_escala_total) * 100
                         
-                        # --- EXIBIÇÃO DOS RESULTADOS ---
+                        # --- EXIBIÇÃO ---
                         st.divider()
-                        m1, m2, m3 = st.columns(3)
                         
-                        # Definindo a cor do ABS (Meta comum é abaixo de 5% ou 7%)
-                        cor_abs = "green" if abs_percentual <= 5 else "orange" if abs_percentual <= 8 else "red"
+                        # KPIs de apoio
+                        k1, k2, k3 = st.columns(3)
+                        k1.metric("Registros no CSV", f"{total_registros}")
+                        k2.metric("Faltas Detectadas (0.0)", f"{qtd_faltas}")
+                        k3.metric("Atrasos Informados", f"{minutos_atraso_manual} min")
+
+                        # Card de Resultado Centralizado
+                        cor_final = "green" if abs_percentual <= 5 else "orange" if abs_percentual <= 8 else "red"
                         
-                        m1.metric("Escala Total", f"{tempo_escala_total:,.0f} min")
-                        m2.metric("Total Perdido", f"{perda_total:,.0f} min")
-                        m3.markdown(f"""
-                            <div style='text-align: center; background-color: {cor_abs}15; padding: 10px; border-radius: 10px; border: 1px solid {cor_abs};'>
-                                <p style='margin:0; font-size: 0.8em; color: {cor_abs}; font-weight: bold;'>ABS TOTAL</p>
-                                <h2 style='margin:0; color: {cor_abs};'>{abs_percentual:.2f}%</h2>
+                        st.markdown(f"""
+                            <div style='text-align: center; background-color: {cor_final}15; padding: 20px; border-radius: 12px; border: 2px solid {cor_final}; margin-top: 10px;'>
+                                <p style='margin:0; font-size: 1em; color: {cor_final}; font-weight: bold; text-transform: uppercase;'>Resultado do Absenteísmo</p>
+                                <h1 style='margin:0; color: {cor_final}; font-size: 3em;'>{abs_percentual:.2f}%</h1>
+                                <p style='margin:0; color: #64748b; font-size: 0.9em;'>Perda total de {perda_total_minutos:,.0f} minutos frente a uma escala de {tempo_escala_total:,.0f} min</p>
                             </div>
                         """, unsafe_allow_html=True)
                         
-                        if abs_percentual > 8:
-                            st.error("🚨 **Alerta:** O ABS está acima do limite crítico. Verifique as causas com a equipe.")
-                        elif abs_percentual > 5:
-                            st.warning("⚠️ **Atenção:** O ABS está em nível de alerta.")
-                        else:
-                            st.success("✅ **Excelente!** O absenteísmo está dentro da meta saudável.")
-                            
                     else:
-                        st.error("❌ O arquivo enviado não contém a coluna 'Conformidade'. Verifique o relatório.")
+                        st.error("❌ Coluna 'Conformidade' não encontrada no CSV.")
                 except Exception as e:
-                    st.error(f"Erro ao processar o cálculo: {e}")
+                    st.error(f"Erro no processamento: {e}")
         
         # --- 🧠 GERADOR DE INSIGHTS FCAR (IA) ---
         st.markdown("---")
