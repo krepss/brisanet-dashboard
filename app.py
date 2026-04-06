@@ -134,6 +134,28 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- 3. FUNÇÕES DE BACKEND ---
+def salvar_registro_abs(mes_ref, total_escala, total_perda, perc_abs, maior_detrator):
+    arquivo = "historico_abs_consolidado.csv"
+    novo_dado = pd.DataFrame([{
+        "Data_Registro": datetime.now().strftime("%d/%m/%Y %H:%M"),
+        "Mes_Referencia": mes_ref,
+        "Tempo_Escala_Min": total_escala,
+        "Tempo_Perda_Min": total_perda,
+        "ABS_Percentual": round(perc_abs, 2),
+        "Maior_Detrator": maior_detrator
+    }])
+    
+    if os.path.exists(arquivo):
+        df_hist = pd.read_csv(arquivo)
+        # Evita duplicar o mesmo mês de referência no histórico
+        df_hist = df_hist[df_hist['Mes_Referencia'] != mes_ref]
+        df_hist = pd.concat([df_hist, novo_dado], ignore_index=True)
+    else:
+        df_hist = novo_dado
+        
+    df_hist.to_csv(arquivo, index=False)
+    sincronizar_com_github(arquivo, f"Novo registro de ABS: {mes_ref}")
+
 def carregar_base_humor():
     """Lê o histórico completo de humor da equipe."""
     ARQUIVO_HUMOR = 'humor_diario.csv'
@@ -1535,12 +1557,12 @@ Vamos com tudo! 🔥"""
 
             if arquivo_abs:
                 try:
-                    # Lendo o arquivo de indicadores
+                    # 1. Leitura do Arquivo
                     df_abs = pd.read_csv(arquivo_abs)
                     
                     if 'Conformidade' in df_abs.columns:
                         # ==========================================================
-                        # 🧮 1. CÁLCULOS MATEMÁTICOS DE BASE
+                        # 🧮 CÁLCULOS MATEMÁTICOS DE BASE
                         # ==========================================================
                         MINUTOS_TURNO = 380 # Padrão 6h 20min
                         
@@ -1553,12 +1575,12 @@ Vamos com tudo! 🔥"""
                         qtd_faltas = len(faltas_totais_df)
                         tempo_perda_faltas = qtd_faltas * MINUTOS_TURNO
                         
-                        # Cálculo do ABS Final (Faltas + Atrasos Manuais digitados no campo acima)
+                        # Cálculo do ABS Final (Faltas + Atrasos Manuais)
                         perda_total_minutos = tempo_perda_faltas + minutos_atraso_manual
                         abs_percentual = (perda_total_minutos / tempo_escala_total) * 100 if tempo_escala_total > 0 else 0
                         
                         # ==========================================================
-                        # 📊 2. EXIBIÇÃO DOS RESULTADOS (METRICS)
+                        # 📊 EXIBIÇÃO DOS INDICADORES (METRICS)
                         # ==========================================================
                         st.divider()
                         m1, m2, m3 = st.columns(3)
@@ -1566,7 +1588,7 @@ Vamos com tudo! 🔥"""
                         m1.metric("Faltas Detectadas (0.0)", f"{qtd_faltas} dias")
                         m2.metric("Atrasos Informados", f"{minutos_atraso_manual} min")
                         
-                        # Cor dinâmica conforme a meta (Meta sugerida: 5%)
+                        # Definição de Cor por Meta
                         cor_v = "green" if abs_percentual <= 5 else "#F37021" if abs_percentual <= 8 else "red"
                         
                         m3.markdown(f"""
@@ -1577,16 +1599,16 @@ Vamos com tudo! 🔥"""
                         """, unsafe_allow_html=True)
                         
                         # ==========================================================
-                        # 🚩 3. RANKING DE CONTRIBUINTES (DETRATORES)
+                        # 🚩 RANKING DE CONTRIBUINTES (DETRATORES)
                         # ==========================================================
+                        maior_faltoso_nome = "N/A"
+                        maior_faltoso_impacto = "0.00%"
+
                         if qtd_faltas > 0:
                             st.markdown("#### 🚩 Maiores Contribuintes (Faltas 0.0)")
                             
-                            # Agrupando por agente para ver quem mais faltou
                             ranking_faltas = faltas_totais_df.groupby('Agente').size().reset_index(name='Qtd_Faltas')
                             ranking_faltas = ranking_faltas.sort_values(by='Qtd_Faltas', ascending=False)
-                            
-                            # Cálculo do impacto individual de cada faltoso no ABS total do time
                             ranking_faltas['Impacto_no_ABS'] = (ranking_faltas['Qtd_Faltas'] * MINUTOS_TURNO / tempo_escala_total) * 100
                             
                             st.dataframe(
@@ -1600,24 +1622,22 @@ Vamos com tudo! 🔥"""
                                 use_container_width=True
                             )
                             
-                            # Variáveis para o texto do ScorePlan
                             maior_faltoso_nome = ranking_faltas.iloc[0]['Agente']
                             maior_faltoso_impacto = f"{ranking_faltas.iloc[0]['Impacto_no_ABS']:.2f}%"
-                            
-                            st.warning(f"💡 **Insight de Gestão:** O colaborador **{maior_faltoso_nome}** é quem mais impacta seu indicador, sendo responsável por **{maior_faltoso_impacto}** do ABS total.")
-                            
-                            # ==========================================================
-                            # 📝 4. GERADOR DE TEXTO PARA SCOREPLAN
-                            # ==========================================================
-                            st.markdown("---")
-                            st.markdown("#### 📝 Texto para Copiar (ScorePlan)")
-                            
-                            status_texto = "🟢 DENTRO DA META" if abs_percentual <= 5 else "🟡 ALERTA" if abs_percentual <= 8 else "🔴 CRÍTICO"
+                            st.warning(f"💡 **Insight:** {maior_faltoso_nome} impacta em {maior_faltoso_impacto} o ABS total.")
+                        else:
+                            st.success("🙌 **Excelente!** Sem faltas integrais detectadas.")
 
-                            texto_para_copiar = f"""📊 RELATÓRIO DE ABSENTEÍSMO OPERACIONAL - WFM
+                        # ==========================================================
+                        # 📝 GERADOR DE TEXTO PARA SCOREPLAN
+                        # ==========================================================
+                        st.markdown("---")
+                        st.markdown("#### 📝 Texto para Copiar (ScorePlan)")
+                        
+                        status_texto = "🟢 DENTRO DA META" if abs_percentual <= 5 else "🟡 ALERTA" if abs_percentual <= 8 else "🔴 CRÍTICO"
+
+                        texto_scoreplan = f"""📊 RELATÓRIO DE ABSENTEÍSMO OPERACIONAL - WFM
 --------------------------------------------------
-METODOLOGIA: Faltas Integrais (0.0) + Atrasos Manuais
-
 📈 INDICADORES CONSOLIDADOS:
 - Tempo Total de Escala: {tempo_escala_total:,.0f} min
 - Tempo de Perda (Faltas): {tempo_perda_faltas:,.0f} min
@@ -1630,23 +1650,71 @@ METODOLOGIA: Faltas Integrais (0.0) + Atrasos Manuais
 
 💡 PARECER DA GESTÃO:
 - Status: {status_texto}
-- Diagnóstico: Calculado via Sistema de Gestão Interna.
 --------------------------------------------------"""
 
-                            # Campo de texto área para facilitar a cópia
-                            st.text_area("Selecione e copie para o ScorePlan:", value=texto_para_copiar, height=250)
-                        
-                        else:
-                            st.success("🙌 **Excelente!** Ninguém teve faltas integrais (0.0) no arquivo enviado.")
+                        st.text_area("Selecione e copie:", value=texto_scoreplan, height=200)
 
-                        # Rodapé com dados técnicos do cálculo
-                        st.caption(f"Cálculo baseado em {total_linhas} registros de escala (Total: {tempo_escala_total:,.0f} min).")
+                        # ==========================================================
+                        # 💾 SALVAMENTO NO HISTÓRICO CONSOLIDADO
+                        # ==========================================================
+                        st.markdown("---")
+                        c_save1, c_save2 = st.columns([2, 1])
+                        
+                        mes_referencia = c_save1.text_input("Mês/Ano de Referência:", value=datetime.now().strftime("%m/%Y"), key="abs_mes_ref")
+                        
+                        if c_save2.button("💾 Salvar Registro", type="primary", use_container_width=True):
+                            salvar_registro_abs(
+                                mes_referencia, 
+                                tempo_escala_total, 
+                                perda_total_minutos, 
+                                abs_percentual, 
+                                maior_faltoso_nome
+                            )
+                            st.success(f"✅ Histórico de {mes_referencia} atualizado!")
+                            time.sleep(1)
+                            st.rerun()
+
+                        st.caption(f"Cálculo baseado em {total_linhas} registros de escala.")
                         
                     else:
-                        st.error("❌ O arquivo não possui a coluna 'Conformidade'. Verifique o relatório exportado do WFM.")
+                        st.error("❌ O arquivo não possui a coluna 'Conformidade'.")
                         
                 except Exception as e:
                     st.error(f"Erro ao processar o cálculo: {e}")
+        # ==========================================================
+        # 📈 VISUALIZAÇÃO DO HISTÓRICO DE ABS (FORA DO UPLOAD)
+        # ==========================================================
+        if os.path.exists("historico_abs_consolidado.csv"):
+            st.markdown("---")
+            st.markdown("### 📊 Histórico de Evolução do ABS")
+            
+            df_h_abs = pd.read_csv("historico_abs_consolidado.csv")
+            
+            # Garantir que os dados apareçam em ordem cronológica no gráfico
+            df_h_abs = df_h_abs.sort_values(by="Data_Registro")
+
+            # Criando duas colunas: uma para o gráfico e outra para a tabela
+            c_hist1, c_hist2 = st.columns([2, 1])
+            
+            with c_hist1:
+                # Gráfico de linha mostrando a tendência
+                st.line_chart(df_h_abs.set_index('Mes_Referencia')['ABS_Percentual'])
+            
+            with c_hist2:
+                # Tabela resumida com os últimos registros
+                st.dataframe(
+                    df_h_abs[['Mes_Referencia', 'ABS_Percentual']].sort_values(by="ABS_Percentual", ascending=False),
+                    column_config={
+                        "Mes_Referencia": "Mês",
+                        "ABS_Percentual": st.column_config.NumberColumn("ABS %", format="%.2f%%")
+                    },
+                    hide_index=True,
+                    use_container_width=True
+                )
+            
+            # Botão opcional para baixar o histórico completo
+            with open('historico_abs_consolidado.csv', 'rb') as f:
+                st.download_button("⬇️ Baixar Relatório de ABS (CSV)", f, "historico_abs_detalhado.csv", "text/csv")
         
         # --- 🧠 GERADOR DE INSIGHTS FCAR (IA) ---
         st.markdown("---")
