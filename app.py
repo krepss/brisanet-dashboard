@@ -875,23 +875,30 @@ def obter_imagem_perfil(nome_colaborador):
     return None
 
 def registrar_humor_dia(nome_colaborador, humor_escolhido):
-    """Salva o humor diário e a hora exata em um CSV."""
-    ARQUIVO_HUMOR = 'humor_diario.csv'
-    hoje_data = datetime.now().strftime("%d/%m/%Y")
-    hoje_hora = datetime.now().strftime("%H:%M") # Captura a hora exata
+    """Salva o humor diário e a hora exata no fuso do Brasil (UTC-3)."""
+    from datetime import datetime, timedelta, timezone
     
+    # Crava o fuso horário para UTC-3 (Horário de Brasília/Fortaleza)
+    fuso_br = timezone(timedelta(hours=-3))
+    agora = datetime.now(fuso_br)
+    
+    hoje_data = agora.strftime("%d/%m/%Y")
+    hoje_hora = agora.strftime("%H:%M") 
+    
+    ARQUIVO_HUMOR = 'humor_diario.csv'
     novo_registro = {
         "Data": hoje_data, 
-        "Hora": hoje_hora, # Nova coluna adicionada
+        "Hora": hoje_hora, 
         "Colaborador": nome_colaborador.title(), 
         "Humor": humor_escolhido
     }
+    import pandas as pd
+    import os
     df_novo = pd.DataFrame([novo_registro])
     
     if os.path.exists(ARQUIVO_HUMOR):
         try:
             df_base = pd.read_csv(ARQUIVO_HUMOR)
-            # Se já votou hoje, atualizamos o humor e a hora do último voto
             mask = (df_base['Data'] == hoje_data) & (df_base['Colaborador'].str.upper() == nome_colaborador.upper())
             if mask.any():
                 df_base.loc[mask, 'Humor'] = humor_escolhido
@@ -905,12 +912,22 @@ def registrar_humor_dia(nome_colaborador, humor_escolhido):
         df_final = df_novo
         
     df_final.to_csv(ARQUIVO_HUMOR, index=False)
-    sincronizar_com_github(ARQUIVO_HUMOR, f"Humor atualizado: {nome_colaborador}")
+    # Tenta sincronizar com o Github se a função existir
+    try:
+        sincronizar_com_github(ARQUIVO_HUMOR, f"Humor atualizado: {nome_colaborador}")
+    except:
+        pass
+
 
 def carregar_humor_hoje(nome_colaborador):
-    """Verifica se o colaborador já registrou o humor hoje."""
+    """Verifica se o colaborador já registrou o humor hoje (no fuso do Brasil)."""
+    from datetime import datetime, timedelta, timezone
+    import pandas as pd
+    import os
+    
+    fuso_br = timezone(timedelta(hours=-3))
+    hoje = datetime.now(fuso_br).strftime("%d/%m/%Y")
     ARQUIVO_HUMOR = 'humor_diario.csv'
-    hoje = datetime.now().strftime("%d/%m/%Y")
     
     if os.path.exists(ARQUIVO_HUMOR):
         try:
