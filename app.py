@@ -2031,6 +2031,87 @@ Vamos com tudo! 🔥"""
                             else: lista_diag.append({"Arquivo": f.name, "Status": "❌ Erro", "Detalhe": msg})
                     except Exception as e: lista_diag.append({"Arquivo": f.name, "Status": "❌ Erro", "Detalhe": str(e)})
                 st.dataframe(pd.DataFrame(lista_diag))
+            # --- 📅 GESTÃO CONSOLIDADA WFM ---
+
+        st.markdown("---")
+
+        st.markdown("### 📅 Central de Escalas WFM")
+
+        
+
+        tab_up_wfm, tab_gerenciar_wfm = st.tabs(["📤 Subir Nova Escala", "🗑️ Gerenciar Histórico"])
+
+        
+
+        with tab_up_wfm:
+
+            st.info("O arquivo será processado e guardado na base de dados única.")
+
+            c_data1, c_data2 = st.columns(2)
+
+            d_ini = c_data1.date_input("Início do Período", key="wfm_ini")
+
+            d_fim = c_data2.date_input("Fim do Período", key="wfm_fim")
+
+            
+
+            arquivo_wfm = st.file_uploader("Arquivo de turnos (.txt)", type=["txt"], key="file_wfm_novo")
+
+            
+
+            if arquivo_wfm and st.button("🚀 Consolidar no Banco de Dados", type="primary"):
+
+                conteudo = arquivo_wfm.getvalue().decode("utf-8")
+
+                salvar_escala_no_csv(conteudo, d_ini, d_fim)
+
+                st.success(f"✅ Período {d_ini} a {d_fim} integrado com sucesso!")
+
+                time.sleep(1)
+
+                st.rerun()
+
+
+
+        with tab_gerenciar_wfm:
+
+            if os.path.exists("base_wfm_consolidada.csv"):
+
+                df_wfm = pd.read_csv("base_wfm_consolidada.csv")
+
+                
+
+                # Verificação de segurança para evitar o KeyError se o arquivo estiver vazio ou errado
+
+                colunas_necessarias = ['ID_Upload', 'Inicio_Vigencia', 'Fim_Vigencia']
+
+                if all(col in df_wfm.columns for col in colunas_necessarias):
+
+                    resumo_wfm = df_wfm.groupby(colunas_necessarias).size().reset_index(name='Linhas')
+
+                    
+
+                    st.write("### Períodos em Base:")
+
+                    for i, row in resumo_wfm.iterrows():
+
+                        c_txt, c_btn = st.columns([3, 1])
+
+                        c_txt.info(f"📅 **{row['Inicio_Vigencia']}** até **{row['Fim_Vigencia']}** ({row['Linhas']} escalas)")
+
+                        if c_btn.button("Excluir", key=f"del_wfm_{i}"):
+
+                            df_wfm = df_wfm[df_wfm['ID_Upload'] != row['ID_Upload']]
+
+                            df_wfm.to_csv("base_wfm_consolidada.csv", index=False)
+
+                            sincronizar_com_github("base_wfm_consolidada.csv", "Remoção de período WFM")
+
+                            st.rerun()
+
+                else:
+
+                    st.error("⚠️ A base de dados WFM está com colunas incompatíveis. Por favor, faça um novo upload.")        
             
         with st2:
             st.markdown("#### 🗑️ Gerenciar Meses")
