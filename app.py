@@ -2567,13 +2567,45 @@ else:
         
         with c_humor2:
             if st.button("Salvar Humor", type="primary", use_container_width=True):
+                # 1. Salva no banco de dados
                 registrar_humor_dia(nome_logado, escolha_humor)
+                
+                # 2. Chama a IA para dar um recadinho personalizado
+                if "GEMINI_API_KEY" in st.secrets:
+                    with st.spinner("✨"):
+                        try:
+                            import google.generativeai as genai
+                            genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+                            model = genai.GenerativeModel('gemini-2.5-flash')
+                            
+                            prompt_humor = f"""
+                            Você é um líder inspirador de suporte técnico, muito empático e humano. 
+                            O operador {primeiro_nome} acabou de registrar que seu humor hoje é '{escolha_humor}'. 
+                            Escreva uma mensagem motivacional EXTREMAMENTE CURTA (máximo 2 linhas) para ele ler agora.
+                            Se ele estiver mal ou estressado, dê apoio e mostre que dias difíceis passam. 
+                            Se ele estiver bem, impulsione ele a ter um dia focado em bater metas e diamantes!
+                            """
+                            
+                            resposta = model.generate_content(prompt_humor)
+                            # Guarda a mensagem na memória curta para ela sobreviver ao recarregamento da página
+                            st.session_state[f'msg_humor_ia_{nome_logado}'] = resposta.text
+                        except Exception as e:
+                            pass # Se a IA falhar (internet, etc), não quebra o app do operador
+                
                 st.success("Registrado!")
                 import time
                 time.sleep(1)
                 st.rerun()
                 
         st.markdown("</div>", unsafe_allow_html=True)
+        
+        # 3. Exibe a mensagem da IA logo abaixo do termômetro (se houver uma)
+        if st.session_state.get(f'msg_humor_ia_{nome_logado}'):
+            st.markdown(f"""
+            <div style='background-color: #f0fdf4; border-left: 5px solid #2ecc71; padding: 15px; border-radius: 10px; margin-top: -5px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);'>
+                <p style='margin: 0; color: #166534; font-size: 0.95em;'>✨ <b>Sofistas AI diz:</b> {st.session_state[f'msg_humor_ia_{nome_logado}']}</p>
+            </div>
+            """, unsafe_allow_html=True)
     # --- 🕒 CARTÃO DE PAUSAS DO WFM ---
         escala_hoje = buscar_escala_hoje(nome_logado)
         
