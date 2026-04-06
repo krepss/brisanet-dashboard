@@ -2538,32 +2538,85 @@ else:
 
     col_foto_perfil, col_texto_perfil = st.columns([1, 6])
     
+    # ==========================================
+    # 📸 POPUP DE EDIÇÃO DE PERFIL
+    # ==========================================
+    @st.dialog("📸 Personalizar Perfil")
+    def exibir_popup_perfil():
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("##### 📤 Subir Foto")
+            upload_foto = st.file_uploader("PNG ou JPG:", type=['png', 'jpg', 'jpeg'], key="up_foto_popup")
+            if upload_foto and st.button("Salvar Foto", type="primary", use_container_width=True):
+                with open(caminho_foto_user, "wb") as f:
+                    f.write(upload_foto.getbuffer())
+                sincronizar_com_github(caminho_foto_user, f"Foto: {nome_logado}")
+                st.rerun()
+
+        with col2:
+            st.markdown("##### 🎭 Avatar")
+            pasta_avatares = "avatares"
+            if os.path.exists(pasta_avatares):
+                arquivos_disp = [f for f in os.listdir(pasta_avatares) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+                if arquivos_disp:
+                    formatar_nome = lambda x: x.split('.')[0].replace('_', ' ').title()
+                    mapa_avatares = {formatar_nome(f): f for f in arquivos_disp}
+                    selecao_nome = st.selectbox("Estilos:", list(mapa_avatares.keys()), label_visibility="collapsed")
+                    nome_arq = mapa_avatares[selecao_nome]
+                    
+                    st.image(os.path.join(pasta_avatares, nome_arq), width=60)
+                    
+                    if st.button("Definir Avatar", type="primary", use_container_width=True):
+                        caminho_avatar_txt = caminho_foto_user.replace(".png", "_avatar.txt")
+                        with open(caminho_avatar_txt, "w", encoding="utf-8") as f:
+                            f.write(nome_arq)
+                        if os.path.exists(caminho_foto_user):
+                            os.remove(caminho_foto_user)
+                        st.rerun()
+            else:
+                st.warning("Sem avatares na pasta.")
+                
+        st.divider()
+        if st.button("🗑️ Remover Imagem Atual", use_container_width=True):
+            if os.path.exists(caminho_foto_user): os.remove(caminho_foto_user)
+            caminho_av = caminho_foto_user.replace(".png", "_avatar.txt")
+            if os.path.exists(caminho_av): os.remove(caminho_av)
+            st.rerun()
+
+    # ==========================================
+    # 🖼️ EXIBIÇÃO DA FOTO NA TELA PRINCIPAL
+    # ==========================================
     with col_foto_perfil:
         caminho_avatar_txt = caminho_foto_user.replace(".png", "_avatar.txt")
         
-        # 1. Prioridade: Foto Real do Colaborador
+        # 1. Prioridade: Foto Real
         if os.path.exists(caminho_foto_user):
             with open(caminho_foto_user, "rb") as f:
                 img_base64 = base64.b64encode(f.read()).decode()
-            st.markdown(f'<img src="data:image/png;base64,{img_base64}" style="border-radius: 50%; width: 80px; height: 80px; object-fit: cover; border: 3px solid #F37021; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: block; margin: 10px auto;">', unsafe_allow_html=True)
+            st.markdown(f'<img src="data:image/png;base64,{img_base64}" style="border-radius: 50%; width: 90px; height: 90px; object-fit: cover; border: 3px solid #F37021; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: block; margin: 0 auto;">', unsafe_allow_html=True)
             
-        # 2. Prioridade: Avatar da pasta /avatares
+        # 2. Prioridade: Avatar
         elif os.path.exists(caminho_avatar_txt):
             with open(caminho_avatar_txt, "r", encoding="utf-8") as f:
                 nome_arq_avatar = f.read().strip()
-            
             caminho_full_avatar = os.path.join("avatares", nome_arq_avatar)
             
             if os.path.exists(caminho_full_avatar):
                 with open(caminho_full_avatar, "rb") as f:
                     avatar_base64 = base64.b64encode(f.read()).decode()
-                st.markdown(f'<img src="data:image/png;base64,{avatar_base64}" style="border-radius: 50%; width: 80px; height: 80px; object-fit: cover; border: 3px solid #003366; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: block; margin: 10px auto;">', unsafe_allow_html=True)
+                st.markdown(f'<img src="data:image/png;base64,{avatar_base64}" style="border-radius: 50%; width: 90px; height: 90px; object-fit: cover; border: 3px solid #003366; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: block; margin: 0 auto;">', unsafe_allow_html=True)
             else:
-                st.markdown("<h1 style='font-size: 65px; text-align: center; margin:0;'>👤</h1>", unsafe_allow_html=True)
+                st.markdown("<h1 style='font-size: 70px; text-align: center; margin:0;'>👤</h1>", unsafe_allow_html=True)
                 
         # 3. Padrão: Ícone Vazio
         else:
-            st.markdown("<h1 style='font-size: 65px; text-align: center; margin:0;'>👤</h1>", unsafe_allow_html=True)
+            st.markdown("<h1 style='font-size: 70px; text-align: center; margin:0;'>👤</h1>", unsafe_allow_html=True)
+        
+        # BOTÃO DISCRETO PARA ABRIR O POPUP
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("✏️ Editar", use_container_width=True):
+            exibir_popup_perfil()
 
     with col_texto_perfil:
         # 1. Cria a variável blindada ANTES de jogar na tela
