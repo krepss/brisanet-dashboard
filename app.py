@@ -725,18 +725,17 @@ def buscar_escala_hoje(nome_operador):
 def salvar_escala_no_csv(conteudo_txt, data_inicio, data_fim):
     ARQUIVO_CSV = "base_wfm_consolidada.csv"
     hoje = datetime.now().strftime("%d/%m/%Y %H:%M")
-    # Criamos o ID usando as datas formatadas
-    id_up = f"{data_inicio.strftime('%d%m%Y')}_{data_fim.strftime('%d%m%Y')}"
+    # ID único para o período
+    id_up = f"{data_inicio.strftime('%Y%m%d')}_{data_fim.strftime('%Y%m%d')}"
     
-    # Processa as linhas do TXT
     linhas = []
     for l in conteudo_txt.split('\n'):
         if "," in l and ":" in l:
             linhas.append({
                 "ID_Upload": id_up, 
                 "Data_Registro": hoje, 
-                "Inicio_Vigencia": data_inicio.strftime("%d/%m/%Y"), # Nome corrigido aqui
-                "Fim_Vigencia": data_fim.strftime("%d/%m/%Y"),       # Nome corrigido aqui
+                "Inicio_Vigencia": data_inicio.strftime("%d/%m/%Y"), 
+                "Fim_Vigencia": data_fim.strftime("%d/%m/%Y"), 
                 "Conteudo_Linha": l.strip()
             })
     
@@ -745,7 +744,7 @@ def salvar_escala_no_csv(conteudo_txt, data_inicio, data_fim):
     if os.path.exists(ARQUIVO_CSV):
         try:
             df_base = pd.read_csv(ARQUIVO_CSV)
-            # Remove o período se já existir para evitar duplicidade
+            # Remove duplicatas do mesmo ID antes de concatenar
             df_base = df_base[df_base['ID_Upload'] != id_up]
             df_final = pd.concat([df_base, df_novo], ignore_index=True)
         except:
@@ -754,7 +753,7 @@ def salvar_escala_no_csv(conteudo_txt, data_inicio, data_fim):
         df_final = df_novo
     
     df_final.to_csv(ARQUIVO_CSV, index=False)
-    sincronizar_com_github(ARQUIVO_CSV, f"Update WFM: {id_up}")
+    sincronizar_com_github(ARQUIVO_CSV, f"WFM Update: {id_up}")
     
 def gerar_radar_wfm_data(data_alvo):
     """Função que o Gestor usa para o Radar (Linha 1261)."""
@@ -1941,21 +1940,23 @@ Vamos com tudo! 🔥"""
         with tab_gerenciar_wfm:
             if os.path.exists("base_wfm_consolidada.csv"):
                 df_wfm = pd.read_csv("base_wfm_consolidada.csv")
-                resumo_wfm = df_wfm.groupby(['ID_Upload', 'Inicio_Vigencia', 'Fim_Vigencia']).size().reset_index(name='Linhas')
                 
-                st.write("Intervalos carregados no sistema:")
-                for i, row in resumo_wfm.iterrows():
-                    c_info, c_del = st.columns([3, 1])
-                    c_info.warning(f"📅 **Período:** {row['Inicio_Vigencia']} até {row['Fim_Vigencia']} ({row['Linhas']} escalas)")
-                    if c_del.button("Excluir Mês", key=f"del_wfm_{i}"):
-                        df_wfm = df_wfm[df_wfm['ID_Upload'] != row['ID_Upload']]
-                        df_wfm.to_csv("base_wfm_consolidada.csv", index=False)
-                        sincronizar_com_github("base_wfm_consolidada.csv", "Exclusão de período WFM")
-                        st.success("Removido!")
-                        time.sleep(1)
-                        st.rerun()
-            else:
-                st.info("Nenhuma escala consolidada no banco de dados.")
+                # Verificação de segurança para evitar o KeyError se o arquivo estiver vazio ou errado
+                colunas_necessarias = ['ID_Upload', 'Inicio_Vigencia', 'Fim_Vigencia']
+                if all(col in df_wfm.columns for col in colunas_necessarias):
+                    resumo_wfm = df_wfm.groupby(colunas_necessarias).size().reset_index(name='Linhas')
+                    
+                    st.write("### Períodos em Base:")
+                    for i, row in resumo_wfm.iterrows():
+                        c_txt, c_btn = st.columns([3, 1])
+                        c_txt.info(f"📅 **{row['Inicio_Vigencia']}** até **{row['Fim_Vigencia']}** ({row['Linhas']} escalas)")
+                        if c_btn.button("Excluir", key=f"del_wfm_{i}"):
+                            df_wfm = df_wfm[df_wfm['ID_Upload'] != row['ID_Upload']]
+                            df_wfm.to_csv("base_wfm_consolidada.csv", index=False)
+                            sincronizar_com_github("base_wfm_consolidada.csv", "Remoção de período WFM")
+                            st.rerun()
+                else:
+                    st.error("⚠️ A base de dados WFM está com colunas incompatíveis. Por favor, faça um novo upload.")
     # ------------------ BANCO DE HORAS ------------------
     with tabs[10]:
         st.markdown("### ⏰ Banco de Horas e Agendamentos")
