@@ -1508,7 +1508,7 @@ Vamos com tudo! 🔥"""
             
             if not df_hoje.empty:
                 # Alerta Inteligente para o Gestor
-                alertas = df_hoje[df_hoje['Humor'].isin(["😡 Estressado", "😫 Cansado"])]
+                alertas = df_hoje[df_hoje['Humor'].str.strip().isin(["😡 Estressado", "😫 Cansado"])]
                 if not alertas.empty:
                     st.warning(f"⚠️ **Atenção Líder:** {len(alertas)} colaborador(es) reportaram estar sob estresse ou cansaço hoje. Considere uma abordagem mais acolhedora.")
                 else:
