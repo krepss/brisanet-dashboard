@@ -254,6 +254,32 @@ def obter_data_atualizacao():
         return dt_utc.astimezone(fuso_brasilia).strftime("%d/%m/%Y às %H:%M")
     return datetime.now(fuso_brasilia).strftime("%d/%m/%Y às %H:%M")
 
+def chamar_deepseek_ia(prompt_sistema, prompt_usuario):
+    """Função universal para conectar com a DeepSeek via API direta"""
+    if "DEEPSEEK_API_KEY" not in st.secrets:
+        raise Exception("Chave DEEPSEEK_API_KEY não encontrada nos segredos.")
+        
+    url = "https://api.deepseek.com/chat/completions"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {st.secrets['DEEPSEEK_API_KEY']}"
+    }
+    payload = {
+        "model": "deepseek-chat", # Modelo super rápido e inteligente
+        "messages": [
+            {"role": "system", "content": prompt_sistema},
+            {"role": "user", "content": prompt_usuario}
+        ],
+        "temperature": 0.7
+    }
+    
+    response = requests.post(url, headers=headers, json=payload)
+    
+    if response.status_code == 200:
+        return response.json()['choices'][0]['message']['content']
+    else:
+        raise Exception(f"Erro {response.status_code} na DeepSeek: {response.text}")
+
 def salvar_config(data_texto):
     try:
         with open('config.json', 'w') as f: json.dump({'periodo': data_texto}, f)
@@ -2525,69 +2551,33 @@ Vamos com tudo! 🔥"""
                     contexto_gestor = st.text_input("Alguma observação extra para a IA incluir? (Opcional):", placeholder="Ex: Elogie a empatia nas ligações, ou cobre mais agilidade no chat...")
                     
                     if st.button("✨ Gerar Feedback Completo com IA", type="primary", use_container_width=True):
-                        if "GEMINI_API_KEY" in st.secrets:
+                        if "DEEPSEEK_API_KEY" in st.secrets:
                             with st.spinner("Sofistas AI está analisando os indicadores e escrevendo o feedback..."):
                                 try:
-                                    import google.generativeai as genai
-                                    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-                                   # Faz o sistema varrer a API e caçar o modelo com maior limite gratuito (1.5)
-                                    modelos_disponiveis = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-                            
-                                    modelo_certo = None
-                                    # Tenta forçar o 1.5-flash (Limite de 1.500/dia)
-                                    for nome in modelos_disponiveis:
-                                        if '1.5-flash' in nome.lower():
-                                            modelo_certo = nome
-                                            break
-                            
-                                    # Se não achar, pega o que estiver disponível para não travar o app
-                                    if not modelo_certo and modelos_disponiveis:
-                                        modelo_certo = modelos_disponiveis[-1] # Pega de trás pra frente pra evitar o 2.5
-                                
-                                    model = genai.GenerativeModel(modelo_certo)
-                                    
-                                    # Pega os números exatos do operador
                                     dados_kpi_str = df_user_fb[['Indicador', '% Atingimento']].to_csv(index=False)
+                                    prompt_sistema = "Você é o Supervisor de Suporte Técnico experiente, muito empático, humano e focado no desenvolvimento da equipe."
                                     
                                     prompt_ia = f"""
-                                    Aja como se você fosse EU, o Supervisor de Suporte Técnico (experiente, muito empático, humano e focado no desenvolvimento da equipe).
-                                    Sua tarefa é estruturar o feedback para o MEU operador, {colab_fb}, em PRIMEIRA PESSOA (como se eu estivesse conversando diretamente com ele).
+                                    Estruture o feedback para o MEU operador, {colab_fb}, em PRIMEIRA PESSOA.
+                                    Indicadores: {dados_kpi_str} | TAM: {tam_v:.1%}. Observação: {contexto_gestor}
                                     
-                                    Aqui estão os indicadores de performance dele neste mês:
-                                    {dados_kpi_str}
-                                    O Resultado Geral (TAM) dele fechou em {tam_v:.1%}.
-                                    
-                                    Meu contexto/observação extra sobre ele para você incluir de forma natural no texto: {contexto_gestor}
-                                    
-                                    Escreva um texto extremamente humanizado e encorajador. Fuja do tom robótico ou punitivo. 
-                                    Gere a resposta com a seguinte estrutura EXATA:
-                                    
+                                    Estrutura EXATA:
                                     ### 🌟 Seus Pontos Fortes (Reconhecimento)
-                                    (Fale diretamente com ele. Comece valorizando o esforço dele, citando os indicadores em que ele foi bem ou superou a meta. Faça-o se sentir importante e essencial para o nosso time.)
-                                    
+                                    [Texto]
                                     ### 🎯 Onde Vamos Focar (Ponto de Atenção)
-                                    (Aponte o indicador mais crítico ou o gargalo principal de forma construtiva e amigável. Use abordagens como "Notei que podemos ajustar...", "Onde a gente pode virar o jogo juntos é...")
-                                    
+                                    [Texto]
                                     ### 🚀 Nosso Plano de Ação
-                                    (Forneça 2 a 3 dicas super práticas, rápidas e aplicáveis no dia a dia do suporte técnico para ele melhorar esse ponto de atenção. Mostre que eu, como supervisor, estou lado a lado com ele para ajudar.)
-                                    
-                                    ### 📧 Resumo Oficial para Envio (E-mail / WhatsApp)
-                                    (Escreva uma mensagem pronta, formatada de forma limpa e amigável, para eu simplesmente copiar e enviar para ele. 
-                                    Esta mensagem deve agir como um "Resumo do nosso 1:1", contendo:
-                                    1. Agradecimento pelo empenho no mês.
-                                    2. Destaque rápido do que ele fez de melhor.
-                                    3. Qual será o nosso foco de melhoria combinado.
-                                    4. Fechamento motivacional me colocando à disposição.
-                                    Assine como "Sua Liderança".)
+                                    [2 a 3 dicas práticas]
+                                    ### 📧 Resumo Oficial para Envio (WhatsApp)
+                                    [Resumo amigável assinando como 'Sua Liderança']
                                     """
                                     
-                                    resposta_fb = model.generate_content(prompt_ia)
-                                    # Salva na memória para não sumir se a tela recarregar
-                                    st.session_state[f'fb_gerado_{colab_fb}'] = resposta_fb.text
+                                    resposta_fb = chamar_deepseek_ia(prompt_sistema, prompt_ia)
+                                    st.session_state[f'fb_gerado_{colab_fb}'] = resposta_fb
                                 except Exception as e:
                                     st.error(f"Erro ao conectar com a IA: {e}")
                         else:
-                            st.warning("⚠️ Você precisa configurar a chave GEMINI_API_KEY no painel de Segredos (Secrets) do Streamlit.")
+                            st.warning("⚠️ Chave DEEPSEEK_API_KEY não configurada.")
                             
                     # Mostra a resposta gerada de forma elegante
                     if st.session_state.get(f'fb_gerado_{colab_fb}'):
@@ -3000,39 +2990,17 @@ else:
                     
                     mensagem_final = f"O universo muda constantemente; nossa vida é o que nossos pensamentos fazem dela. Um excelente turno, {primeiro_nome}."
                     
-                    if "GEMINI_API_KEY" in st.secrets:
+                    if "DEEPSEEK_API_KEY" in st.secrets:
                         with st.spinner("Buscando sabedoria para o seu dia... 🏛️"):
                             try:
-                                import google.generativeai as genai
-                                genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-                                # Faz o sistema varrer a API e caçar o modelo com maior limite gratuito (1.5)
-                                modelos_disponiveis = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-                            
-                                modelo_certo = None
-                                # Tenta forçar o 1.5-flash (Limite de 1.500/dia)
-                                for nome in modelos_disponiveis:
-                                    if '1.5-flash' in nome.lower():
-                                        modelo_certo = nome
-                                        break
-                            
-                                # Se não achar, pega o que estiver disponível para não travar o app
-                                if not modelo_certo and modelos_disponiveis:
-                                    modelo_certo = modelos_disponiveis[-1] # Pega de trás pra frente pra evitar o 2.5
+                                prompt_sistema = "Você é um sábio filósofo antigo (estilo Sêneca ou Marco Aurélio), acolhedor e profundo."
+                                prompt_humor = f"O operador {primeiro_nome} acabou de registrar que seu humor hoje é '{escolha_humor}'. Escreva uma reflexão profundamente FILOSÓFICA e madura (máximo 3 frases curtas) para ele ler agora. Não use aspas."
                                 
-                                model = genai.GenerativeModel(modelo_certo)
-                                prompt_humor = f"""
-                                Você é um sábio filósofo antigo (estilo Sêneca ou Marco Aurélio), acolhedor e profundo. 
-                                O operador de suporte técnico {primeiro_nome} acabou de registrar que seu humor hoje é '{escolha_humor}'. 
-                                Escreva uma reflexão profundamente FILOSÓFICA e madura (máximo 3 frases curtas) para ele ler agora. 
-                                Se ele estiver estressado/cansado, traga sabedoria sobre controle, resiliência e a transitoriedade das dificuldades. 
-                                Se ele estiver bem/incrível, traga uma reflexão sobre manter a virtude, foco e humildade. 
-                                Não use aspas no início e no fim.
-                                """
-                                resposta = model.generate_content(prompt_humor)
-                                if resposta and resposta.text:
-                                    mensagem_final = resposta.text.replace('"', '').strip()
-                            except:
-                                pass
+                                resposta = chamar_deepseek_ia(prompt_sistema, prompt_humor)
+                                if resposta:
+                                    mensagem_final = resposta.replace('"', '').strip()
+                            except Exception as e:
+                                print(f"Erro IA Humor: {e}")
                     
                     # Salva a mensagem e manda a tela ir para a Etapa 2
                     st.session_state[f'msg_humor_ia_{nome_logado}'] = mensagem_final
