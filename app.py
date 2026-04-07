@@ -2625,12 +2625,12 @@ Vamos com tudo! 🔥"""
             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
             # Faz o sistema descobrir sozinho qual é o modelo válido da sua conta!
             modelo_certo = None
-                for m in genai.list_models():
-                    if 'generateContent' in m.supported_generation_methods:
-                        modelo_certo = m.name
-                        break
+            for m in genai.list_models():
+                if 'generateContent' in m.supported_generation_methods:
+                modelo_certo = m.name
+                break
                             
-                model = genai.GenerativeModel(modelo_certo)
+            model = genai.GenerativeModel(modelo_certo)
 
             if "mensagens_ia" not in st.session_state:
                 st.session_state.mensagens_ia = []
