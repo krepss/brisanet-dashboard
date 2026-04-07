@@ -2637,8 +2637,8 @@ Vamos com tudo! 🔥"""
             # Tenta forçar o 1.5-flash (Limite de 1.500/dia)
             for nome in modelos_disponiveis:
                 if '1.5-flash' in nome.lower():
-                modelo_certo = nome
-                break                
+                    modelo_certo = nome
+                    break                
              # Se não achar, pega o que estiver disponível para não travar o app
             if not modelo_certo and modelos_disponiveis:
                 modelo_certo = modelos_disponiveis[-1] # Pega de trás pra frente pra evitar o 2.5
