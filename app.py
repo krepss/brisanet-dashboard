@@ -2530,13 +2530,20 @@ Vamos com tudo! 🔥"""
                                 try:
                                     import google.generativeai as genai
                                     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-                                   # Faz o sistema descobrir sozinho qual é o modelo válido da sua conta!
+                                   # Faz o sistema varrer a API e caçar o modelo com maior limite gratuito (1.5)
+                                    modelos_disponiveis = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                            
                                     modelo_certo = None
-                                    for m in genai.list_models():
-                                        if 'generateContent' in m.supported_generation_methods:
-                                            modelo_certo = m.name
+                                    # Tenta forçar o 1.5-flash (Limite de 1.500/dia)
+                                    for nome in modelos_disponiveis:
+                                        if '1.5-flash' in nome.lower():
+                                            modelo_certo = nome
                                             break
                             
+                                    # Se não achar, pega o que estiver disponível para não travar o app
+                                    if not modelo_certo and modelos_disponiveis:
+                                        modelo_certo = modelos_disponiveis[-1] # Pega de trás pra frente pra evitar o 2.5
+                                
                                     model = genai.GenerativeModel(modelo_certo)
                                     
                                     # Pega os números exatos do operador
@@ -2623,12 +2630,19 @@ Vamos com tudo! 🔥"""
 
         if "GEMINI_API_KEY" in st.secrets:
             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-            # Faz o sistema descobrir sozinho qual é o modelo válido da sua conta!
+            # Faz o sistema varrer a API e caçar o modelo com maior limite gratuito (1.5)
+            modelos_disponiveis = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                            
             modelo_certo = None
-            for m in genai.list_models():
-                if 'generateContent' in m.supported_generation_methods:
-                    modelo_certo = m.name
-                    break                            
+            # Tenta forçar o 1.5-flash (Limite de 1.500/dia)
+            for nome in modelos_disponiveis:
+                if '1.5-flash' in nome.lower():
+                modelo_certo = nome
+                break                
+             # Se não achar, pega o que estiver disponível para não travar o app
+            if not modelo_certo and modelos_disponiveis:
+                modelo_certo = modelos_disponiveis[-1] # Pega de trás pra frente pra evitar o 2.5
+                                
             model = genai.GenerativeModel(modelo_certo)
 
             if "mensagens_ia" not in st.session_state:
@@ -2991,13 +3005,20 @@ else:
                             try:
                                 import google.generativeai as genai
                                 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-                                # Faz o sistema descobrir sozinho qual é o modelo válido da sua conta!
+                                # Faz o sistema varrer a API e caçar o modelo com maior limite gratuito (1.5)
+                                modelos_disponiveis = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                            
                                 modelo_certo = None
-                                for m in genai.list_models():
-                                    if 'generateContent' in m.supported_generation_methods:
-                                        modelo_certo = m.name
+                                # Tenta forçar o 1.5-flash (Limite de 1.500/dia)
+                                for nome in modelos_disponiveis:
+                                    if '1.5-flash' in nome.lower():
+                                        modelo_certo = nome
                                         break
                             
+                                # Se não achar, pega o que estiver disponível para não travar o app
+                                if not modelo_certo and modelos_disponiveis:
+                                    modelo_certo = modelos_disponiveis[-1] # Pega de trás pra frente pra evitar o 2.5
+                                
                                 model = genai.GenerativeModel(modelo_certo)
                                 prompt_humor = f"""
                                 Você é um sábio filósofo antigo (estilo Sêneca ou Marco Aurélio), acolhedor e profundo. 
@@ -3239,13 +3260,20 @@ else:
                             """
                             import google.generativeai as genai
                             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-                            # Faz o sistema descobrir sozinho qual é o modelo válido da sua conta!
+                            # Faz o sistema varrer a API e caçar o modelo com maior limite gratuito (1.5)
+                            modelos_disponiveis = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                            
                             modelo_certo = None
-                            for m in genai.list_models():
-                                if 'generateContent' in m.supported_generation_methods:
-                                    modelo_certo = m.name
+                            # Tenta forçar o 1.5-flash (Limite de 1.500/dia)
+                            for nome in modelos_disponiveis:
+                                if '1.5-flash' in nome.lower():
+                                    modelo_certo = nome
                                     break
                             
+                            # Se não achar, pega o que estiver disponível para não travar o app
+                            if not modelo_certo and modelos_disponiveis:
+                                modelo_certo = modelos_disponiveis[-1] # Pega de trás pra frente pra evitar o 2.5
+                                
                             model = genai.GenerativeModel(modelo_certo)
                             resposta = model.generate_content(prompt_op)
                             
@@ -3614,12 +3642,20 @@ else:
         if "GEMINI_API_KEY" in st.secrets:
             import google.generativeai as genai
             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-            # Faz o sistema descobrir sozinho qual é o modelo válido da sua conta!
+            # Faz o sistema varrer a API e caçar o modelo com maior limite gratuito (1.5)
+            modelos_disponiveis = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                            
             modelo_certo = None
-            for m in genai.list_models():
-                if 'generateContent' in m.supported_generation_methods:
-                    modelo_certo = m.name
-                    break                            
+            # Tenta forçar o 1.5-flash (Limite de 1.500/dia)
+            for nome in modelos_disponiveis:
+                if '1.5-flash' in nome.lower():
+                    modelo_certo = nome
+                    break
+                            
+            # Se não achar, pega o que estiver disponível para não travar o app
+            if not modelo_certo and modelos_disponiveis:
+                    modelo_certo = modelos_disponiveis[-1] # Pega de trás pra frente pra evitar o 2.5
+                                
             model = genai.GenerativeModel(modelo_certo)
 
             if "mensagens_ia_op" not in st.session_state:
