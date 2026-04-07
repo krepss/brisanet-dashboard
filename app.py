@@ -1802,51 +1802,15 @@ Vamos com tudo! 🔥"""
             else:
                 with st.spinner("Processando dados e gerando análise executiva..."):
                     try:
-                        # Prompt blindado para gerar o modelo FCAR com perfeição corporativa
-                        prompt_fcar = f"""
-                        Atue como um Coordenador de Operações de Suporte Técnico de Alta Performance.
-                        A partir da minha observação abaixo, estruture um relatório gerencial utilizando ESTRITAMENTE a metodologia FCAR (Fato, Causa, Ação, Resultado).
+                        prompt_sistema = "Atue como um Coordenador de Operações de Suporte Técnico de Alta Performance."
+                        prompt_usuario = f"""A partir da minha observação abaixo, estruture um relatório ESTRITAMENTE na metodologia FCAR.
+                        Observação: "{contexto_fcar}"
+                        Retorne APENAS: **F (Fato):** ... **C (Causa):** ... **A (Ação):** ... **R (Resultado Esperado):** ..."""
                         
-                        Minha observação do cenário atual: "{contexto_fcar}"
+                        resposta_fcar = chamar_ia_groq(prompt_sistema, prompt_usuario)
                         
-                        Regras de Ouro:
-                        - Use linguagem corporativa, analítica e objetiva.
-                        - O 'Fato' deve ser baseado no que eu disse, sem invenções.
-                        - A 'Causa' deve ser uma hipótese técnica e lógica.
-                        - A 'Ação' deve conter de 2 a 3 passos táticos para a gestão executar.
-                        - O 'Resultado' deve prever o impacto ou a meta de recuperação.
-                        
-                        Retorne APENAS a estrutura abaixo pronta para copiar e colar:
-                        
-                        **F (Fato):** [Seu texto]
-                        
-                        **C (Causa):** [Seu texto]
-                        
-                        **A (Ação):** - [Ação 1]
-                        - [Ação 2]
-                        
-                        **R (Resultado Esperado):** [Seu texto]
-                        """
-                        
-                        # Chama a IA (usando o mesmo modelo já configurado no seu sistema)
-                        import google.generativeai as genai
-                        
-                        # Faz o sistema varrer a sua API e pegar o primeiro modelo de texto válido
-                        nome_modelo_valido = None
-                        for m in genai.list_models():
-                            if 'generateContent' in m.supported_generation_methods:
-                                nome_modelo_valido = m.name
-                                break
-                        
-                        if nome_modelo_valido:
-                            modelo_ia = genai.GenerativeModel(nome_modelo_valido)
-                            resposta_fcar = modelo_ia.generate_content(prompt_fcar)
-                        else:
-                            st.error("Nenhum modelo de texto encontrado na sua chave de API.")
-                        
-                        # Caixinha Clean Glass para exibir o resultado com estilo
                         st.markdown("<div style='background-color: #FFFFFF; padding: 25px; border-radius: 20px; border-left: 6px solid #F37021; box-shadow: 0 8px 24px rgba(0,0,0,0.04); margin-top: 15px;'>", unsafe_allow_html=True)
-                        st.markdown(resposta_fcar.text)
+                        st.markdown(resposta_fcar)
                         st.markdown("</div>", unsafe_allow_html=True)
                         
                     except Exception as e:
@@ -2618,60 +2582,39 @@ Vamos com tudo! 🔥"""
         st.markdown("### 🤖 Sofistas AI - Assistente Operacional")
         st.info("Faça perguntas sobre os resultados da equipe ou peça para eu redigir um feedback baseado nos números!")
 
-        if "GEMINI_API_KEY" in st.secrets:
-            genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-            # Faz o sistema varrer a API e caçar o modelo com maior limite gratuito (1.5)
-            modelos_disponiveis = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-                            
-            modelo_certo = None
-            # Tenta forçar o 1.5-flash (Limite de 1.500/dia)
-            for nome in modelos_disponiveis:
-                if '1.5-flash' in nome.lower():
-                    modelo_certo = nome
-                    break                
-             # Se não achar, pega o que estiver disponível para não travar o app
-            if not modelo_certo and modelos_disponiveis:
-                modelo_certo = modelos_disponiveis[-1] # Pega de trás pra frente pra evitar o 2.5
-                                
-            model = genai.GenerativeModel(modelo_certo)
-
+        if "GROQ_API_KEY" in st.secrets:
             if "mensagens_ia" not in st.session_state:
                 st.session_state.mensagens_ia = []
 
-            # 1. A MÁGICA: Criamos uma caixa com scroll (tamanho fixo) para as mensagens
             caixa_chat_gestor = st.container(height=450)
 
-            # 2. Desenhamos o histórico SEMPRE dentro da caixa
             with caixa_chat_gestor:
                 for msg in st.session_state.mensagens_ia:
                     with st.chat_message(msg["role"]):
                         st.markdown(msg["content"])
 
-            # 3. O input fica FORA da caixa, garantindo que as respostas fiquem EM CIMA dele
             if prompt := st.chat_input("Ex: Escreva um feedback elogiando o top performer de CSAT"):
-                
                 st.session_state.mensagens_ia.append({"role": "user", "content": prompt})
 
-                # 4. Forçamos a pergunta e a resposta a aparecerem DENTRO da caixa
                 with caixa_chat_gestor:
                     with st.chat_message("user"):
                         st.markdown(prompt)
 
-                    contexto_dados = ""
-                    if df_dados is not None and not df_dados.empty:
-                        contexto_dados = f"\n\n[DADOS ATUAIS DA EQUIPE]:\n{df_dados.to_csv(index=False)}"
+                    contexto_dados = f"\n\n[DADOS ATUAIS DA EQUIPE]:\n{df_dados.to_csv(index=False)}" if df_dados is not None else ""
 
                     with st.chat_message("assistant"):
                         with st.spinner("Analisando a operação..."):
                             try:
-                                prompt_completo = f"Você é um assistente de gestão de call center chamado Sofistas AI. Use os dados a seguir para responder a pergunta. Seja direto e profissional.\n{contexto_dados}\n\nPergunta do Gestor: {prompt}"
-                                response = model.generate_content(prompt_completo)
-                                st.markdown(response.text)
-                                st.session_state.mensagens_ia.append({"role": "assistant", "content": response.text})
+                                prompt_sistema = "Você é um assistente de gestão de call center chamado Sofistas AI. Seja direto e profissional."
+                                prompt_usuario = f"Use estes dados: {contexto_dados}\n\nPergunta do Gestor: {prompt}"
+                                
+                                response_text = chamar_ia_groq(prompt_sistema, prompt_usuario)
+                                st.markdown(response_text)
+                                st.session_state.mensagens_ia.append({"role": "assistant", "content": response_text})
                             except Exception as e:
-                                st.error(f"Erro de conexão com o Gemini: {e}")
+                                st.error(f"Erro de conexão: {e}")
         else:
-            st.warning("⚠️ Chave da API do Gemini (GEMINI_API_KEY) não encontrada nas configurações secretas do Streamlit.")
+            st.warning("⚠️ Chave da API Groq (GROQ_API_KEY) não encontrada.")
 # ------------------ MURAL DE CELEBRAÇÕES (GESTOR) ------------------
     with tabs[13]:
         st.markdown("### 🎉 Mural de Celebrações")
@@ -3207,51 +3150,31 @@ else:
             st.markdown("### 🤖 Seu Mentor IA (Smart Coach)")
             st.info("Deixe a Inteligência Artificial analisar seus números atuais e te dar dicas exclusivas de como aumentar sua comissão!")
 
-            if "GEMINI_API_KEY" in st.secrets:
+            if "GROQ_API_KEY" in st.secrets:
                 if st.button("✨ Gerar meu Plano de Ação com IA", type="primary", use_container_width=True):
-                    with st.spinner("O Sofistas AI está analisando seus resultados detalhadamente..."):
+                    with st.spinner("A Groq IA está analisando seus resultados detalhadamente..."):
                         try:
                             dados_op_str = meus_dados[['Indicador', '% Atingimento', 'Diamantes']].to_csv(index=False)
-                            prompt_op = f"""
-                            Você é um mentor motivacional e especialista em atendimento ao cliente chamado Sofistas AI. 
-                            O nome do operador é {nome_logado.split()[0]}.
-                            Aqui estão os resultados dele neste mês atual:
+                            prompt_sistema = "Você é um mentor motivacional e especialista em atendimento ao cliente de um provedor de internet."
+                            prompt_usuario = f"""O nome do operador é {nome_logado.split()[0]}. Aqui estão os resultados dele neste mês:
                             {dados_op_str}
-                            
                             Sua tarefa:
-                            1. Comece com um cumprimento super animado chamando-o pelo nome.
-                            2. Elogie os pontos fortes (onde ele bateu a meta ou chegou perto).
-                            3. Identifique o maior gargalo (o indicador com a nota mais baixa).
-                            4. Dê 2 dicas práticas, curtas e diretas de como ele pode melhorar esse indicador específico no dia a dia do call center.
-                            5. Encerre com uma frase de incentivo focada em como ele pode ganhar mais comissões/diamantes no próximo ciclo.
-                            Use formatação bonita com Markdown (negrito, listas) e use emojis. Seja extremamente amigável, direto e focado em dinheiro/resultados.
-                            """
-                            import google.generativeai as genai
-                            genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-                            # Faz o sistema varrer a API e caçar o modelo com maior limite gratuito (1.5)
-                            modelos_disponiveis = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                            1. Cumprimente-o com animação chamando-o pelo nome.
+                            2. Elogie os pontos fortes (meta batida).
+                            3. Identifique o maior gargalo (nota mais baixa).
+                            4. Dê 2 dicas práticas de call center para ele melhorar.
+                            5. Encerre com uma frase focada em ganhar mais comissões.
+                            Use Markdown e emojis. Seja amigável e direto."""
                             
-                            modelo_certo = None
-                            # Tenta forçar o 1.5-flash (Limite de 1.500/dia)
-                            for nome in modelos_disponiveis:
-                                if '1.5-flash' in nome.lower():
-                                    modelo_certo = nome
-                                    break
-                            
-                            # Se não achar, pega o que estiver disponível para não travar o app
-                            if not modelo_certo and modelos_disponiveis:
-                                modelo_certo = modelos_disponiveis[-1] # Pega de trás pra frente pra evitar o 2.5
-                                
-                            model = genai.GenerativeModel(modelo_certo)
-                            resposta = model.generate_content(prompt_op)
+                            texto_resposta = chamar_ia_groq(prompt_sistema, prompt_usuario)
                             
                             st.markdown("""<div style="background-color: #f8f9fa; border-left: 6px solid #F37021; padding: 25px; border-radius: 10px; margin-top: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">""", unsafe_allow_html=True)
-                            st.markdown(resposta.text)
+                            st.markdown(texto_resposta)
                             st.markdown("</div><br>", unsafe_allow_html=True)
                         except Exception as e:
-                            st.error(f"Putz, a IA tropeçou nos cabos: {e}")
+                            st.error(f"Erro na IA: {e}")
             else:
-                st.caption("A chave da IA ainda não foi configurada pelo Gestor no sistema.")
+                st.caption("A chave da Groq IA (GROQ_API_KEY) ainda não foi configurada.")
 
             st.markdown("---")
 
@@ -3607,25 +3530,7 @@ else:
         st.markdown("### 🤖 Sofistas AI - Seu Assistente Técnico")
         st.info("Tire dúvidas sobre internet, Wi-Fi, roteadores, fibra óptica, ou até mesmo pergunte sobre seus indicadores e diamantes deste mês!")
 
-        if "GEMINI_API_KEY" in st.secrets:
-            import google.generativeai as genai
-            genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-            # Faz o sistema varrer a API e caçar o modelo com maior limite gratuito (1.5)
-            modelos_disponiveis = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-                            
-            modelo_certo = None
-            # Tenta forçar o 1.5-flash (Limite de 1.500/dia)
-            for nome in modelos_disponiveis:
-                if '1.5-flash' in nome.lower():
-                    modelo_certo = nome
-                    break
-                            
-            # Se não achar, pega o que estiver disponível para não travar o app
-            if not modelo_certo and modelos_disponiveis:
-                    modelo_certo = modelos_disponiveis[-1] # Pega de trás pra frente pra evitar o 2.5
-                                
-            model = genai.GenerativeModel(modelo_certo)
-
+        if "GROQ_API_KEY" in st.secrets:
             if "mensagens_ia_op" not in st.session_state:
                 st.session_state.mensagens_ia_op = []
 
@@ -3638,27 +3543,20 @@ else:
                     st.markdown(prompt)
                 st.session_state.mensagens_ia_op.append({"role": "user", "content": prompt})
 
-                contexto_op = ""
-                if not meus_dados.empty:
-                    contexto_op = f"\n[DADOS DO OPERADOR {nome_logado.upper()} NESTE MÊS]:\n{meus_dados[['Indicador', '% Atingimento', 'Diamantes']].to_csv(index=False)}"
+                contexto_op = f"\n[DADOS DO OPERADOR {nome_logado.upper()} NESTE MÊS]:\n{meus_dados[['Indicador', '% Atingimento', 'Diamantes']].to_csv(index=False)}" if not meus_dados.empty else ""
 
-                instrucao_sistema = f"""
-                Você é o Sofistas AI, um assistente virtual criado para ajudar os operadores de suporte técnico de um provedor de internet (ISP).
-                Seu objetivo principal é ajudar o operador a resolver dúvidas técnicas do dia a dia (redes, Wi-Fi, fibra, roteadores, lentidão, etc) de forma didática, clara e direta ao ponto, para que ele possa atender bem o cliente na linha.
-                Você também tem acesso aos resultados de performance dele no mês: {contexto_op}.
-                Se ele perguntar sobre os indicadores dele, responda de forma amigável e motivadora.
-                """
+                instrucao_sistema = f"Você é o Sofistas AI, assistente de suporte técnico (redes, Wi-Fi, fibra). Responda de forma didática. Acesso aos resultados: {contexto_op}."
 
                 with st.chat_message("assistant"):
                     with st.spinner("Sofistas AI digitando..."):
                         try:
-                            resposta = model.generate_content(f"{instrucao_sistema}\n\nPergunta do Operador: {prompt}")
-                            st.markdown(resposta.text)
-                            st.session_state.mensagens_ia_op.append({"role": "assistant", "content": resposta.text})
+                            resposta = chamar_ia_groq(instrucao_sistema, f"Pergunta do Operador: {prompt}")
+                            st.markdown(resposta)
+                            st.session_state.mensagens_ia_op.append({"role": "assistant", "content": resposta})
                         except Exception as e:
                             st.error(f"Erro ao conectar com a IA: {e}")
         else:
-            st.warning("⚠️ O Gestor ainda não configurou a chave da Inteligência Artificial no sistema.")
+            st.warning("⚠️ O Gestor ainda não configurou a chave Groq no sistema.")
     # ---------------------------------------------------------
     # ABA 7: MURAL DE CELEBRAÇÕES (OPERADOR)
     # ---------------------------------------------------------
