@@ -2530,7 +2530,7 @@ Vamos com tudo! 🔥"""
                                 try:
                                     import google.generativeai as genai
                                     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-                                    model = genai.GenerativeModel('gemini-1.5-flash')
+                                    model = genai.GenerativeModel('gemini-pro')
                                     
                                     # Pega os números exatos do operador
                                     dados_kpi_str = df_user_fb[['Indicador', '% Atingimento']].to_csv(index=False)
@@ -2616,7 +2616,7 @@ Vamos com tudo! 🔥"""
 
         if "GEMINI_API_KEY" in st.secrets:
             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            model = genai.GenerativeModel('gemini-pro')
 
             if "mensagens_ia" not in st.session_state:
                 st.session_state.mensagens_ia = []
@@ -2978,7 +2978,7 @@ else:
                             try:
                                 import google.generativeai as genai
                                 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-                                model = genai.GenerativeModel('gemini-1.5-flash')
+                                model = genai.GenerativeModel('gemini-pro')
                                 prompt_humor = f"""
                                 Você é um sábio filósofo antigo (estilo Sêneca ou Marco Aurélio), acolhedor e profundo. 
                                 O operador de suporte técnico {primeiro_nome} acabou de registrar que seu humor hoje é '{escolha_humor}'. 
@@ -3219,7 +3219,7 @@ else:
                             """
                             import google.generativeai as genai
                             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-                            model = genai.GenerativeModel('gemini-1.5-flash')
+                            model = genai.GenerativeModel('gemini-pro')
                             resposta = model.generate_content(prompt_op)
                             
                             st.markdown("""<div style="background-color: #f8f9fa; border-left: 6px solid #F37021; padding: 25px; border-radius: 10px; margin-top: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">""", unsafe_allow_html=True)
@@ -3587,7 +3587,7 @@ else:
         if "GEMINI_API_KEY" in st.secrets:
             import google.generativeai as genai
             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            model = genai.GenerativeModel('gemini-pro')
 
             if "mensagens_ia_op" not in st.session_state:
                 st.session_state.mensagens_ia_op = []
