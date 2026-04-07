@@ -2627,8 +2627,8 @@ Vamos com tudo! 🔥"""
             modelo_certo = None
             for m in genai.list_models():
                 if 'generateContent' in m.supported_generation_methods:
-                modelo_certo = m.name
-                break                            
+                    modelo_certo = m.name
+                    break                            
             model = genai.GenerativeModel(modelo_certo)
 
             if "mensagens_ia" not in st.session_state:
