@@ -254,18 +254,18 @@ def obter_data_atualizacao():
         return dt_utc.astimezone(fuso_brasilia).strftime("%d/%m/%Y às %H:%M")
     return datetime.now(fuso_brasilia).strftime("%d/%m/%Y às %H:%M")
 
-def chamar_deepseek_ia(prompt_sistema, prompt_usuario):
-    """Função universal para conectar com a DeepSeek via API direta"""
-    if "DEEPSEEK_API_KEY" not in st.secrets:
-        raise Exception("Chave DEEPSEEK_API_KEY não encontrada nos segredos.")
+def chamar_ia_groq(prompt_sistema, prompt_usuario):
+    """Função universal para conectar com a Groq IA (100% Gratuita e Rápida)"""
+    if "GROQ_API_KEY" not in st.secrets:
+        raise Exception("Chave GROQ_API_KEY não encontrada nos segredos.")
         
-    url = "https://api.deepseek.com/chat/completions"
+    url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {st.secrets['DEEPSEEK_API_KEY']}"
+        "Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}"
     }
     payload = {
-        "model": "deepseek-chat", # Modelo super rápido e inteligente
+        "model": "llama-3.3-70b-versatile", # Modelo super inteligente da Meta!
         "messages": [
             {"role": "system", "content": prompt_sistema},
             {"role": "user", "content": prompt_usuario}
@@ -278,7 +278,7 @@ def chamar_deepseek_ia(prompt_sistema, prompt_usuario):
     if response.status_code == 200:
         return response.json()['choices'][0]['message']['content']
     else:
-        raise Exception(f"Erro {response.status_code} na DeepSeek: {response.text}")
+        raise Exception(f"Erro {response.status_code} na Groq: {response.text}")
 
 def salvar_config(data_texto):
     try:
@@ -2551,7 +2551,7 @@ Vamos com tudo! 🔥"""
                     contexto_gestor = st.text_input("Alguma observação extra para a IA incluir? (Opcional):", placeholder="Ex: Elogie a empatia nas ligações, ou cobre mais agilidade no chat...")
                     
                     if st.button("✨ Gerar Feedback Completo com IA", type="primary", use_container_width=True):
-                        if "DEEPSEEK_API_KEY" in st.secrets:
+                        if "GROQ_API_KEY" in st.secrets:
                             with st.spinner("Sofistas AI está analisando os indicadores e escrevendo o feedback..."):
                                 try:
                                     dados_kpi_str = df_user_fb[['Indicador', '% Atingimento']].to_csv(index=False)
@@ -2572,12 +2572,12 @@ Vamos com tudo! 🔥"""
                                     [Resumo amigável assinando como 'Sua Liderança']
                                     """
                                     
-                                    resposta_fb = chamar_deepseek_ia(prompt_sistema, prompt_ia)
+                                    resposta_fb = chamar_ia_groq(prompt_sistema, prompt_ia)
                                     st.session_state[f'fb_gerado_{colab_fb}'] = resposta_fb
                                 except Exception as e:
                                     st.error(f"Erro ao conectar com a IA: {e}")
                         else:
-                            st.warning("⚠️ Chave DEEPSEEK_API_KEY não configurada.")
+                            st.warning("⚠️ Chave chamar_ia_groq não configurada.")
                             
                     # Mostra a resposta gerada de forma elegante
                     if st.session_state.get(f'fb_gerado_{colab_fb}'):
@@ -2990,13 +2990,13 @@ else:
                     
                     mensagem_final = f"O universo muda constantemente; nossa vida é o que nossos pensamentos fazem dela. Um excelente turno, {primeiro_nome}."
                     
-                    if "DEEPSEEK_API_KEY" in st.secrets:
+                    if "GROQ_API_KEY" in st.secrets:
                         with st.spinner("Buscando sabedoria para o seu dia... 🏛️"):
                             try:
                                 prompt_sistema = "Você é um sábio filósofo antigo (estilo Sêneca ou Marco Aurélio), acolhedor e profundo."
                                 prompt_humor = f"O operador {primeiro_nome} acabou de registrar que seu humor hoje é '{escolha_humor}'. Escreva uma reflexão profundamente FILOSÓFICA e madura (máximo 3 frases curtas) para ele ler agora. Não use aspas."
                                 
-                                resposta = chamar_deepseek_ia(prompt_sistema, prompt_humor)
+                                resposta = chamar_ia_groq(prompt_sistema, prompt_humor)
                                 if resposta:
                                     mensagem_final = resposta.replace('"', '').strip()
                             except Exception as e:
