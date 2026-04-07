@@ -2311,12 +2311,20 @@ Vamos com tudo! 🔥"""
             st.divider()
             st.markdown("#### 🧹 Reset de Agendamentos (Banco de Horas)")
             if st.button("Limpar Histórico de Agendamentos de Horas"):
-                if os.path.exists("escalas_banco_horas.csv"):
-                    os.remove("escalas_banco_horas.csv")
-                    sincronizar_com_github("escalas_banco_horas.csv", "Limpando agendamentos antigos")
-                    st.success("Histórico limpo!")
-                    time.sleep(1)
-                    st.rerun()
+                # 1. Cria uma tabela vazia só com os cabeçalhos
+                import pandas as pd
+                df_vazio = pd.DataFrame(columns=["Periodo_Registro", "Unidade", "Colaborador", "Data_Inicio", "Data_Fim", "Tipo", "Quantidade", "Horario_Inicial", "Horario_Final"])
+                
+                # 2. Salva essa tabela vazia POR CIMA do arquivo antigo
+                df_vazio.to_csv("escalas_banco_horas.csv", index=False)
+                
+                # 3. Manda para o GitHub (agora vai dar certo, pois o arquivo existe, mas está vazio!)
+                sincronizar_com_github("escalas_banco_horas.csv", "Limpando agendamentos antigos")
+                
+                st.success("✅ Todos os agendamentos foram apagados com sucesso!")
+                import time
+                time.sleep(1.5)
+                st.rerun()
             st.divider()
             if st.button("🔥 Limpar TUDO (Reset Completo do Sistema)", type="primary"):
                 limpar_base_dados_completa()
