@@ -689,17 +689,19 @@ def atualizar_senha(email, nova_senha):
                 return True
     return False
 
-def salvar_mensagem_mural(dados):
-    ARQ = 'mural_parabens.csv'
-    df_novo = pd.DataFrame([dados])
-    if os.path.exists(ARQ):
-        try:
-            df_hist = pd.read_csv(ARQ)
-            df_final = pd.concat([df_hist, df_novo], ignore_index=True)
-        except: df_final = df_novo
-    else: df_final = df_novo
-    df_final.to_csv(ARQ, index=False)
-    sincronizar_com_github(ARQ, "Novo recado no mural de parabens")
+# Verifique se a sua função salvar_mensagem_mural está mais ou menos assim:
+def salvar_mensagem_mural(dados_dict):
+    arquivo = "mural_mensagens.csv"
+    # Adicionamos o campo 'timestamp' para controle interno de expiração
+    dados_dict['timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    novo_df = pd.DataFrame([dados_dict])
+    if os.path.exists(arquivo):
+        df = pd.read_csv(arquivo)
+        df = pd.concat([df, novo_df], ignore_index=True)
+    else:
+        df = novo_df
+    df.to_csv(arquivo, index=False)
 
 def carregar_mensagens_mural():
     if os.path.exists('mural_parabens.csv'):
@@ -2710,32 +2712,67 @@ Vamos com tudo! 🔥"""
                     st.markdown(f"<div style='padding:12px; background-color:#FFF; border-left:5px solid #003366; margin-bottom:10px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.05); display:flex; justify-content:space-between;'><span><b>{item['data']}</b> - {item['nome']}</span><span style='background-color:#e0f7fa; padding:2px 10px; border-radius:12px; font-size:0.85em; color:#006064; font-weight:bold;'>{anos_texto}</span></div>", unsafe_allow_html=True)
             else: st.write("Ninguém completando tempo de casa neste mês.")   
                 
-# --- 💌 MURAL DE RECADINHOS (VERSÃO GESTOR) ---
+# --- 💌 MURAL DE RECADINHOS (VERSÃO GESTOR COM EXPIRAÇÃO) ---
         st.markdown("---")
         st.markdown("### 💌 Mural de Recadinhos")
-        st.info("Como Gestor, também podes deixar mensagens para os teus colaboradores e acompanhar o que a equipa está a escrever!")
+        st.info("As mensagens deste mural expiram automaticamente após 7 dias.")
 
         aniversariantes_nomes = [item['nome'] for item in lista_niver]
         
         if aniversariantes_nomes:
-            # Formulário para o Gestor enviar recados
             with st.form("form_recado_gestor"):
                 c_quem, c_vazio = st.columns([1, 2])
                 para_quem = c_quem.selectbox("Enviar parabéns para:", aniversariantes_nomes)
-                mensagem = st.text_area("Mensagem do Gestor:", placeholder="Ex: Parabéns pelo teu dia e pelo excelente trabalho! 🚀")
+                mensagem = st.text_area("Mensagem do Gestor:", placeholder="Ex: Parabéns pelo teu dia! 🚀")
                 
                 if st.form_submit_button("Publicar no Mural 🎈"):
                     if mensagem.strip():
                         salvar_mensagem_mural({
                             "Data": datetime.now().strftime("%d/%m/%Y %H:%M"),
-                            "De": "Gestor 🦁", # Identifica que foi a liderança que enviou
+                            "De": "Gestor 🦁",
                             "Para": para_quem,
                             "Mensagem": mensagem
                         })
-                        st.success("✅ Recado do Gestor publicado!")
-                        import time
+                        st.success("✅ Recado publicado!")
                         time.sleep(1.2)
                         st.rerun()
+        
+        # --- LÓGICA DE FILTRAGEM POR EXPIRAÇÃO ---
+        df_mural = carregar_mensagens_mural()
+        
+        if df_mural is not None and not df_mural.empty:
+            # 1. Converter timestamp para formato de data
+            df_mural['timestamp'] = pd.to_datetime(df_mural['timestamp'])
+            
+            # 2. Definir tempo de expiração (7 dias)
+            limite_tempo = datetime.now() - timedelta(days=7)
+            
+            # 3. Filtrar: Manter apenas mensagens que ainda não expiraram
+            recados_vivos = df_mural[df_mural['timestamp'] > limite_tempo]
+            
+            # (Opcional) Limpar o arquivo CSV removendo as expiradas permanentemente
+            if len(recados_vivos) < len(df_mural):
+                recados_vivos.to_csv("mural_mensagens.csv", index=False)
+
+            if not recados_vivos.empty:
+                st.markdown("#### 📬 Mensagens Recentes")
+                
+                # Inverte para mostrar as mais novas primeiro
+                for _, row in recados_vivos.iloc[::-1].iterrows():
+                    is_gestor = "Gestor" in str(row['De'])
+                    cor_borda = "#e74c3c" if is_gestor else "#003366"
+                    
+                    st.markdown(f"""
+                    <div style='background-color:#FFF; padding:15px; border-radius:10px; border-left: 5px solid {cor_borda}; margin-bottom:15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);'>
+                        <p style='margin:0; color:#555; font-size:0.9em;'>
+                            De: <b>{row['De']}</b> ➔ Para: <b>{row['Para']}</b>
+                            <span style='float:right; font-size:0.8em; color:#999;'>{row['Data']}</span>
+                        </p>
+                        <p style='margin-top:10px; margin-bottom:0; font-size:1.05em; color:#333; font-style: italic;'>"{row['Mensagem']}"</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.write("Nenhuma mensagem recente no mural.")
         
         # --- EXIBIÇÃO DOS RECADOS NO PAINEL DO GESTOR ---
         df_mural = carregar_mensagens_mural()
@@ -3585,110 +3622,115 @@ else:
                             st.error(f"Erro ao conectar com a IA: {e}")
         else:
             st.warning("⚠️ O Gestor ainda não configurou a chave da Inteligência Artificial no sistema.")
-# ---------------------------------------------------------
-    # ABA 7: MURAL DE CELEBRAÇÕES (OPERADOR)
     # ---------------------------------------------------------
-    with tab_celebracoes:
-        st.markdown("### 🎉 Mural de Celebrações")
-        st.info("Fique de olho nos aniversariantes do mês e mande os parabéns para a equipe! 🎈")
-        
-        meses_pt = {1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril', 5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto', 9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'}
-        hoje = datetime.now()
-        mes_atual = hoje.month
-        
-        lista_niver, lista_firma = [], []
-        
-        if df_users_cadastrados is not None:
-            for _, row in df_users_cadastrados.iterrows():
-                nome_colab = str(row.get('nome', '')).title()
-                
-                # 🎂 Aniversário
-                nasc_str = str(row.get('nascimento', '')).strip()
-                if nasc_str and nasc_str != 'nan':
-                    try:
-                        dia_n, mes_n = int(nasc_str.split('/')[0]), int(nasc_str.split('/')[1])
-                        if mes_n == mes_atual:
-                            lista_niver.append({'dia': dia_n, 'nome': nome_colab, 'data': f"{dia_n:02d}/{mes_n:02d}"})
-                    except: pass
-                    
-                # 💼 Tempo de Casa
-                adm_str = str(row.get('admissao', '')).strip()
-                if adm_str and adm_str != 'nan':
-                    try:
-                        data_adm = datetime.strptime(adm_str, "%d/%m/%Y")
-                        if data_adm.month == mes_atual:
-                            anos_casa = hoje.year - data_adm.year
-                            if anos_casa > 0:
-                                lista_firma.append({'dia': data_adm.day, 'nome': nome_colab, 'anos': anos_casa, 'data': f"{data_adm.day:02d}/{data_adm.month:02d}"})
-                    except: pass
-
-        lista_niver = sorted(lista_niver, key=lambda x: x['dia'])
-        lista_firma = sorted(lista_firma, key=lambda x: x['dia'])
-        
-        st.markdown(f"<h4 style='text-align: center; color: #003366; margin-top: 20px;'>Celebrações de {meses_pt[mes_atual]}</h4>", unsafe_allow_html=True)
-        c1, c2 = st.columns(2)
-        
-        with c1:
-            st.markdown("##### 🎂 Aniversários de Vida")
-            if lista_niver:
-                for item in lista_niver:
-                    is_today = "🎈 HOJE!" if item['dia'] == hoje.day else ""
-                    st.markdown(f"<div style='padding:12px; background-color:#FFF; border-left:5px solid #F37021; margin-bottom:10px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.05); display:flex; justify-content:space-between;'><span><b>{item['data']}</b> - {item['nome']}</span><span style='color:#e74c3c; font-weight:bold;'>{is_today}</span></div>", unsafe_allow_html=True)
-            else: st.write("Nenhum aniversariante neste mês.")
-                
-        with c2:
-            st.markdown("##### 💼 Tempo de Casa")
-            if lista_firma:
-                for item in lista_firma:
-                    anos_texto = f"{item['anos']} ano" if item['anos'] == 1 else f"{item['anos']} anos"
-                    st.markdown(f"<div style='padding:12px; background-color:#FFF; border-left:5px solid #003366; margin-bottom:10px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.05); display:flex; justify-content:space-between;'><span><b>{item['data']}</b> - {item['nome']}</span><span style='background-color:#e0f7fa; padding:2px 10px; border-radius:12px; font-size:0.85em; color:#006064; font-weight:bold;'>{anos_texto}</span></div>", unsafe_allow_html=True)
-            else: st.write("Ninguém completando tempo de casa neste mês.")
-
-# --- 💌 MURAL DE RECADINHOS ---
-        st.markdown("---")
-        st.markdown("### 💌 Mural de Recadinhos")
-        st.write("Deixe uma mensagem de carinho para os aniversariantes deste mês!")
-
-        aniversariantes_nomes = [item['nome'] for item in lista_niver]
-        
-        if aniversariantes_nomes:
-            # Formulário para enviar o recado
-            with st.form("form_recado"):
-                c_quem, c_vazio = st.columns([1, 2])
-                para_quem = c_quem.selectbox("Para quem é o recado?", aniversariantes_nomes)
-                mensagem = st.text_area("Escreva sua mensagem (ela ficará visível para toda a equipe):", placeholder="Ex: Parabéns, guerreiro! Muito sucesso e saúde! 🎉")
-                
-                if st.form_submit_button("Enviar Recado 🎈"):
-                    if mensagem.strip():
-                        salvar_mensagem_mural({
-                            "Data": datetime.now().strftime("%d/%m/%Y %H:%M"),
-                            "De": primeiro_nome.title(),
-                            "Para": para_quem,
-                            "Mensagem": mensagem
-                        })
-                        st.success("✅ Recado enviado com sucesso!")
-                        import time
-                        time.sleep(1.5)
-                        st.rerun()
-                    else:
-                        st.error("⚠️ Escreva algo antes de enviar!")
-        else:
-            st.info("Nenhum aniversariante neste mês para deixar recado.")
-
-        # --- EXIBIÇÃO DOS RECADOS ---
-        df_mural = carregar_mensagens_mural()
-        if df_mural is not None and not df_mural.empty:
-            st.markdown("#### 📬 Recados Recentes")
+# ABA 7: MURAL DE CELEBRAÇÕES (OPERADOR)
+# ---------------------------------------------------------
+with tab_celebracoes:
+    st.markdown("### 🎉 Mural de Celebrações")
+    st.info("Fique de olho nos aniversariantes do mês e mande os parabéns para a equipe! 🎈")
+    
+    meses_pt = {1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril', 5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto', 9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'}
+    hoje = datetime.now()
+    mes_atual = hoje.month
+    
+    lista_niver, lista_firma = [], []
+    
+    if df_users_cadastrados is not None:
+        for _, row in df_users_cadastrados.iterrows():
+            nome_colab = str(row.get('nome', '')).title()
             
-            # Filtramos só os recados para os aniversariantes do mês atual
+            # 🎂 Aniversário
+            nasc_str = str(row.get('nascimento', '')).strip()
+            if nasc_str and nasc_str != 'nan':
+                try:
+                    dia_n, mes_n = int(nasc_str.split('/')[0]), int(nasc_str.split('/')[1])
+                    if mes_n == mes_atual:
+                        lista_niver.append({'dia': dia_n, 'nome': nome_colab, 'data': f"{dia_n:02d}/{mes_n:02d}"})
+                except: pass
+                
+            # 💼 Tempo de Casa
+            adm_str = str(row.get('admissao', '')).strip()
+            if adm_str and adm_str != 'nan':
+                try:
+                    data_adm = datetime.strptime(adm_str, "%d/%m/%Y")
+                    if data_adm.month == mes_atual:
+                        anos_casa = hoje.year - data_adm.year
+                        if anos_casa > 0:
+                            lista_firma.append({'dia': data_adm.day, 'nome': nome_colab, 'anos': anos_casa, 'data': f"{data_adm.day:02d}/{data_adm.month:02d}"})
+                except: pass
+
+    lista_niver = sorted(lista_niver, key=lambda x: x['dia'])
+    lista_firma = sorted(lista_firma, key=lambda x: x['dia'])
+    
+    st.markdown(f"<h4 style='text-align: center; color: #003366; margin-top: 20px;'>Celebrações de {meses_pt[mes_atual]}</h4>", unsafe_allow_html=True)
+    c1, c2 = st.columns(2)
+    
+    with c1:
+        st.markdown("##### 🎂 Aniversários de Vida")
+        if lista_niver:
+            for item in lista_niver:
+                is_today = "🎈 HOJE!" if item['dia'] == hoje.day else ""
+                st.markdown(f"<div style='padding:12px; background-color:#FFF; border-left:5px solid #F37021; margin-bottom:10px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.05); display:flex; justify-content:space-between;'><span><b>{item['data']}</b> - {item['nome']}</span><span style='color:#e74c3c; font-weight:bold;'>{is_today}</span></div>", unsafe_allow_html=True)
+        else: st.write("Nenhum aniversariante neste mês.")
+            
+    with c2:
+        st.markdown("##### 💼 Tempo de Casa")
+        if lista_firma:
+            for item in lista_firma:
+                anos_texto = f"{item['anos']} ano" if item['anos'] == 1 else f"{item['anos']} anos"
+                st.markdown(f"<div style='padding:12px; background-color:#FFF; border-left:5px solid #003366; margin-bottom:10px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.05); display:flex; justify-content:space-between;'><span><b>{item['data']}</b> - {item['nome']}</span><span style='background-color:#e0f7fa; padding:2px 10px; border-radius:12px; font-size:0.85em; color:#006064; font-weight:bold;'>{anos_texto}</span></div>", unsafe_allow_html=True)
+        else: st.write("Ninguém completando tempo de casa neste mês.")
+
+    # --- 💌 MURAL DE RECADINHOS ---
+    st.markdown("---")
+    st.markdown("### 💌 Mural de Recadinhos")
+    st.write("Deixe uma mensagem de carinho para os aniversariantes deste mês! (Expira em 7 dias)")
+
+    aniversariantes_nomes = [item['nome'] for item in lista_niver]
+    
+    if aniversariantes_nomes:
+        with st.form("form_recado"):
+            c_quem, c_vazio = st.columns([1, 2])
+            para_quem = c_quem.selectbox("Para quem é o recado?", aniversariantes_nomes)
+            mensagem = st.text_area("Escreva sua mensagem:", placeholder="Ex: Parabéns! 🎉")
+            
+            if st.form_submit_button("Enviar Recado 🎈"):
+                if mensagem.strip():
+                    salvar_mensagem_mural({
+                        "Data": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "De": primeiro_nome.title(),
+                        "Para": para_quem,
+                        "Mensagem": mensagem
+                    })
+                    st.success("✅ Recado enviado!")
+                    import time
+                    time.sleep(1.2)
+                    st.rerun()
+    
+    # --- EXIBIÇÃO DOS RECADOS COM EXPIRAÇÃO ---
+    df_mural = carregar_mensagens_mural()
+    if df_mural is not None and not df_mural.empty:
+        # Converter timestamp para cálculo (se a coluna não existir, ele ignora o erro)
+        try:
+            df_mural['timestamp'] = pd.to_datetime(df_mural['timestamp'])
+            limite = datetime.now() - timedelta(days=7)
+            # Filtrar apenas recados com menos de 7 dias
+            df_mural = df_mural[df_mural['timestamp'] > limite]
+        except:
+            pass # Se não houver timestamp nos antigos, mostra tudo até limpar o CSV
+
+        if not df_mural.empty:
+            st.markdown("#### 📬 Recados Recentes")
             recados_mes = df_mural[df_mural['Para'].isin(aniversariantes_nomes)]
             
             if not recados_mes.empty:
                 for _, row in recados_mes.iloc[::-1].iterrows():
-                    # Se o recado for para o usuário logado, damos um destaque dourado!
                     eh_pra_mim = row['Para'].upper() == nome_logado.upper()
+                    is_gestor = "Gestor" in str(row.get('De', ''))
+                    
                     cor_fundo = "#fff8e1" if eh_pra_mim else "#FFF"
-                    cor_borda = "#ffc107" if eh_pra_mim else "#003366"
+                    cor_borda = "#ffc107" if eh_pra_mim else ("#e74c3c" if is_gestor else "#003366")
                     tag_especial = "<span style='background-color:#ffc107; color:#555; padding:2px 8px; border-radius:10px; font-size:0.8em; font-weight:bold; margin-left:10px;'>É PRA VOCÊ! 🎉</span>" if eh_pra_mim else ""
                     
                     st.markdown(f"""
@@ -3701,7 +3743,7 @@ else:
                     </div>
                     """, unsafe_allow_html=True)
             else:
-                st.write("Ainda não há recados neste mês. Seja o primeiro a escrever!")
+                st.write("Nenhum recado recente por aqui.")
 # ==========================================
 # RODAPÉ DO SISTEMA
 # ==========================================
