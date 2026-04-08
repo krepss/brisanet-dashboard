@@ -247,12 +247,38 @@ def obter_data_hoje():
     return datetime.now().strftime("%m/%Y")
 
 def obter_data_atualizacao():
-    fuso_brasilia = timezone(timedelta(hours=-3))
-    if os.path.exists('historico_consolidado.csv'): 
-        timestamp_utc = os.path.getmtime('historico_consolidado.csv')
-        dt_utc = datetime.fromtimestamp(timestamp_utc, tz=timezone.utc)
-        return dt_utc.astimezone(fuso_brasilia).strftime("%d/%m/%Y às %H:%M")
-    return datetime.now(fuso_brasilia).strftime("%d/%m/%Y às %H:%M")
+    from datetime import datetime, timezone, timedelta
+    import os
+    
+    # Crava o fuso horário (UTC-3)
+    fuso_ceara = timezone(timedelta(hours=-3)) 
+    
+    # Dicionário inteligente: O nome do arquivo no sistema ➔ Nome bonito para o operador
+    arquivos_meta = {
+        'historico_consolidado.csv': 'Qualidade / KPIs',
+        'historico_operacional.csv': 'TMA Chat',
+        'historico_voz.csv': 'TMA Voz'
+    }
+    
+    mais_recente = 0
+    nome_base_recente = "Sistema" # Padrão caso não ache nada
+    
+    # Varre os arquivos para descobrir qual foi o último a ser atualizado
+    for arq, nome_amigavel in arquivos_meta.items():
+        if os.path.exists(arq):
+            tempo_modificacao = os.path.getmtime(arq)
+            if tempo_modificacao > mais_recente:
+                mais_recente = tempo_modificacao
+                nome_base_recente = nome_amigavel # Grava qual foi a base mais nova
+                
+    if mais_recente > 0:
+        dt_utc = datetime.fromtimestamp(mais_recente, timezone.utc)
+        data_formatada = dt_utc.astimezone(fuso_ceara).strftime("%d/%m/%Y às %H:%M")
+        # Retorna a data E o nome da base que foi atualizada
+        return f"{data_formatada} ({nome_base_recente})"
+        
+    # Se o sistema for recém-criado
+    return datetime.now(fuso_ceara).strftime("%d/%m/%Y às %H:%M")
 
 def chamar_ia_groq(prompt_sistema, prompt_usuario):
     """Função universal para conectar com a Groq IA (100% Gratuita e Rápida)"""
