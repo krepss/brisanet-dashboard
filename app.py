@@ -3380,10 +3380,6 @@ else:
                     df_calc = df_dados
                 df_media_team = df_calc.groupby('Colaborador').agg({'Diamantes': 'sum', 'Max. Diamantes': 'sum'}).reset_index()
                 df_media_team['% Atingimento'] = df_media_team.apply(lambda row: row['Diamantes'] / row['Max. Diamantes'] if row['Max. Diamantes'] > 0 else 0, axis=1)
-
-            total_dia_team = df_media_team['Diamantes'].sum()
-            total_max_team = df_media_team['Max. Diamantes'].sum()
-            perc_team = (total_dia_team / total_max_team) if total_max_team > 0 else 0
             
             total_dia_team = df_media_team['Diamantes'].sum()
             total_max_team = df_media_team['Max. Diamantes'].sum()
@@ -3402,24 +3398,24 @@ else:
             cor_barra = "#2ecc71" if perc_team >= 0.85 else "#f1c40f" if perc_team >= 0.75 else "#e74c3c"
             
             st.markdown(f"""
-            <div style="background: #FFFFFF; border-radius: 16px; padding: 20px 25px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 15px rgba(0,0,0,0.03); margin-top: 15px; margin-bottom: 30px; border-left: 6px solid {cor_barra};">
-                <div style="min-width: 160px;">
-                    <p style="margin: 0; color: #6B7280; font-size: 0.85em; font-weight: 600; text-transform: uppercase;">Média da Equipe</p>
-                    <h2 style="margin: 0; color: #111827; font-size: 2.2em; font-weight: 800;">{perc_team:.1%}</h2>
-                </div>
-                
-                <div style="flex-grow: 1; margin: 0 30px;">
-                    <div style="width: 100%; background-color: #F3F4F6; border-radius: 10px; height: 8px; overflow: hidden;">
-                        <div style="width: {perc_team*100}%; background-color: {cor_barra}; height: 8px; border-radius: 10px;"></div>
+                <div style="background: #FFFFFF; border-radius: 16px; padding: 20px 25px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 15px rgba(0,0,0,0.03); margin-top: 15px; margin-bottom: 30px; border-left: 6px solid {cor_barra};">
+                    <div style="min-width: 160px;">
+                        <p style="margin: 0; color: #6B7280; font-size: 0.85em; font-weight: 600; text-transform: uppercase;">Média da Equipe</p>
+                        <h2 style="margin: 0; color: #111827; font-size: 2.2em; font-weight: 800;">{perc_team:.1%}</h2>
+                    </div>
+                    
+                    <div style="flex-grow: 1; margin: 0 30px;">
+                        <div style="width: 100%; background-color: #F3F4F6; border-radius: 10px; height: 8px; overflow: hidden;">
+                            <div style="width: {perc_team*100}%; background-color: {cor_barra}; height: 8px; border-radius: 10px;"></div>
+                        </div>
+                    </div>
+                    
+                    <div style="min-width: 140px; text-align: right; background-color: #F8FAFC; padding: 12px 18px; border-radius: 12px; border: 1px solid #E2E8F0;">
+                        <p style="margin: 0; color: #64748B; font-size: 0.8em; font-weight: 600;">Sua parcela no time</p>
+                        <p style="margin: 0; color: #0F172A; font-size: 1.2em; font-weight: 800;">{share_perc_texto}</p>
                     </div>
                 </div>
-                
-                <div style="min-width: 140px; text-align: right; background-color: #F8FAFC; padding: 12px 18px; border-radius: 12px; border: 1px solid #E2E8F0;">
-                    <p style="margin: 0; color: #64748B; font-size: 0.8em; font-weight: 600;">Sua parcela no time</p>
-                    <p style="margin: 0; color: #0F172A; font-size: 1.2em; font-weight: 800;">{share_perc_texto}</p>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
             
             # PÓDIO TOP 5
             st.markdown("---")
