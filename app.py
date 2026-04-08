@@ -3385,12 +3385,45 @@ else:
             total_max_team = df_media_team['Max. Diamantes'].sum()
             perc_team = (total_dia_team / total_max_team) if total_max_team > 0 else 0
             
+            total_dia_team = df_media_team['Diamantes'].sum()
+            total_max_team = df_media_team['Max. Diamantes'].sum()
+            perc_team = (total_dia_team / total_max_team) if total_max_team > 0 else 0
+            
             user_share_row = df_media_team[df_media_team['Colaborador'] == nome_logado]
-            msg_share = "Dados insuficientes"
+            share_perc_texto = "0.0%"
             if not user_share_row.empty and total_dia_team > 0:
                 user_dia = user_share_row.iloc[0]['Diamantes']
                 share = (user_dia / total_dia_team)
-                msg_share = f"Você representa **{share:.1%}** do resultado da equipe."
+                share_perc_texto = f"{share:.1%}"
+
+            # ==========================================================
+            # CARD MINIMALISTA DA MÉDIA GLOBAL DA EQUIPE
+            # ==========================================================
+            cor_barra = "#2ecc71" if perc_team >= 0.85 else "#f1c40f" if perc_team >= 0.75 else "#e74c3c"
+            
+            st.markdown(f"""
+            <div style="background: #FFFFFF; border-radius: 16px; padding: 20px 25px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 15px rgba(0,0,0,0.03); margin-top: 15px; margin-bottom: 30px; border-left: 6px solid {cor_barra};">
+                <div style="min-width: 160px;">
+                    <p style="margin: 0; color: #6B7280; font-size: 0.85em; font-weight: 600; text-transform: uppercase;">Média da Equipe</p>
+                    <h2 style="margin: 0; color: #111827; font-size: 2.2em; font-weight: 800;">{perc_team:.1%}</h2>
+                </div>
+                
+                <div style="flex-grow: 1; margin: 0 30px;">
+                    <div style="width: 100%; background-color: #F3F4F6; border-radius: 10px; height: 8px; overflow: hidden;">
+                        <div style="width: {perc_team*100}%; background-color: {cor_barra}; height: 8px; border-radius: 10px;"></div>
+                    </div>
+                </div>
+                
+                <div style="min-width: 140px; text-align: right; background-color: #F8FAFC; padding: 12px 18px; border-radius: 12px; border: 1px solid #E2E8F0;">
+                    <p style="margin: 0; color: #64748B; font-size: 0.8em; font-weight: 600;">Sua parcela no time</p>
+                    <p style="margin: 0; color: #0F172A; font-size: 1.2em; font-weight: 800;">{share_perc_texto}</p>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # PÓDIO TOP 5
+            st.markdown("---")
+            st.markdown("### 🏆 Pódio Team Sofistas - Top 5 (Qualidade)")
 
             # PÓDIO TOP 5
             st.markdown("---")
@@ -3440,21 +3473,7 @@ else:
                                 
             st.markdown("---")
 
-            # Display Global
-            c1, c2 = st.columns(2)
-            c1.markdown(f"#### 🦁 Média Global da Equipe: **{perc_team:.1%}**")
-            c2.success(msg_share)
-            
-            fig_team = go.Figure(go.Indicator(
-                mode = "gauge+number", value = perc_team * 100, domain = {'x': [0, 1], 'y': [0, 1]},
-                gauge = {
-                    'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': 'white'}, 'bar': {'color': "#003366"},
-                    'steps': [{'range': [0, 80], 'color': '#ffcccb'},{'range': [80, 90], 'color': '#fff4cc'},{'range': [90, 100], 'color': '#d9f7be'}],
-                    'threshold': {'line': {'color': "red", 'width': 4}, 'thickness': 0.75, 'value': 100}
-                }
-            ))
-            fig_team.update_layout(height=250, margin=dict(l=20, r=20, t=30, b=20))
-            st.plotly_chart(fig_team, use_container_width=True)
+    
     # ==========================================================
             # RANKING DE VOLUME (CHAT E VOZ)
             # ==========================================================
