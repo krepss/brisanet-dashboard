@@ -3454,6 +3454,82 @@ else:
             ))
             fig_team.update_layout(height=250, margin=dict(l=20, r=20, t=30, b=20))
             st.plotly_chart(fig_team, use_container_width=True)
+    # ==========================================================
+            # RANKING DE VOLUME (CHAT E VOZ)
+            # ==========================================================
+            st.markdown("---")
+            st.markdown("### 🚀 Top Performers - Volume de Atendimentos")
+            st.info("Reconhecimento para a galera que mais puxou a fila neste ciclo!")
+
+            c_vol_chat, c_vol_voz = st.columns(2)
+
+            # --- PÓDIO DE CHAT ---
+            with c_vol_chat:
+                st.markdown("#### 💬 Top 3 - Chat")
+                df_op_hist = carregar_historico_operacional()
+                if df_op_hist is not None:
+                    df_op_atual = df_op_hist[df_op_hist['Periodo'] == periodo_label].copy()
+                    if not df_op_atual.empty:
+                        # Filtra apenas quem está ativo no cadastro
+                        if df_users_cadastrados is not None:
+                            lista_vip = df_users_cadastrados['nome'].unique()
+                            df_op_atual = df_op_atual[df_op_atual['Colaborador'].apply(normalizar_chave).isin(lista_vip)]
+
+                        # Ordena pelo volume de atendimentos e pega os 3 primeiros
+                        df_op_atual['Atendimentos'] = pd.to_numeric(df_op_atual['Atendimentos'], errors='coerce').fillna(0)
+                        df_top_chat = df_op_atual.sort_values(by='Atendimentos', ascending=False).head(3).reset_index(drop=True)
+
+                        if not df_top_chat.empty:
+                            for i, row in df_top_chat.iterrows():
+                                medalha = "🥇" if i == 0 else "🥈" if i == 1 else "🥉"
+                                nome_formatado = str(row['Colaborador']).title()
+                                
+                                st.markdown(f"""
+                                <div style="background-color: #f0f8ff; border-left: 5px solid #3498db; padding: 12px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                                    <span style="font-weight: bold; color: #003366; font-size: 1.05em;">{medalha} {nome_formatado}</span>
+                                    <span style="background-color: #3498db; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.9em; font-weight: bold;">{int(row['Atendimentos'])} chats</span>
+                                </div>
+                                """, unsafe_allow_html=True)
+                        else:
+                            st.write("Sem dados suficientes para este mês.")
+                    else:
+                        st.caption("Aguardando base de Produtividade Chat.")
+                else:
+                    st.caption("Nenhum histórico de Chat encontrado.")
+
+            # --- PÓDIO DE VOZ ---
+            with c_vol_voz:
+                st.markdown("#### 📞 Top 3 - Voz")
+                df_voz_hist = carregar_historico_voz()
+                if df_voz_hist is not None:
+                    df_voz_atual = df_voz_hist[df_voz_hist['Periodo'] == periodo_label].copy()
+                    if not df_voz_atual.empty:
+                        # Filtra apenas quem está ativo no cadastro
+                        if df_users_cadastrados is not None:
+                            lista_vip = df_users_cadastrados['nome'].unique()
+                            df_voz_atual = df_voz_atual[df_voz_atual['Colaborador'].apply(normalizar_chave).isin(lista_vip)]
+
+                        # Ordena pelo volume de atendimentos e pega os 3 primeiros
+                        df_voz_atual['Atendimentos'] = pd.to_numeric(df_voz_atual['Atendimentos'], errors='coerce').fillna(0)
+                        df_top_voz = df_voz_atual.sort_values(by='Atendimentos', ascending=False).head(3).reset_index(drop=True)
+
+                        if not df_top_voz.empty:
+                            for i, row in df_top_voz.iterrows():
+                                medalha = "🥇" if i == 0 else "🥈" if i == 1 else "🥉"
+                                nome_formatado = str(row['Colaborador']).title()
+                                
+                                st.markdown(f"""
+                                <div style="background-color: #f5eef8; border-left: 5px solid #9b59b6; padding: 12px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                                    <span style="font-weight: bold; color: #4a235a; font-size: 1.05em;">{medalha} {nome_formatado}</span>
+                                    <span style="background-color: #9b59b6; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.9em; font-weight: bold;">{int(row['Atendimentos'])} lig.</span>
+                                </div>
+                                """, unsafe_allow_html=True)
+                        else:
+                            st.write("Sem dados suficientes para este mês.")
+                    else:
+                        st.caption("Aguardando base de Produtividade Voz.")
+                else:
+                    st.caption("Nenhum histórico de Voz encontrado.")
 
     # ---------------------------------------------------------
     # ABA 3: FÉRIAS
