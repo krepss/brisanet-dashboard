@@ -3464,47 +3464,44 @@ else:
 
             c_vol_chat, c_vol_voz = st.columns(2)
 
-            # --- PÓDIO DE CHAT COM IMAGENS ---
+            # --- PÓDIO DE CHAT COM IMAGENS (TOP 5) ---
             with c_vol_chat:
-                st.markdown("#### 💬 Top 3 - Chat")
+                st.markdown("#### 💬 Top 5 - Chat")
                 df_op_hist = carregar_historico_operacional()
                 if df_op_hist is not None:
                     df_op_atual = df_op_hist[df_op_hist['Periodo'] == periodo_label].copy()
                     if not df_op_atual.empty:
-                        # Filtra apenas quem está ativo no cadastro
                         if df_users_cadastrados is not None:
                             lista_vip = df_users_cadastrados['nome'].unique()
                             df_op_atual = df_op_atual[df_op_atual['Colaborador'].apply(normalizar_chave).isin(lista_vip)]
 
-                        # Ordena pelo volume de atendimentos e pega os 3 primeiros
                         df_op_atual['Atendimentos'] = pd.to_numeric(df_op_atual['Atendimentos'], errors='coerce').fillna(0)
-                        df_top_chat = df_op_atual.sort_values(by='Atendimentos', ascending=False).head(3).reset_index(drop=True)
+                        # Mudamos para .head(5)
+                        df_top_chat = df_op_atual.sort_values(by='Atendimentos', ascending=False).head(5).reset_index(drop=True)
 
                         if not df_top_chat.empty:
                             for i, row in df_top_chat.iterrows():
-                                medalha = "🥇" if i == 0 else "🥈" if i == 1 else "🥉"
+                                # Lógica para medalhas de 1 a 5
+                                medalha = "🥇" if i == 0 else "🥈" if i == 1 else "🥉" if i == 2 else f"🏅 {i+1}º"
                                 nome_original = row['Colaborador']
                                 nome_formatado = str(nome_original).title()
                                 
-                                # 1. BUSCA A FOTO OU AVATAR DO OPERADOR
                                 img_perfil = obter_imagem_perfil(nome_original)
                                 
-                                # 2. DEFINE O HTML DA IMAGEM (OU ÍCONE)
                                 if img_perfil:
-                                    html_img = f'<img src="{img_perfil}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; margin-right: 15px; border: 2px solid #3498db; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">'
+                                    html_img = f'<img src="{img_perfil}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; margin-right: 15px; border: 2px solid #3498db; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">'
                                 else:
-                                    html_img = '<div style="width: 50px; height: 50px; border-radius: 50%; background-color: #f1f3f5; color: #666; display: flex; align-items: center; justify-content: center; font-size: 25px; margin-right: 15px;">👤</div>'
+                                    html_img = '<div style="width: 45px; height: 45px; border-radius: 50%; background-color: #f1f3f5; color: #666; display: flex; align-items: center; justify-content: center; font-size: 22px; margin-right: 15px;">👤</div>'
 
-                                # 3. MONTA O CARD PREMIUM COM FOTO ALINHADA
                                 st.markdown(f"""
-                                <div style="background-color: #f0f8ff; border-left: 5px solid #3498db; padding: 12px; border-radius: 8px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                                <div style="background-color: #f0f8ff; border-left: 5px solid #3498db; padding: 10px; border-radius: 8px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
                                     <div style="display: flex; align-items: center;">
                                         {html_img}
                                         <div>
-                                            <span style="font-weight: bold; color: #003366; font-size: 1.05em;">{medalha} {nome_formatado}</span>
+                                            <span style="font-weight: bold; color: #003366; font-size: 0.95em;">{medalha} - {nome_formatado}</span>
                                         </div>
                                     </div>
-                                    <span style="background-color: #3498db; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.9em; font-weight: bold;">{int(row['Atendimentos'])} chats</span>
+                                    <span style="background-color: #3498db; color: white; padding: 4px 10px; border-radius: 12px; font-size: 0.85em; font-weight: bold;">{int(row['Atendimentos'])}</span>
                                 </div>
                                 """, unsafe_allow_html=True)
                         else:
@@ -3514,47 +3511,44 @@ else:
                 else:
                     st.caption("Nenhum histórico de Chat encontrado.")
 
-            # --- PÓDIO DE VOZ COM IMAGENS ---
+            # --- PÓDIO DE VOZ COM IMAGENS (TOP 5) ---
             with c_vol_voz:
-                st.markdown("#### 📞 Top 3 - Voz")
+                st.markdown("#### 📞 Top 5 - Voz")
                 df_voz_hist = carregar_historico_voz()
                 if df_voz_hist is not None:
                     df_voz_atual = df_voz_hist[df_voz_hist['Periodo'] == periodo_label].copy()
                     if not df_voz_atual.empty:
-                        # Filtra apenas quem está ativo no cadastro
                         if df_users_cadastrados is not None:
                             lista_vip = df_users_cadastrados['nome'].unique()
                             df_voz_atual = df_voz_atual[df_voz_atual['Colaborador'].apply(normalizar_chave).isin(lista_vip)]
 
-                        # Ordena pelo volume de atendimentos e pega os 3 primeiros
                         df_voz_atual['Atendimentos'] = pd.to_numeric(df_voz_atual['Atendimentos'], errors='coerce').fillna(0)
-                        df_top_voz = df_voz_atual.sort_values(by='Atendimentos', ascending=False).head(3).reset_index(drop=True)
+                        # Mudamos para .head(5)
+                        df_top_voz = df_voz_atual.sort_values(by='Atendimentos', ascending=False).head(5).reset_index(drop=True)
 
                         if not df_top_voz.empty:
                             for i, row in df_top_voz.iterrows():
-                                medalha = "🥇" if i == 0 else "🥈" if i == 1 else "🥉"
+                                # Lógica para medalhas de 1 a 5
+                                medalha = "🥇" if i == 0 else "🥈" if i == 1 else "🥉" if i == 2 else f"🏅 {i+1}º"
                                 nome_original = row['Colaborador']
                                 nome_formatado = str(nome_original).title()
                                 
-                                # 1. BUSCA A FOTO OU AVATAR DO OPERADOR
                                 img_perfil = obter_imagem_perfil(nome_original)
                                 
-                                # 2. DEFINE O HTML DA IMAGEM (OU ÍCONE)
                                 if img_perfil:
-                                    html_img = f'<img src="{img_perfil}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; margin-right: 15px; border: 2px solid #9b59b6; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">'
+                                    html_img = f'<img src="{img_perfil}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; margin-right: 15px; border: 2px solid #9b59b6; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">'
                                 else:
-                                    html_img = '<div style="width: 50px; height: 50px; border-radius: 50%; background-color: #f1f3f5; color: #666; display: flex; align-items: center; justify-content: center; font-size: 25px; margin-right: 15px;">👤</div>'
+                                    html_img = '<div style="width: 45px; height: 45px; border-radius: 50%; background-color: #f1f3f5; color: #666; display: flex; align-items: center; justify-content: center; font-size: 22px; margin-right: 15px;">👤</div>'
 
-                                # 3. MONTA O CARD PREMIUM COM FOTO ALINHADA
                                 st.markdown(f"""
-                                <div style="background-color: #f5eef8; border-left: 5px solid #9b59b6; padding: 12px; border-radius: 8px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                                <div style="background-color: #f5eef8; border-left: 5px solid #9b59b6; padding: 10px; border-radius: 8px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
                                     <div style="display: flex; align-items: center;">
                                         {html_img}
                                         <div>
-                                            <span style="font-weight: bold; color: #4a235a; font-size: 1.05em;">{medalha} {nome_formatado}</span>
+                                            <span style="font-weight: bold; color: #4a235a; font-size: 0.95em;">{medalha} - {nome_formatado}</span>
                                         </div>
                                     </div>
-                                    <span style="background-color: #9b59b6; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.9em; font-weight: bold;">{int(row['Atendimentos'])} lig.</span>
+                                    <span style="background-color: #9b59b6; color: white; padding: 4px 10px; border-radius: 12px; font-size: 0.85em; font-weight: bold;">{int(row['Atendimentos'])}</span>
                                 </div>
                                 """, unsafe_allow_html=True)
                         else:
