@@ -3392,48 +3392,49 @@ else:
                 share = (user_dia / total_dia_team)
                 msg_share = f"Você representa **{share:.1%}** do resultado da equipe."
 
-            # PÓDIO TOP 3
+            # PÓDIO TOP 5
             st.markdown("---")
-            st.markdown("### 🏆 Pódio Team Sofistas - Top 3")
+            st.markdown("### 🏆 Pódio Team Sofistas - Top 5 (Qualidade)")
             
             if not df_media_team.empty:
-                # CORREÇÃO AQUI: Ordenando matematicamente pelo % de Atingimento, e não mais por Diamantes
-                df_podio = df_media_team[~df_media_team['Colaborador'].str.startswith('⚠️')].sort_values(by='% Atingimento', ascending=False).head(3).reset_index(drop=True)
+                # Mudamos de .head(3) para .head(5)
+                df_podio = df_media_team[~df_media_team['Colaborador'].str.startswith('⚠️')].sort_values(by='% Atingimento', ascending=False).head(5).reset_index(drop=True)
                 
                 if len(df_podio) >= 1:
-                    col1, col2, col3 = st.columns(3)
-                    ordem_colunas = [col2, col1, col3] 
-                    posicoes_legenda = ["🥇 1º LUGAR", "🥈 2º LUGAR", "🥉 3º LUGAR"]
-                    cores_borda = ["#d4af37", "#a9a9a9", "#cd7f32"] 
+                    # Cria 5 colunas para o Top 5
+                    colunas = st.columns(5)
+                    posicoes_legenda = ["🥇 1º", "🥈 2º", "🥉 3º", "🏅 4º", "🏅 5º"]
+                    cores_borda = ["#d4af37", "#a9a9a9", "#cd7f32", "#3498db", "#9b59b6"] 
 
-                    for i, col in enumerate(ordem_colunas):
+                    for i, col in enumerate(colunas):
                         if i < len(df_podio):
                             op_data = df_podio.iloc[i]
-                            op_nome = op_data['Colaborador']
+                            op_nome = str(op_data['Colaborador']).title()
+                            # Pegar só o primeiro nome e o último para não quebrar o layout da caixinha
+                            partes_nome = op_nome.split()
+                            nome_curto = partes_nome[0] if len(partes_nome) == 1 else f"{partes_nome[0]} {partes_nome[-1]}"
+                            
                             op_perc = op_data['% Atingimento']
                             
-                            # 1. CHAMA A FUNÇÃO QUE JÁ SABE SE É FOTO OU AVATAR
                             img_perfil = obter_imagem_perfil(op_nome)
 
                             with col:
-                                st.markdown(f"<h4 style='text-align: center; color: #003366;'>{posicoes_legenda[i]}</h4>", unsafe_allow_html=True)
+                                st.markdown(f"<h5 style='text-align: center; color: #003366; margin-bottom: 5px;'>{posicoes_legenda[i]}</h5>", unsafe_allow_html=True)
                                 
                                 st.markdown(f"""
-                                    <div style="background-color: #FFF; border: 4px solid {cores_borda[i]}; padding: 15px; border-radius: 12px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px;">
+                                    <div style="background-color: #FFF; border: 3px solid {cores_borda[i]}; padding: 10px; border-radius: 12px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px;">
                                 """, unsafe_allow_html=True)
                                 
-                                # 2. AQUI ESTAVA O ERRO: AGORA USAMOS A VARIÁVEL img_perfil
                                 if img_perfil:
                                     st.markdown(f"""
-                                        <img src="{img_perfil}" style="border-radius: 50%; width: 100px; height: 100px; object-fit: cover; border: 4px solid {cores_borda[i]}; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: block; margin: 0 auto 10px auto;">
+                                        <img src="{img_perfil}" style="border-radius: 50%; width: 70px; height: 70px; object-fit: cover; border: 3px solid {cores_borda[i]}; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: block; margin: 0 auto 10px auto;">
                                     """, unsafe_allow_html=True)
                                 else:
-                                    # Se não tiver foto nem avatar, mostra o ícone cinza
-                                    st.markdown("<h1 style='font-size: 60px; text-align: center; margin:0;'>👤</h1>", unsafe_allow_html=True)
+                                    st.markdown("<h1 style='font-size: 50px; text-align: center; margin:0;'>👤</h1>", unsafe_allow_html=True)
                                     
                                 st.markdown(f"""
-                                    <p style="font-size: 1.1em; font-weight: bold; color: #333; margin: 5px 0; text-align: center;">{op_nome.title()}</p>
-                                    <p style="font-size: 1.8em; font-weight: 800; color: {cores_borda[i]}; margin: 5px 0; text-align: center;">{op_perc:.2%}</p>
+                                    <p style="font-size: 0.9em; font-weight: bold; color: #333; margin: 5px 0; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{nome_curto}</p>
+                                    <p style="font-size: 1.4em; font-weight: 800; color: {cores_borda[i]}; margin: 5px 0; text-align: center;">{op_perc:.2%}</p>
                                     </div>
                                 """, unsafe_allow_html=True)
                                 
