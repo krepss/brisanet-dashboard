@@ -3418,7 +3418,7 @@ else:
         
             # PÓDIO TOP 5
             st.markdown("---")
-            st.markdown("### 🏆 Pódio Team Sofistas - Top 5 (Qualidade)")
+            st.markdown("### 🏆 Pódio Team Sofistas - Top 5 (TAM)")
             
             if not df_media_team.empty:
                 # Mudamos de .head(3) para .head(5)
