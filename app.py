@@ -2934,71 +2934,66 @@ else:
         # 🏛️ REFLEXÃO DIÁRIA (POPUP FILOSÓFICO DE 2 ETAPAS)
         # ==========================================================
         
-        # 1. Variável Mestra (Decide se a janela deve abrir/ficar aberta)
-        if 'mostrar_popup_humor' not in st.session_state:
-            humor_banco = carregar_humor_hoje(nome_logado)
-            if humor_banco is None:
-                st.session_state['mostrar_popup_humor'] = True # Abre sozinho se não votou
-            else:
-                st.session_state['mostrar_popup_humor'] = False # Fica fechado
+        # 1. Variável Mestra (Garante que só abra sozinho 1 vez ao logar)
+        if 'humor_verificado_hoje' not in st.session_state:
+            st.session_state['humor_verificado_hoje'] = True
+            if carregar_humor_hoje(nome_logado) is None:
+                st.session_state['abrir_popup_agora'] = True
 
         # 2. A "Cara" e as Etapas do Popup
         @st.dialog("Reflexão Diária 🏛️")
         def exibir_popup_humor():
-            # Memória para saber se estamos na tela 1 (votar) ou 2 (ler)
             if f'etapa_popup_{nome_logado}' not in st.session_state:
                 st.session_state[f'etapa_popup_{nome_logado}'] = 1
 
-            # --- ETAPA 1: ESCOLHA DO HUMOR ---
-            if st.session_state[f'etapa_popup_{nome_logado}'] == 1:
-                st.markdown(f"<p style='text-align: center; color: #4B5563; margin-bottom: 20px;'>Como você está se sentindo hoje, {primeiro_nome}?</p>", unsafe_allow_html=True)
-                
-                opcoes_humor = ["🤩 Incrível ", "🙂 Bem ", "😐 Normal ", "😫 Cansado ", "😡 Estressado "]
-                humor_banco = carregar_humor_hoje(nome_logado)
-                idx_padrao = opcoes_humor.index(humor_banco) if humor_banco in opcoes_humor else 0
-                
-                escolha_humor = st.radio("Selecione:", opcoes_humor, index=idx_padrao, horizontal=False, label_visibility="collapsed")
-                
-                st.markdown("<br>", unsafe_allow_html=True)
-                
-                # AQUI ESTAVA O ERRO! Sem st.rerun() neste botão, a janela NÃO fecha.
-                if st.button("Salvar e Refletir", type="primary", use_container_width=True):
-                    registrar_humor_dia(nome_logado, escolha_humor)
+            # Cria um "quadro em branco" para a gente desenhar as etapas sem precisar recarregar a tela inteira
+            janela = st.empty()
+            
+            with janela.container():
+                if st.session_state[f'etapa_popup_{nome_logado}'] == 1:
+                    st.markdown(f"<p style='text-align: center; color: #4B5563; margin-bottom: 20px;'>Como você está se sentindo hoje, {primeiro_nome}?</p>", unsafe_allow_html=True)
                     
-                    mensagem_final = f"O universo muda constantemente; nossa vida é o que nossos pensamentos fazem dela. Um excelente turno, {primeiro_nome}."
+                    opcoes_humor = ["🤩 Incrível ", "🙂 Bem ", "😐 Normal ", "😫 Cansado ", "😡 Estressado "]
+                    humor_banco = carregar_humor_hoje(nome_logado)
+                    idx_padrao = opcoes_humor.index(humor_banco) if humor_banco in opcoes_humor else 0
                     
-                    if "GROQ_API_KEY" in st.secrets:
-                        with st.spinner("Buscando sabedoria para o seu dia... 🏛️"):
-                            try:
-                                prompt_sistema = "Você é um sábio filósofo antigo (estilo Sêneca ou Marco Aurélio), acolhedor e profundo."
-                                prompt_humor = f"O operador {primeiro_nome} acabou de registrar que seu humor hoje é '{escolha_humor}'. Escreva uma reflexão profundamente FILOSÓFICA e madura (máximo 3 frases curtas) para ele ler agora. Não use aspas."
-                                
-                                resposta = chamar_ia_groq(prompt_sistema, prompt_humor)
-                                if resposta:
-                                    mensagem_final = resposta.replace('"', '').strip()
-                            except Exception as e:
-                                print(f"Erro IA Humor: {e}")
+                    escolha_humor = st.radio("Selecione:", opcoes_humor, index=idx_padrao, horizontal=False, label_visibility="collapsed")
                     
-                    # Salva a mensagem e manda a tela ir para a Etapa 2
-                    st.session_state[f'msg_humor_ia_{nome_logado}'] = mensagem_final
-                    st.session_state[f'etapa_popup_{nome_logado}'] = 2
-                    st.rerun() # <--- ISSO RECARREGA APENAS O POPUP AGORA, MOSTRANDO A ETAPA 2
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    
+                    if st.button("Salvar e Refletir", type="primary", use_container_width=True):
+                        registrar_humor_dia(nome_logado, escolha_humor)
+                        mensagem_final = f"O universo muda constantemente; nossa vida é o que nossos pensamentos fazem dela. Um excelente turno, {primeiro_nome}."
+                        
+                        if "GROQ_API_KEY" in st.secrets:
+                            with st.spinner("Buscando sabedoria para o seu dia... 🏛️"):
+                                try:
+                                    prompt_sistema = "Você é um sábio filósofo antigo (estilo Sêneca ou Marco Aurélio), acolhedor e profundo."
+                                    prompt_humor = f"O operador {primeiro_nome} acabou de registrar que seu humor hoje é '{escolha_humor}'. Escreva uma reflexão profundamente FILOSÓFICA e madura (máximo 3 frases curtas) para ele ler agora. Não use aspas."
+                                    resposta = chamar_ia_groq(prompt_sistema, prompt_humor)
+                                    if resposta:
+                                        mensagem_final = resposta.replace('"', '').strip()
+                                except:
+                                    pass
+                        
+                        st.session_state[f'msg_humor_ia_{nome_logado}'] = mensagem_final
+                        st.session_state[f'etapa_popup_{nome_logado}'] = 2
 
-            # --- ETAPA 2: A MENSAGEM FILOSÓFICA ---
-            elif st.session_state[f'etapa_popup_{nome_logado}'] == 2:
-                st.markdown(f"""
-                <div style='background-color: #f8fafc; border-left: 4px solid #64748b; padding: 25px; border-radius: 8px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>
-                    <p style='margin: 0; color: #334155; font-size: 1.1em; font-style: italic; line-height: 1.6; text-align: center;'>"{st.session_state[f'msg_humor_ia_{nome_logado}']}"</p>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # AQUI SIM, o st.rerun() serve para FECHAR o popup definitivamente
-                if st.button("Ir para o meu painel 🚀", type="primary", use_container_width=True):
-                    st.session_state['mostrar_popup_humor'] = False # Desativa o popup
-                    st.rerun()
+            # --- ETAPA 2 (Carrega instantaneamente sem dar rerun na tela toda!) ---
+            if st.session_state[f'etapa_popup_{nome_logado}'] == 2:
+                janela.empty() # Apaga a Etapa 1
+                with janela.container():
+                    st.markdown(f"""
+                    <div style='background-color: #f8fafc; border-left: 4px solid #64748b; padding: 25px; border-radius: 8px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>
+                        <p style='margin: 0; color: #334155; font-size: 1.1em; font-style: italic; line-height: 1.6; text-align: center;'>"{st.session_state[f'msg_humor_ia_{nome_logado}']}"</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    if st.button("Ir para o meu painel 🚀", type="primary", use_container_width=True):
+                        st.rerun() # Fechamento definitivo nativo do Streamlit!
 
-        # 3. Disparador do Popup
-        if st.session_state.get('mostrar_popup_humor', False):
+        # 3. Disparador do Popup Automático (Executa 1 vez e "consome" a variável)
+        if st.session_state.pop('abrir_popup_agora', False):
             exibir_popup_humor()
             
         # ==========================================================
@@ -3007,9 +3002,7 @@ else:
         humor_atual = carregar_humor_hoje(nome_logado)
         
         if humor_atual:
-            # Divide no mesmo padrão do WFM: 75% texto, 25% botão
             c_humor_txt, c_humor_btn = st.columns([3, 1])
-            
             with c_humor_txt:
                 st.markdown(f"""
                 <div style='background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0 15px; display: flex; align-items: center; height: 41px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);'>
@@ -3020,15 +3013,12 @@ else:
                 
             with c_humor_btn:
                 if st.button("🔄 Mudou?", use_container_width=True):
-                    st.session_state['mostrar_popup_humor'] = True
                     st.session_state[f'etapa_popup_{nome_logado}'] = 1
-                    st.rerun()
+                    exibir_popup_humor()
         else:
-            # Caso ele ainda não tenha votado (ou fechou o popup sem querer)
             if st.button("🌡️ Registrar meu Humor"):
-                st.session_state['mostrar_popup_humor'] = True
                 st.session_state[f'etapa_popup_{nome_logado}'] = 1
-                st.rerun()
+                exibir_popup_humor()
     # --- 🕒 CARTÃO DE PAUSAS DO WFM ---
         # ==========================================================
         # 🕒 ESCALA E PAUSAS (WFM) - MODO COMPACTO COM POPUP
