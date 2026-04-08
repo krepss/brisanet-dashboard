@@ -3463,7 +3463,7 @@ else:
 
             c_vol_chat, c_vol_voz = st.columns(2)
 
-            # --- PÓDIO DE CHAT ---
+            # --- PÓDIO DE CHAT COM IMAGENS ---
             with c_vol_chat:
                 st.markdown("#### 💬 Top 3 - Chat")
                 df_op_hist = carregar_historico_operacional()
@@ -3482,11 +3482,27 @@ else:
                         if not df_top_chat.empty:
                             for i, row in df_top_chat.iterrows():
                                 medalha = "🥇" if i == 0 else "🥈" if i == 1 else "🥉"
-                                nome_formatado = str(row['Colaborador']).title()
+                                nome_original = row['Colaborador']
+                                nome_formatado = str(nome_original).title()
                                 
+                                # 1. BUSCA A FOTO OU AVATAR DO OPERADOR
+                                img_perfil = obter_imagem_perfil(nome_original)
+                                
+                                # 2. DEFINE O HTML DA IMAGEM (OU ÍCONE)
+                                if img_perfil:
+                                    html_img = f'<img src="{img_perfil}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; margin-right: 15px; border: 2px solid #3498db; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">'
+                                else:
+                                    html_img = '<div style="width: 50px; height: 50px; border-radius: 50%; background-color: #f1f3f5; color: #666; display: flex; align-items: center; justify-content: center; font-size: 25px; margin-right: 15px;">👤</div>'
+
+                                # 3. MONTA O CARD PREMIUM COM FOTO ALINHADA
                                 st.markdown(f"""
-                                <div style="background-color: #f0f8ff; border-left: 5px solid #3498db; padding: 12px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-                                    <span style="font-weight: bold; color: #003366; font-size: 1.05em;">{medalha} {nome_formatado}</span>
+                                <div style="background-color: #f0f8ff; border-left: 5px solid #3498db; padding: 12px; border-radius: 8px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                                    <div style="display: flex; align-items: center;">
+                                        {html_img}
+                                        <div>
+                                            <span style="font-weight: bold; color: #003366; font-size: 1.05em;">{medalha} {nome_formatado}</span>
+                                        </div>
+                                    </div>
                                     <span style="background-color: #3498db; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.9em; font-weight: bold;">{int(row['Atendimentos'])} chats</span>
                                 </div>
                                 """, unsafe_allow_html=True)
@@ -3497,7 +3513,7 @@ else:
                 else:
                     st.caption("Nenhum histórico de Chat encontrado.")
 
-            # --- PÓDIO DE VOZ ---
+            # --- PÓDIO DE VOZ COM IMAGENS ---
             with c_vol_voz:
                 st.markdown("#### 📞 Top 3 - Voz")
                 df_voz_hist = carregar_historico_voz()
@@ -3516,11 +3532,27 @@ else:
                         if not df_top_voz.empty:
                             for i, row in df_top_voz.iterrows():
                                 medalha = "🥇" if i == 0 else "🥈" if i == 1 else "🥉"
-                                nome_formatado = str(row['Colaborador']).title()
+                                nome_original = row['Colaborador']
+                                nome_formatado = str(nome_original).title()
                                 
+                                # 1. BUSCA A FOTO OU AVATAR DO OPERADOR
+                                img_perfil = obter_imagem_perfil(nome_original)
+                                
+                                # 2. DEFINE O HTML DA IMAGEM (OU ÍCONE)
+                                if img_perfil:
+                                    html_img = f'<img src="{img_perfil}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; margin-right: 15px; border: 2px solid #9b59b6; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">'
+                                else:
+                                    html_img = '<div style="width: 50px; height: 50px; border-radius: 50%; background-color: #f1f3f5; color: #666; display: flex; align-items: center; justify-content: center; font-size: 25px; margin-right: 15px;">👤</div>'
+
+                                # 3. MONTA O CARD PREMIUM COM FOTO ALINHADA
                                 st.markdown(f"""
-                                <div style="background-color: #f5eef8; border-left: 5px solid #9b59b6; padding: 12px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-                                    <span style="font-weight: bold; color: #4a235a; font-size: 1.05em;">{medalha} {nome_formatado}</span>
+                                <div style="background-color: #f5eef8; border-left: 5px solid #9b59b6; padding: 12px; border-radius: 8px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                                    <div style="display: flex; align-items: center;">
+                                        {html_img}
+                                        <div>
+                                            <span style="font-weight: bold; color: #4a235a; font-size: 1.05em;">{medalha} {nome_formatado}</span>
+                                        </div>
+                                    </div>
                                     <span style="background-color: #9b59b6; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.9em; font-weight: bold;">{int(row['Atendimentos'])} lig.</span>
                                 </div>
                                 """, unsafe_allow_html=True)
