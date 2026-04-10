@@ -2636,18 +2636,19 @@ Vamos com tudo! 🔥"""
             st.markdown("### 🔮 Radar de Atenção")
             
             try:
-                # O Radar agora vai buscar a base de dados sozinho!
-                df_radar = carregar_historico_consolidado_gestor()
-                
-                if df_radar is not None and not df_radar.empty:
-                    # Tira a linha da média (se houver) e foca só nos operadores
-                    df_radar_limpo = df_radar[~df_radar['Colaborador'].str.startswith('⚠️')].copy()
-                    
+                if df_dados is not None and not df_dados.empty:
+                    # Pega apenas a métrica principal (TAM ou a média global)
+                    if tem_tam:
+                        df_radar_limpo = df_dados[df_dados['Indicador'] == 'TAM'].copy()
+                    else:
+                        df_radar_limpo = df_dados.groupby('Colaborador').agg({'Diamantes': 'sum', 'Max. Diamantes': 'sum'}).reset_index()
+                        df_radar_limpo['% Atingimento'] = df_radar_limpo.apply(lambda x: x['Diamantes']/x['Max. Diamantes'] if x['Max. Diamantes']>0 else 0, axis=1)
+
                     # Filtra quem está com o atingimento menor que 80% (0.80)
                     df_atencao = df_radar_limpo[df_radar_limpo['% Atingimento'] < 0.80].sort_values(by='% Atingimento', ascending=True)
                     
                     if not df_atencao.empty:
-                        st.warning(f"⚠️ **Ação Recomendada:** Identificamos {len(df_atencao)} operador(es) com atingimento crítico (< 80%). Sugere-se feedback 1:1.")
+                        st.warning(f"⚠️ **Ação Recomendada:** Identificamos {len(df_atencao)} operador(es) com atingimento crítico (< 80%) neste mês. Sugere-se feedback 1:1.")
                         
                         cols_radar = st.columns(len(df_atencao) if len(df_atencao) < 4 else 4)
                         for i, row in df_atencao.head(4).iterrows():
@@ -2666,9 +2667,9 @@ Vamos com tudo! 🔥"""
                         if len(df_atencao) > 4:
                             st.caption(f"+ {len(df_atencao) - 4} outros colaboradores na mesma situação.")
                     else:
-                        st.success("✅ **Radar Limpo!** Nenhum operador com qualidade crítica (<80%) neste momento. A equipe está voando!")
+                        st.success("✅ **Radar Limpo!** Nenhum operador com qualidade crítica (<80%) neste mês. A equipe está voando!")
                 else:
-                    st.info("Aguardando o upload da base de dados de Qualidade para gerar o Radar.")
+                    st.info("Aguardando o upload da base de dados para gerar o Radar deste mês.")
             except Exception as e:
                 st.error(f"Erro no Radar: {e}")
 # ------------------ SOFISTAS AI (GEMINI) ------------------
