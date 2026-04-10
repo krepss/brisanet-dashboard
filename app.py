@@ -2989,6 +2989,38 @@ else:
         st.markdown(f"<div style='display: flex; align-items: center; margin-top:-15px; color: #666; font-size:0.9em;'><span style='margin-right: 15px;'>📅 Referência: <b>{periodo_label}</b></span><span class='update-badge' style='background-color:#e0f7fa; color:#006064;'>🕒 Atualizado em: {obter_data_atualizacao()}</span>{tempo_empresa_str}</div>", unsafe_allow_html=True)
                  
         # ==========================================================
+        # 🎉 CELEBRAÇÃO VISUAL NATIVA (EFEITO UAU)
+        # ==========================================================
+        if f"celebrou_{nome_logado}" not in st.session_state:
+            try:
+                # Puxa a base completa
+                df_rank_limpo = carregar_historico_completo()
+                if df_rank_limpo is not None and not df_rank_limpo.empty:
+                    # Filtra só o mês que está selecionado na tela
+                    df_atual = df_rank_limpo[df_rank_limpo['Periodo'] == periodo_selecionado].copy()
+                    
+                    if not df_atual.empty:
+                        # Calcula quem são os 3 melhores do mês
+                        if 'TAM' in df_atual['Indicador'].unique():
+                            df_top = df_atual[df_atual['Indicador'] == 'TAM']
+                        else:
+                            df_top = df_atual.groupby('Colaborador').agg({'Diamantes': 'sum', 'Max. Diamantes': 'sum'}).reset_index()
+                            df_top['% Atingimento'] = df_top['Diamantes'] / df_top['Max. Diamantes']
+                        
+                        df_top = df_top.sort_values(by='% Atingimento', ascending=False).head(3)
+                        top_3_nomes = df_top['Colaborador'].astype(str).str.upper().tolist()
+                        
+                        # Se o operador logado for um dos 3, solta os balões!
+                        if nome_logado.upper() in top_3_nomes:
+                            st.balloons()
+                            st.toast(f"Parabéns, {primeiro_nome}! Você é destaque no ranking!", icon="🏆")
+                
+                # Marca que já verificou hoje (pra não soltar balão a cada clique)
+                st.session_state[f"celebrou_{nome_logado}"] = True
+            except:
+                pass 
+                
+        # ==========================================================
         # 🏛️ REFLEXÃO DIÁRIA (POPUP FILOSÓFICO DE 2 ETAPAS)
         # ==========================================================
         
