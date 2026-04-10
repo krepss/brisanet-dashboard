@@ -1169,21 +1169,20 @@ if os.path.exists(LOGO_FILE):
     except: pass
 primeiro_nome = nome_logado.split()[0] if nome_logado and str(nome_logado).strip() else "Usuário"
 # ==========================================================
-        # 🎉 CELEBRAÇÃO VISUAL NATIVA (EFEITO UAU)
-        # ==========================================================
-        if f"celebrou_{nome_logado}" not in st.session_state:
-            try:
-                # Verifica se a base de equipe existe e se ele está no TOP 3 de Qualidade
-                df_media_team = carregar_historico_consolidado_gestor()
-                if df_media_team is not None and not df_media_team.empty:
-                    df_top_estrelas = df_media_team[~df_media_team['Colaborador'].str.startswith('⚠️')].sort_values(by='% Atingimento', ascending=False).head(3)
-                    top_3_nomes = df_top_estrelas['Colaborador'].tolist()
-                    
-                    if nome_logado in top_3_nomes:
-                        st.balloons()  # Solta os balões na tela! 🎈
-                        st.toast("Parabéns! Você está no Top 3 do time em Qualidade!", icon="🏆")
-            except:
-                pass # Se der erro, ignora silenciosamente
+# 🎉 CELEBRAÇÃO VISUAL NATIVA (EFEITO UAU)
+# ==========================================================
+if f"celebrou_{nome_logado}" not in st.session_state:
+    try:
+    # Verifica se a base de equipe existe e se ele está no TOP 3 de Qualidade
+    df_media_team = carregar_historico_consolidado_gestor()
+       if df_media_team is not None and not df_media_team.empty:
+           df_top_estrelas = df_media_team[~df_media_team['Colaborador'].str.startswith('⚠️')].sort_values(by='% Atingimento', ascending=False).head(3)
+           top_3_nomes = df_top_estrelas['Colaborador'].tolist()            
+       if nome_logado in top_3_nomes:
+           st.balloons()  # Solta os balões na tela! 🎈
+           st.toast("Parabéns! Você está no Top 3 do time em Qualidade!", icon="🏆")
+    except:
+       pass # Se der erro, ignora silenciosamente
             
             # Marca que já celebrou hoje
             st.session_state[f"celebrou_{nome_logado}"] = True
