@@ -1184,9 +1184,8 @@ if f"celebrou_{nome_logado}" not in st.session_state:
             
     except:
         pass # Se der erro, ignora silenciosamente
-            
-            # Marca que já celebrou hoje
-            st.session_state[f"celebrou_{nome_logado}"] = True
+        # Marca que já celebrou hoje
+st.session_state[f"celebrou_{nome_logado}"] = True
 st.markdown(f"""
 <div class="top-banner">
     <div style="display: flex; align-items: center; gap: 20px;">
