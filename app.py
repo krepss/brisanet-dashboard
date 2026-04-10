@@ -2629,14 +2629,22 @@ Vamos com tudo! 🔥"""
         else: 
             st.info("Nenhum feedback registrado no sistema até o momento.")
     # ==========================================================
+            # ==========================================================
             # 🔮 RADAR DO GESTOR (ALERTAS DE ATENÇÃO)
             # ==========================================================
             st.markdown("---")
             st.markdown("### 🔮 Radar de Atenção")
             
             try:
-                if 'df_dados' in locals() and not df_dados.empty:
-                    df_atencao = df_dados[df_dados['% Atingimento'] < 0.80].sort_values(by='% Atingimento', ascending=True)
+                # O Radar agora vai buscar a base de dados sozinho!
+                df_radar = carregar_historico_consolidado_gestor()
+                
+                if df_radar is not None and not df_radar.empty:
+                    # Tira a linha da média (se houver) e foca só nos operadores
+                    df_radar_limpo = df_radar[~df_radar['Colaborador'].str.startswith('⚠️')].copy()
+                    
+                    # Filtra quem está com o atingimento menor que 80% (0.80)
+                    df_atencao = df_radar_limpo[df_radar_limpo['% Atingimento'] < 0.80].sort_values(by='% Atingimento', ascending=True)
                     
                     if not df_atencao.empty:
                         st.warning(f"⚠️ **Ação Recomendada:** Identificamos {len(df_atencao)} operador(es) com atingimento crítico (< 80%). Sugere-se feedback 1:1.")
@@ -2659,8 +2667,10 @@ Vamos com tudo! 🔥"""
                             st.caption(f"+ {len(df_atencao) - 4} outros colaboradores na mesma situação.")
                     else:
                         st.success("✅ **Radar Limpo!** Nenhum operador com qualidade crítica (<80%) neste momento. A equipe está voando!")
+                else:
+                    st.info("Aguardando o upload da base de dados de Qualidade para gerar o Radar.")
             except Exception as e:
-                st.caption(f"Não foi possível carregar o Radar no momento. Erro: {e}")
+                st.error(f"Erro no Radar: {e}")
 # ------------------ SOFISTAS AI (GEMINI) ------------------
     with tabs[12]:
         st.markdown("### 🤖 Sofistas AI - Assistente Operacional")
