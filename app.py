@@ -2993,32 +2993,30 @@ else:
         # ==========================================================
         if f"celebrou_{nome_logado}" not in st.session_state:
             try:
-                # Puxa a base completa
-                df_rank_limpo = carregar_historico_completo()
-                if df_rank_limpo is not None and not df_rank_limpo.empty:
-                    # Filtra só o mês que está selecionado na tela
-                    df_atual = df_rank_limpo[df_rank_limpo['Periodo'] == periodo_selecionado].copy()
+                if df_dados is not None and not df_dados.empty:
+                    # Usa a base já carregada e filtrada para o mês selecionado
+                    if tem_tam:
+                        df_top = df_dados[df_dados['Indicador'] == 'TAM'].copy()
+                    else:
+                        df_top = df_dados.groupby('Colaborador').agg({'Diamantes': 'sum', 'Max. Diamantes': 'sum'}).reset_index()
+                        df_top['% Atingimento'] = df_top.apply(lambda x: x['Diamantes']/x['Max. Diamantes'] if x['Max. Diamantes']>0 else 0, axis=1)
                     
-                    if not df_atual.empty:
-                        # Calcula quem são os 3 melhores do mês
-                        if 'TAM' in df_atual['Indicador'].unique():
-                            df_top = df_atual[df_atual['Indicador'] == 'TAM']
-                        else:
-                            df_top = df_atual.groupby('Colaborador').agg({'Diamantes': 'sum', 'Max. Diamantes': 'sum'}).reset_index()
-                            df_top['% Atingimento'] = df_top['Diamantes'] / df_top['Max. Diamantes']
+                    # Pega os 3 melhores
+                    df_top = df_top.sort_values(by='% Atingimento', ascending=False).head(3)
+                    
+                    # Usa o normalizar_chave para ignorar acentos, espaços e letras maiúsculas/minúsculas!
+                    top_3_nomes = [normalizar_chave(n) for n in df_top['Colaborador'].tolist()]
+                    
+                    # Verifica se o operador logado está no TOP 3 (normalizando o nome dele também)
+                    if normalizar_chave(nome_logado) in top_3_nomes:
+                        st.balloons()
+                        st.toast(f"Parabéns, {primeiro_nome}! Você é destaque no ranking de Qualidade!", icon="🏆")
                         
-                        df_top = df_top.sort_values(by='% Atingimento', ascending=False).head(3)
-                        top_3_nomes = df_top['Colaborador'].astype(str).str.upper().tolist()
-                        
-                        # Se o operador logado for um dos 3, solta os balões!
-                        if nome_logado.upper() in top_3_nomes:
-                            st.balloons()
-                            st.toast(f"Parabéns, {primeiro_nome}! Você é destaque no ranking!", icon="🏆")
-                
-                # Marca que já verificou hoje (pra não soltar balão a cada clique)
-                st.session_state[f"celebrou_{nome_logado}"] = True
-            except:
+            except Exception as e:
                 pass 
+                
+            # Trava para não soltar balão a cada clique na tela
+            st.session_state[f"celebrou_{nome_logado}"] = True
                 
         # ==========================================================
         # 🏛️ REFLEXÃO DIÁRIA (POPUP FILOSÓFICO DE 2 ETAPAS)
