@@ -1168,6 +1168,25 @@ if os.path.exists(LOGO_FILE):
         logo_html = f'<img src="data:image/png;base64,{encoded_string}" style="height: 60px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">'
     except: pass
 primeiro_nome = nome_logado.split()[0] if nome_logado and str(nome_logado).strip() else "Usuário"
+# ==========================================================
+        # 🎉 CELEBRAÇÃO VISUAL NATIVA (EFEITO UAU)
+        # ==========================================================
+        if f"celebrou_{nome_logado}" not in st.session_state:
+            try:
+                # Verifica se a base de equipe existe e se ele está no TOP 3 de Qualidade
+                df_media_team = carregar_historico_consolidado_gestor()
+                if df_media_team is not None and not df_media_team.empty:
+                    df_top_estrelas = df_media_team[~df_media_team['Colaborador'].str.startswith('⚠️')].sort_values(by='% Atingimento', ascending=False).head(3)
+                    top_3_nomes = df_top_estrelas['Colaborador'].tolist()
+                    
+                    if nome_logado in top_3_nomes:
+                        st.balloons()  # Solta os balões na tela! 🎈
+                        st.toast("Parabéns! Você está no Top 3 do time em Qualidade!", icon="🏆")
+            except:
+                pass # Se der erro, ignora silenciosamente
+            
+            # Marca que já celebrou hoje
+            st.session_state[f"celebrou_{nome_logado}"] = True
 st.markdown(f"""
 <div class="top-banner">
     <div style="display: flex; align-items: center; gap: 20px;">
@@ -2610,7 +2629,39 @@ Vamos com tudo! 🔥"""
             st.dataframe(df_fbs_hist.iloc[::-1], use_container_width=True, hide_index=True)
         else: 
             st.info("Nenhum feedback registrado no sistema até o momento.")
-
+    # ==========================================================
+            # 🔮 RADAR DO GESTOR (ALERTAS DE ATENÇÃO)
+            # ==========================================================
+            st.markdown("---")
+            st.markdown("### 🔮 Radar de Atenção")
+            
+            try:
+                if 'df_dados' in locals() and not df_dados.empty:
+                    df_atencao = df_dados[df_dados['% Atingimento'] < 0.80].sort_values(by='% Atingimento', ascending=True)
+                    
+                    if not df_atencao.empty:
+                        st.warning(f"⚠️ **Ação Recomendada:** Identificamos {len(df_atencao)} operador(es) com atingimento crítico (< 80%). Sugere-se feedback 1:1.")
+                        
+                        cols_radar = st.columns(len(df_atencao) if len(df_atencao) < 4 else 4)
+                        for i, row in df_atencao.head(4).iterrows():
+                            with cols_radar[i % 4]:
+                                nome_alerta = str(row['Colaborador']).title().split()[0]
+                                nota_alerta = row['% Atingimento']
+                                
+                                st.markdown(f"""
+                                <div style="background-color: #fef2f2; border-left: 5px solid #ef4444; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 15px;">
+                                    <p style="margin: 0; font-size: 0.85em; color: #7f1d1d; font-weight: bold;">Queda de Performance</p>
+                                    <p style="margin: 5px 0 0 0; font-size: 1.2em; color: #991b1b; font-weight: 800;">{nome_alerta}</p>
+                                    <p style="margin: 0; font-size: 1em; color: #ef4444; font-weight: bold;">{nota_alerta:.1%}</p>
+                                </div>
+                                """, unsafe_allow_html=True)
+                        
+                        if len(df_atencao) > 4:
+                            st.caption(f"+ {len(df_atencao) - 4} outros colaboradores na mesma situação.")
+                    else:
+                        st.success("✅ **Radar Limpo!** Nenhum operador com qualidade crítica (<80%) neste momento. A equipe está voando!")
+            except Exception as e:
+                st.caption(f"Não foi possível carregar o Radar no momento. Erro: {e}")
 # ------------------ SOFISTAS AI (GEMINI) ------------------
     with tabs[12]:
         st.markdown("### 🤖 Sofistas AI - Assistente Operacional")
