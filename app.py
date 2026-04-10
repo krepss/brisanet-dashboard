@@ -2635,23 +2635,34 @@ Vamos com tudo! 🔥"""
         st.info("Faça perguntas sobre os resultados da equipe ou peça para eu redigir um feedback baseado nos números!")
 
         # ==========================================================
-        # 🔮 RADAR DO GESTOR (ALERTAS DE ATENÇÃO)
+        # 🔮 RADAR DO GESTOR (ALERTAS DE ATENÇÃO SEM PONTUALIDADE)
         # ==========================================================
         st.markdown("---")
         st.markdown("### 🔮 Radar de Atenção")
         
         try:
             if df_dados is not None and not df_dados.empty:
+                
+                # --- MATEMÁTICA TRAVADA PARA IGNORAR PONTUALIDADE ---
                 if tem_tam:
-                    df_radar_limpo = df_dados[df_dados['Indicador'] == 'TAM'].copy()
+                    df_base_radar = df_dados[df_dados['Indicador'] == 'TAM'][['Colaborador', 'Diamantes', 'Max. Diamantes']].set_index('Colaborador').copy()
+                    df_pont_radar = df_dados[df_dados['Indicador'] == 'PONTUALIDADE'][['Colaborador', 'Diamantes', 'Max. Diamantes']].set_index('Colaborador').copy()
+                    
+                    # Subtrai os diamantes de pontualidade do total do TAM
+                    df_base_radar = df_base_radar.subtract(df_pont_radar, fill_value=0)
+                    df_base_radar['% Atingimento'] = df_base_radar.apply(lambda row: row['Diamantes'] / row['Max. Diamantes'] if row['Max. Diamantes'] > 0 else 0, axis=1)
+                    df_radar_limpo = df_base_radar.reset_index()
                 else:
-                    df_radar_limpo = df_dados.groupby('Colaborador').agg({'Diamantes': 'sum', 'Max. Diamantes': 'sum'}).reset_index()
+                    # Remove o indicador PONTUALIDADE antes de somar os diamantes
+                    df_calc_radar = df_dados[df_dados['Indicador'] != 'PONTUALIDADE']
+                    df_radar_limpo = df_calc_radar.groupby('Colaborador').agg({'Diamantes': 'sum', 'Max. Diamantes': 'sum'}).reset_index()
                     df_radar_limpo['% Atingimento'] = df_radar_limpo.apply(lambda x: x['Diamantes']/x['Max. Diamantes'] if x['Max. Diamantes']>0 else 0, axis=1)
 
+                # Filtra quem está com o atingimento menor que 80% (0.80) no resultado limpo
                 df_atencao = df_radar_limpo[df_radar_limpo['% Atingimento'] < 0.80].sort_values(by='% Atingimento', ascending=True)
                 
                 if not df_atencao.empty:
-                    st.warning(f"⚠️ **Ação Recomendada:** Identificamos {len(df_atencao)} operador(es) com atingimento crítico (< 80%) neste mês. Sugere-se feedback 1:1.")
+                    st.warning(f"⚠️ **Ação Recomendada:** Identificamos {len(df_atencao)} operador(es) com qualidade crítica (< 80% desconsiderando Pontualidade). Sugere-se feedback 1:1.")
                     
                     cols_radar = st.columns(len(df_atencao) if len(df_atencao) < 4 else 4)
                     for i, row in df_atencao.head(4).iterrows():
@@ -2670,7 +2681,7 @@ Vamos com tudo! 🔥"""
                     if len(df_atencao) > 4:
                         st.caption(f"+ {len(df_atencao) - 4} outros colaboradores na mesma situação.")
                 else:
-                    st.success("✅ **Radar Limpo!** Nenhum operador com qualidade crítica (<80%) neste mês. A equipe está voando!")
+                    st.success("✅ **Radar Limpo!** Nenhum operador com qualidade crítica (<80%) neste mês (Desconsiderando Pontualidade). A equipe está voando!")
             else:
                 st.info("Aguardando o upload da base de dados para gerar o Radar deste mês.")
         except Exception as e:
