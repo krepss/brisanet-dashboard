@@ -1182,8 +1182,8 @@ if f"celebrou_{nome_logado}" not in st.session_state:
             st.balloons()  # Solta os balões na tela! 🎈
             st.toast("Parabéns! Você está no Top 3 do time em Qualidade!", icon="🏆")
             
-        except:
-            pass # Se der erro, ignora silenciosamente
+    except:
+        pass # Se der erro, ignora silenciosamente
             
             # Marca que já celebrou hoje
             st.session_state[f"celebrou_{nome_logado}"] = True
