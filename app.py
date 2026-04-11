@@ -2632,25 +2632,24 @@ Vamos com tudo! 🔥"""
                     df_base_radar = df_dados[df_dados['Indicador'] == 'TAM'][['Colaborador', 'Diamantes', 'Max. Diamantes']].set_index('Colaborador').copy()
                     df_pont_radar = df_dados[df_dados['Indicador'] == 'PONTUALIDADE'][['Colaborador', 'Diamantes', 'Max. Diamantes']].set_index('Colaborador').copy()
                     
-                    # Subtrai os diamantes de pontualidade do total do TAM
                     df_base_radar = df_base_radar.subtract(df_pont_radar, fill_value=0)
                     df_base_radar['% Atingimento'] = df_base_radar.apply(lambda row: row['Diamantes'] / row['Max. Diamantes'] if row['Max. Diamantes'] > 0 else 0, axis=1)
                     df_radar_limpo = df_base_radar.reset_index()
                 else:
-                    # Remove o indicador PONTUALIDADE antes de somar os diamantes
                     df_calc_radar = df_dados[df_dados['Indicador'] != 'PONTUALIDADE']
                     df_radar_limpo = df_calc_radar.groupby('Colaborador').agg({'Diamantes': 'sum', 'Max. Diamantes': 'sum'}).reset_index()
                     df_radar_limpo['% Atingimento'] = df_radar_limpo.apply(lambda x: x['Diamantes']/x['Max. Diamantes'] if x['Max. Diamantes']>0 else 0, axis=1)
 
-                # Filtra quem está com o atingimento menor que 80% (0.80) no resultado limpo
                 df_atencao = df_radar_limpo[df_radar_limpo['% Atingimento'] < 0.80].sort_values(by='% Atingimento', ascending=True)
                 
                 if not df_atencao.empty:
                     st.warning(f"⚠️ **Ação Recomendada:** Identificamos {len(df_atencao)} operador(es) com qualidade crítica (< 80% desconsiderando Pontualidade). Sugere-se feedback 1:1.")
                     
                     cols_radar = st.columns(len(df_atencao) if len(df_atencao) < 4 else 4)
-                    for i, row in df_atencao.head(4).iterrows():
-                        with cols_radar[i % 4]:
+                    
+                    # CORREÇÃO AQUI: O "enumerate" força os cards a ficarem perfeitamente alinhados (0, 1, 2, 3)
+                    for idx, (_, row) in enumerate(df_atencao.head(4).iterrows()):
+                        with cols_radar[idx]:
                             nome_alerta = str(row['Colaborador']).title().split()[0]
                             nota_alerta = row['% Atingimento']
                             
@@ -2670,8 +2669,6 @@ Vamos com tudo! 🔥"""
                 st.info("Aguardando o upload da base de dados para gerar o Radar deste mês.")
         except Exception as e:
             st.error(f"Erro no Radar: {e}")
-
-        st.markdown("---")
 
         # --- CAIXA DE CHAT DA IA ---
         if "GROQ_API_KEY" in st.secrets:
