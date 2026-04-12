@@ -814,7 +814,8 @@ def salvar_escala_no_csv(conteudo_txt, data_inicio, data_fim):
     
     linhas = []
     for l in conteudo_txt.split('\n'):
-        if "," in l and ":" in l:
+        # Nova validação: Mais flexível. Só precisa ter uma vírgula e um tamanho mínimo, aceitando folgas e férias!
+        if "," in l and len(l.strip()) > 10:
             linhas.append({
                 "ID_Upload": id_up, 
                 "Data_Registro": hoje, 
