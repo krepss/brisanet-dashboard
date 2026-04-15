@@ -3988,21 +3988,20 @@ with tab_manual:
         
     with st.expander("🎓 Tutor Técnico (Aprenda a Testar)"):
         st.info("Escolha a ferramenta que você precisa usar e o sistema do cliente. A IA vai te dar o comando exato e te ensinar a ler o resultado.")
+        c_fer_1, c_fer_2 = st.columns(2)
+        ferramenta_sel = c_fer_1.selectbox("Qual ferramenta você quer aprender a usar?", [
+            "Nmap (Verificar Filtro de Portas)", 
+            "Traceroute / Tracert (Verificar Rota)", 
+            "Ping estendido (Verificar Perda de Pacote)", 
+            "Wireshark / tcpdump (Análise de Tráfego)", 
+            "Testa Link / Wget (Forçar Banda)"
+        ])
+        os_sel = c_fer_2.selectbox("Qual o sistema do cliente?", ["Windows", "Linux", "MacOS", "Roteador Mikrotik"])
             
-            c_fer_1, c_fer_2 = st.columns(2)
-            ferramenta_sel = c_fer_1.selectbox("Qual ferramenta você quer aprender a usar?", [
-                "Nmap (Verificar Filtro de Portas)", 
-                "Traceroute / Tracert (Verificar Rota)", 
-                "Ping estendido (Verificar Perda de Pacote)", 
-                "Wireshark / tcpdump (Análise de Tráfego)", 
-                "Testa Link / Wget (Forçar Banda)"
-            ])
-            os_sel = c_fer_2.selectbox("Qual o sistema do cliente?", ["Windows", "Linux", "MacOS", "Roteador Mikrotik"])
-            
-            if st.button("📚 Me ensina a fazer esse teste passo a passo", type="primary", use_container_width=True):
-                if "GROQ_API_KEY" in st.secrets:
-                    with st.spinner(f"O Sofistas AI está preparando o tutorial prático de {ferramenta_sel}..."):
-                        try:
+        if st.button("📚 Me ensina a fazer esse teste passo a passo", type="primary", use_container_width=True):
+            if "GROQ_API_KEY" in st.secrets:
+                with st.spinner(f"O Sofistas AI está preparando o tutorial prático de {ferramenta_sel}..."):
+                    try:
                             # O Prompt que transforma a IA num professor paciente
                             prompt_sistema = """Você é um professor sênior de redes, especialista em suporte NOC N1.
                             Sua missão é ensinar um operador júnior a realizar testes de rede de forma MUITO didática, simples e direta.
