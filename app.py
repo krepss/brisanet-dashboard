@@ -3985,46 +3985,48 @@ with tab_manual:
         
         💡 **Dica de Ouro:** Verifique no Cacti se outros clientes da mesma OLT estão navegando. Tente testar com a ONU em modo roteador ou configure uma VPN PPPoE no PC do cliente.
         """)
+# ==========================================================
+    # 🎓 TUTOR TÉCNICO (FIXO NO FINAL DA PÁGINA DO OPERADOR)
+    # ==========================================================
+    st.markdown("---")
+    with st.expander("🎓 Tutor Técnico: Aprenda a Fazer os Testes do NOC (Passo a Passo)", expanded=False):
+        st.info("Não sabe usar alguma ferramenta exigida pelo NOC? Escolha abaixo e a IA te dá o comando exato e te ensina a ler o resultado!")
         
-    with st.expander("🎓 Tutor Técnico (Aprenda a Testar)"):
-        st.info("Escolha a ferramenta que você precisa usar e o sistema do cliente. A IA vai te dar o comando exato e te ensinar a ler o resultado.")
         c_fer_1, c_fer_2 = st.columns(2)
-        ferramenta_sel = c_fer_1.selectbox("Qual ferramenta você quer aprender a usar?", [
+        ferramenta_sel = c_fer_1.selectbox("Qual ferramenta você precisa usar?", [
             "Nmap (Verificar Filtro de Portas)", 
             "Traceroute / Tracert (Verificar Rota)", 
             "Ping estendido (Verificar Perda de Pacote)", 
             "Wireshark / tcpdump (Análise de Tráfego)", 
             "Testa Link / Wget (Forçar Banda)"
         ])
-        os_sel = c_fer_2.selectbox("Qual o sistema do cliente?", ["Windows", "Linux", "MacOS", "Roteador Mikrotik"])
-            
-        if st.button("📚 Me ensina a fazer esse teste passo a passo", type="primary", use_container_width=True):
+        os_sel = c_fer_2.selectbox("Qual o sistema do cliente?", ["Windows", "Linux", "MacOS", "Roteador Mikrotik", "Prompt do Roteador (Geral)"])
+        
+        if st.button("📚 Me ensina a fazer esse teste agora", type="primary", use_container_width=True):
             if "GROQ_API_KEY" in st.secrets:
-                with st.spinner(f"O Sofistas AI está preparando o tutorial prático de {ferramenta_sel}..."):
+                with st.spinner(f"Sofistas AI está preparando o tutorial prático de {ferramenta_sel}..."):
                     try:
-                            # O Prompt que transforma a IA num professor paciente
-                            prompt_sistema = """Você é um professor sênior de redes, especialista em suporte NOC N1.
-                            Sua missão é ensinar um operador júnior a realizar testes de rede de forma MUITO didática, simples e direta.
-                            Sempre inclua:
-                            1. Como abrir o terminal/programa.
-                            2. O comando exato que ele deve copiar e colar (use blocos de código).
-                            3. Como parar o teste (ex: Ctrl+C).
-                            4. Como interpretar o resultado (o que é um resultado 'Normal' e o que indica 'Problema')."""
-                            
-                            prompt_usuario = f"Explique o passo a passo prático de como usar a ferramenta '{ferramenta_sel}' no sistema operacional '{os_sel}'."
-                            
-                            tutorial_gerado = chamar_ia_groq(prompt_sistema, prompt_usuario)
-                            
-                            st.markdown("<div style='background-color: #f0fdf4; border-left: 5px solid #22c55e; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>", unsafe_allow_html=True)
-                            st.markdown(tutorial_gerado)
-                            st.markdown("</div><br>", unsafe_allow_html=True)
-                            
-                        except Exception as e:
-                            st.error(f"Erro ao conectar com a IA: {e}")
-                else:
-                    st.warning("Chave da IA não configurada.")
-        st.markdown("---")
-
+                        # O Prompt que transforma a IA num professor paciente
+                        prompt_sistema = """Você é um professor sênior de redes, especialista em suporte NOC N1 da Brisanet.
+                        Sua missão é ensinar um operador júnior a realizar testes de rede de forma MUITO didática, simples e direta.
+                        Sempre inclua:
+                        1. Como abrir o terminal/programa.
+                        2. O comando exato que ele deve copiar e colar (use blocos de código com exemplos visuais).
+                        3. Como parar o teste (ex: Ctrl+C), se aplicável.
+                        4. Como interpretar o resultado: explique claramente o que é um resultado 'Normal' e o que indica 'Problema' para ele saber se deve ou não abrir o chamado."""
+                        
+                        prompt_usuario = f"Explique o passo a passo prático de como usar a ferramenta '{ferramenta_sel}' no sistema operacional '{os_sel}'."
+                        
+                        tutorial_gerado = chamar_ia_groq(prompt_sistema, prompt_usuario)
+                        
+                        st.markdown("<div style='background-color: #f0fdf4; border-left: 5px solid #22c55e; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-top: 15px;'>", unsafe_allow_html=True)
+                        st.markdown(tutorial_gerado)
+                        st.markdown("</div><br>", unsafe_allow_html=True)
+                        
+                    except Exception as e:
+                        st.error(f"Erro ao conectar com a IA: {e}")
+            else:
+                st.warning("⚠️ Chave da IA (GROQ_API_KEY) não configurada pelo gestor.")
 # ==========================================
 # RODAPÉ DO SISTEMA
 # ==========================================
