@@ -3985,12 +3985,9 @@ with tab_manual:
         
         💡 **Dica de Ouro:** Verifique no Cacti se outros clientes da mesma OLT estão navegando. Tente testar com a ONU em modo roteador ou configure uma VPN PPPoE no PC do cliente.
         """)
-                            # ==========================================================
-        # 🎓 TUTOR TÉCNICO: COMO FAZER OS TESTES (PASSO A PASSO)
-        # ==========================================================
-        st.markdown("#### 🎓 Tutor Técnico (Aprenda a Testar)")
-        with st.expander("Não sabe usar o Nmap, Ping ou Wireshark? A IA te ensina!", expanded=False):
-            st.info("Escolha a ferramenta que você precisa usar e o sistema do cliente. A IA vai te dar o comando exato e te ensinar a ler o resultado.")
+        
+    with st.expander("🎓 Tutor Técnico (Aprenda a Testar)"):
+        st.info("Escolha a ferramenta que você precisa usar e o sistema do cliente. A IA vai te dar o comando exato e te ensinar a ler o resultado.")
             
             c_fer_1, c_fer_2 = st.columns(2)
             ferramenta_sel = c_fer_1.selectbox("Qual ferramenta você quer aprender a usar?", [
