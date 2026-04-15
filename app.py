@@ -3907,125 +3907,87 @@ else:
                 else:
                     st.write("Nenhum recado recente por aqui.")
 
-with tab_manual:
-    st.markdown("### 📚 Manual de Testes para Abertura de Chamados (NOC N1)")
-    st.info("Consulte os requisitos mínimos e dicas antes de escalar um chamado para o NOC.")
+# ---------------------------------------------------------
+    # ABA 8: MANUAL NOC N1
+    # ---------------------------------------------------------
+    with tab_manual:
+        st.markdown("### 📚 Manual de Testes para Abertura de Chamados (NOC N1)")
+        st.info("Consulte os requisitos mínimos e dicas antes de escalar um chamado para o NOC.")
 
-    with st.expander("🌐 PROBLEMA COM SITE OU SOFTWARE"):
-        st.markdown("""
-        **Tipos de problema:** Site não abre | Aplicação falhando | Lentidão no site
-        
-        **📋 Requisitos Mínimos para o Chamado:**
-        * Nome do cliente e OLT
-        * Número de Série da ONU
-        * IP válido do NAT e IP do CGNAT
-        * Domínio e IP do site
-        * Traceroute e Ping
-        * Erro apresentado (Se não for foto, gravar vídeo e mandar link do drive)
-        * Scan nas portas utilizadas para acesso web
-        * Testes a partir de outros equipamentos
-        
-        💡 **Dica de Ouro:** Inspecione elementos (Network) ou use softwares como Wireshark/tcpdump para analisar o tráfego. Anexe o arquivo `.pcap` se possível. Teste também se a falha ocorre por outra operadora.
-        """)
+        with st.expander("🌐 PROBLEMA COM SITE OU SOFTWARE"):
+            st.markdown("""
+            **Tipos de problema:** Site não abre | Aplicação falhando | Lentidão no site
+            
+            **📋 Requisitos Mínimos para o Chamado:**
+            * Nome do cliente e OLT
+            * Número de Série da ONU
+            * IP válido do NAT e IP do CGNAT
+            * Domínio e IP do site
+            * Traceroute e Ping
+            * Erro apresentado (Se não for foto, gravar vídeo e mandar link do drive)
+            * Scan nas portas utilizadas para acesso web
+            * Testes a partir de outros equipamentos
+            
+            💡 **Dica de Ouro:** Inspecione elementos (Network) ou use softwares como Wireshark/tcpdump para analisar o tráfego. Anexe o arquivo `.pcap` se possível. Teste também se a falha ocorre por outra operadora.
+            """)
 
-    with st.expander("🚀 PLANO NÃO ATINGE O CONTRATADO"):
-        st.markdown("""
-        **Fatores a analisar:** 1. **Teste via cabo de rede:** Checar categoria do cabo, testar por ping e checar barramento da placa de rede.
-        2. **Análise da máquina:** Verificar processamento, memória, espaço em disco e capacidade da placa.
-        3. **Comunicação externa:** Ping para DNS do Google para atestar estabilidade mínima.
-        
-        **📋 Requisitos Mínimos para o Chamado:**
-        * Nome do cliente e OLT
-        * Número de Série da ONU e IP do CGNAT
-        * Plano contratado
-        * Registro por foto ou vídeo do plano atingido (Sem cortes, mostrando que está no cabo)
-        * Teste de ping e descrição de tudo que foi testado
-        
-        💡 **Dica de Ouro:** Force a banda com vários arquivos simultâneos (de hospedagens diferentes) acompanhando via placa de rede. Velocímetros comuns podem ser imprecisos.
-        """)
+        with st.expander("🚀 PLANO NÃO ATINGE O CONTRATADO"):
+            st.markdown("""
+            **Fatores a analisar:** 1. **Teste via cabo de rede:** Checar categoria do cabo, testar por ping e checar barramento da placa de rede.
+            2. **Análise da máquina:** Verificar processamento, memória, espaço em disco e capacidade da placa.
+            3. **Comunicação externa:** Ping para DNS do Google para atestar estabilidade mínima.
+            
+            **📋 Requisitos Mínimos para o Chamado:**
+            * Nome do cliente e OLT
+            * Número de Série da ONU e IP do CGNAT
+            * Plano contratado
+            * Registro por foto ou vídeo do plano atingido (Sem cortes, mostrando que está no cabo)
+            * Teste de ping e descrição de tudo que foi testado
+            
+            💡 **Dica de Ouro:** Force a banda com vários arquivos simultâneos (de hospedagens diferentes) acompanhando via placa de rede. Velocímetros comuns podem ser imprecisos.
+            """)
 
-    with st.expander("🎮 PROBLEMA COM JOGO"):
-        st.markdown("""
-        **Tipos de problema:** Falha ao acessar a sala | Latência alta
-        
-        **📋 Requisitos Mínimos para o Chamado:**
-        * Nome do cliente e OLT
-        * Número de Série da ONU
-        * IP válido do NAT e IP do CGNAT
-        * Domínio e IP do servidor do jogo
-        * Traceroute e Ping (de múltiplas origens, se possível)
-        * Erro apresentado
-        
-        💡 **Dica de Ouro:** Identifique se é console, mobile ou PC (cabo ou Wi-Fi). Pesquise em fóruns ou no *Downdetector* se o servidor do jogo não está em manutenção geral antes de abrir o chamado.
-        """)
+        with st.expander("🎮 PROBLEMA COM JOGO"):
+            st.markdown("""
+            **Tipos de problema:** Falha ao acessar a sala | Latência alta
+            
+            **📋 Requisitos Mínimos para o Chamado:**
+            * Nome do cliente e OLT
+            * Número de Série da ONU
+            * IP válido do NAT e IP do CGNAT
+            * Domínio e IP do servidor do jogo
+            * Traceroute e Ping (de múltiplas origens, se possível)
+            * Erro apresentado
+            
+            💡 **Dica de Ouro:** Identifique se é console, mobile ou PC (cabo ou Wi-Fi). Pesquise em fóruns ou no *Downdetector* se o servidor do jogo não está em manutenção geral antes de abrir o chamado.
+            """)
 
-    with st.expander("🔴 FALHA MASSIVA EM UMA REGIÃO OU GERAL"):
-        st.markdown("""
-        **📋 Requisitos Mínimos para o Chamado:**
-        * Nome do cliente e OLT
-        * Número de Série da ONU e IP do CGNAT
-        * Descrição clara do que ocorre e serviço afetado
-        * Testes possíveis realizados
-        
-        💡 **Dica de Ouro:** Verifique o tráfego da OLT via Cacti e a comunicação ICMP via Raumil. Em reclamações em massa, consulte o *Downdetector* (Google, YouTube, Pokémon GO, etc.) para garantir que não é uma queda global do serviço externo.
-        """)
+        with st.expander("🔴 FALHA MASSIVA EM UMA REGIÃO OU GERAL"):
+            st.markdown("""
+            **📋 Requisitos Mínimos para o Chamado:**
+            * Nome do cliente e OLT
+            * Número de Série da ONU e IP do CGNAT
+            * Descrição clara do que ocorre e serviço afetado
+            * Testes possíveis realizados
+            
+            💡 **Dica de Ouro:** Verifique o tráfego da OLT via Cacti e a comunicação ICMP via Raumil. Em reclamações em massa, consulte o *Downdetector* (Google, YouTube, Pokémon GO, etc.) para garantir que não é uma queda global do serviço externo.
+            """)
 
-    with st.expander("🔌 PPPOE NÃO CONECTA / CONECTA E NÃO NAVEGA"):
-        st.markdown("""
-        **📋 Requisitos Mínimos (Não Conecta):**
-        * Nome do cliente, OLT e Plano
-        * Login de autenticação e Número de Série da ONU
-        * IP Fixo (se houver) e Teste na ONU
-        
-        **📋 Requisitos Mínimos (Conecta e Não Navega):**
-        * Nome do cliente, OLT e Número de Série da ONU
-        * IP Fixo / IP do CGNAT e Teste na ONU
-        * Tracert para IP externo (ex: 8.8.8.8) com origem na ONU
-        
-        💡 **Dica de Ouro:** Verifique no Cacti se outros clientes da mesma OLT estão navegando. Tente testar com a ONU em modo roteador ou configure uma VPN PPPoE no PC do cliente.
-        """)
-# ==========================================================
-    # 🎓 TUTOR TÉCNICO (FIXO NO FINAL DA PÁGINA DO OPERADOR)
-    # ==========================================================
-    st.markdown("---")
-    with st.expander("🎓 Tutor Técnico: Aprenda a Fazer os Testes do NOC (Passo a Passo)", expanded=False):
-        st.info("Não sabe usar alguma ferramenta exigida pelo NOC? Escolha abaixo e a IA te dá o comando exato e te ensina a ler o resultado!")
-        
-        c_fer_1, c_fer_2 = st.columns(2)
-        ferramenta_sel = c_fer_1.selectbox("Qual ferramenta você precisa usar?", [
-            "Nmap (Verificar Filtro de Portas)", 
-            "Traceroute / Tracert (Verificar Rota)", 
-            "Ping estendido (Verificar Perda de Pacote)", 
-            "Wireshark / tcpdump (Análise de Tráfego)", 
-            "Testa Link / Wget (Forçar Banda)"
-        ])
-        os_sel = c_fer_2.selectbox("Qual o sistema do cliente?", ["Windows", "Linux", "MacOS", "Roteador Mikrotik", "Prompt do Roteador (Geral)"])
-        
-        if st.button("📚 Me ensina a fazer esse teste agora", type="primary", use_container_width=True):
-            if "GROQ_API_KEY" in st.secrets:
-                with st.spinner(f"Sofistas AI está preparando o tutorial prático de {ferramenta_sel}..."):
-                    try:
-                        # O Prompt que transforma a IA num professor paciente
-                        prompt_sistema = """Você é um professor sênior de redes, especialista em suporte NOC N1 da Brisanet.
-                        Sua missão é ensinar um operador júnior a realizar testes de rede de forma MUITO didática, simples e direta.
-                        Sempre inclua:
-                        1. Como abrir o terminal/programa.
-                        2. O comando exato que ele deve copiar e colar (use blocos de código com exemplos visuais).
-                        3. Como parar o teste (ex: Ctrl+C), se aplicável.
-                        4. Como interpretar o resultado: explique claramente o que é um resultado 'Normal' e o que indica 'Problema' para ele saber se deve ou não abrir o chamado."""
-                        
-                        prompt_usuario = f"Explique o passo a passo prático de como usar a ferramenta '{ferramenta_sel}' no sistema operacional '{os_sel}'."
-                        
-                        tutorial_gerado = chamar_ia_groq(prompt_sistema, prompt_usuario)
-                        
-                        st.markdown("<div style='background-color: #f0fdf4; border-left: 5px solid #22c55e; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-top: 15px;'>", unsafe_allow_html=True)
-                        st.markdown(tutorial_gerado)
-                        st.markdown("</div><br>", unsafe_allow_html=True)
-                        
-                    except Exception as e:
-                        st.error(f"Erro ao conectar com a IA: {e}")
-            else:
-                st.warning("⚠️ Chave da IA (GROQ_API_KEY) não configurada pelo gestor.")
+        with st.expander("🔌 PPPOE NÃO CONECTA / CONECTA E NÃO NAVEGA"):
+            st.markdown("""
+            **📋 Requisitos Mínimos (Não Conecta):**
+            * Nome do cliente, OLT e Plano
+            * Login de autenticação e Número de Série da ONU
+            * IP Fixo (se houver) e Teste na ONU
+            
+            **📋 Requisitos Mínimos (Conecta e Não Navega):**
+            * Nome do cliente, OLT e Número de Série da ONU
+            * IP Fixo / IP do CGNAT e Teste na ONU
+            * Tracert para IP externo (ex: 8.8.8.8) com origem na ONU
+            
+            💡 **Dica de Ouro:** Verifique no Cacti se outros clientes da mesma OLT estão navegando. Tente testar com a ONU em modo roteador ou configure uma VPN PPPoE no PC do cliente.
+            """)
+
 # ==========================================
 # RODAPÉ DO SISTEMA
 # ==========================================
