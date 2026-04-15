@@ -3198,11 +3198,11 @@ else:
                     st.success(f"🎉 **Feliz Aniversário, {primeiro_nome}!** Toda a equipe Sofistas te deseja um dia incrível e repleto de conquistas! 🎂🎈")
                     if not st.session_state.get('baloes_vistos', False):
                         st.balloons()
-                        st.session_state['baloes_vistos'] = True
+                        st.session_state['baloes_vistos'] = True 
         except: pass        
 
     # --- CRIAÇÃO DAS ABAS ---
-    tab_results, tab_time, tab_ferias, tab_feedbacks, tab_banco, tab_ia, tab_celebracoes = st.tabs(["📊 Meus Resultados", "🦁 Visão do Time", "🏖️ Minhas Férias", "📝 Meus Feedbacks", "⏰ Meu Banco de Horas", "🤖 Assistente IA", "🎉 Celebrações"])
+    tab_results, tab_time, tab_ferias, tab_feedbacks, tab_banco, tab_ia, tab_celebracoes, tab_manual = st.tabs(["📊 Meus Resultados", "🦁 Visão do Time", "🏖️ Minhas Férias", "📝 Meus Feedbacks", "⏰ Meu Banco de Horas", "🤖 Assistente IA", "🎉 Celebrações", "📚 Manual NOC"])
     # ---------------------------------------------------------
     # ABA 1: MEUS RESULTADOS
     # ---------------------------------------------------------
@@ -3907,6 +3907,84 @@ else:
                         """, unsafe_allow_html=True)
                 else:
                     st.write("Nenhum recado recente por aqui.")
+
+with tab_manual:
+    st.markdown("### 📚 Manual de Testes para Abertura de Chamados (NOC N1)")
+    st.info("Consulte os requisitos mínimos e dicas antes de escalar um chamado para o NOC.")
+
+    with st.expander("🌐 PROBLEMA COM SITE OU SOFTWARE"):
+        st.markdown("""
+        **Tipos de problema:** Site não abre | Aplicação falhando | Lentidão no site
+        
+        **📋 Requisitos Mínimos para o Chamado:**
+        * Nome do cliente e OLT
+        * Número de Série da ONU
+        * IP válido do NAT e IP do CGNAT
+        * Domínio e IP do site
+        * Traceroute e Ping
+        * Erro apresentado (Se não for foto, gravar vídeo e mandar link do drive)
+        * Scan nas portas utilizadas para acesso web
+        * Testes a partir de outros equipamentos
+        
+        💡 **Dica de Ouro:** Inspecione elementos (Network) ou use softwares como Wireshark/tcpdump para analisar o tráfego. Anexe o arquivo `.pcap` se possível. Teste também se a falha ocorre por outra operadora.
+        """)
+
+    with st.expander("🚀 PLANO NÃO ATINGE O CONTRATADO"):
+        st.markdown("""
+        **Fatores a analisar:** 1. **Teste via cabo de rede:** Checar categoria do cabo, testar por ping e checar barramento da placa de rede.
+        2. **Análise da máquina:** Verificar processamento, memória, espaço em disco e capacidade da placa.
+        3. **Comunicação externa:** Ping para DNS do Google para atestar estabilidade mínima.
+        
+        **📋 Requisitos Mínimos para o Chamado:**
+        * Nome do cliente e OLT
+        * Número de Série da ONU e IP do CGNAT
+        * Plano contratado
+        * Registro por foto ou vídeo do plano atingido (Sem cortes, mostrando que está no cabo)
+        * Teste de ping e descrição de tudo que foi testado
+        
+        💡 **Dica de Ouro:** Force a banda com vários arquivos simultâneos (de hospedagens diferentes) acompanhando via placa de rede. Velocímetros comuns podem ser imprecisos.
+        """)
+
+    with st.expander("🎮 PROBLEMA COM JOGO"):
+        st.markdown("""
+        **Tipos de problema:** Falha ao acessar a sala | Latência alta
+        
+        **📋 Requisitos Mínimos para o Chamado:**
+        * Nome do cliente e OLT
+        * Número de Série da ONU
+        * IP válido do NAT e IP do CGNAT
+        * Domínio e IP do servidor do jogo
+        * Traceroute e Ping (de múltiplas origens, se possível)
+        * Erro apresentado
+        
+        💡 **Dica de Ouro:** Identifique se é console, mobile ou PC (cabo ou Wi-Fi). Pesquise em fóruns ou no *Downdetector* se o servidor do jogo não está em manutenção geral antes de abrir o chamado.
+        """)
+
+    with st.expander("🔴 FALHA MASSIVA EM UMA REGIÃO OU GERAL"):
+        st.markdown("""
+        **📋 Requisitos Mínimos para o Chamado:**
+        * Nome do cliente e OLT
+        * Número de Série da ONU e IP do CGNAT
+        * Descrição clara do que ocorre e serviço afetado
+        * Testes possíveis realizados
+        
+        💡 **Dica de Ouro:** Verifique o tráfego da OLT via Cacti e a comunicação ICMP via Raumil. Em reclamações em massa, consulte o *Downdetector* (Google, YouTube, Pokémon GO, etc.) para garantir que não é uma queda global do serviço externo.
+        """)
+
+    with st.expander("🔌 PPPOE NÃO CONECTA / CONECTA E NÃO NAVEGA"):
+        st.markdown("""
+        **📋 Requisitos Mínimos (Não Conecta):**
+        * Nome do cliente, OLT e Plano
+        * Login de autenticação e Número de Série da ONU
+        * IP Fixo (se houver) e Teste na ONU
+        
+        **📋 Requisitos Mínimos (Conecta e Não Navega):**
+        * Nome do cliente, OLT e Número de Série da ONU
+        * IP Fixo / IP do CGNAT e Teste na ONU
+        * Tracert para IP externo (ex: 8.8.8.8) com origem na ONU
+        
+        💡 **Dica de Ouro:** Verifique no Cacti se outros clientes da mesma OLT estão navegando. Tente testar com a ONU em modo roteador ou configure uma VPN PPPoE no PC do cliente.
+        """)
 
 # ==========================================
 # RODAPÉ DO SISTEMA
