@@ -3202,8 +3202,7 @@ else:
         except: pass        
 
     # --- CRIAÇÃO DAS ABAS ---
-    tab_results, tab_time, tab_ferias, tab_feedbacks, tab_banco, tab_ia, tab_celebracoes, tab_manual = st.tabs(["📊 Meus Resultados", "🦁 Visão do Time", "🏖️ Minhas Férias", "📝 Meus Feedbacks", "⏰ Meu Banco de Horas", "🤖 Assistente IA", "🎉 Celebrações", "📚 Manual NOC"])
-    # ---------------------------------------------------------
+    tab_results, tab_time, tab_ferias, tab_feedbacks, tab_banco, tab_ia, tab_celebracoes, tab_manual = st.tabs(["📊 Meus Resultados", "🦁 Visão do Time", "🏖️ Minhas Férias", "📝 Meus Feedbacks", "⏰ Meu Banco de Horas", "🤖 Assistente IA", "🎉 Celebrações", "📚 Manual NOC"])    # ---------------------------------------------------------
     # ABA 1: MEUS RESULTADOS
     # ---------------------------------------------------------
     with tab_results:
