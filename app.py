@@ -3912,84 +3912,104 @@ else:
     # ---------------------------------------------------------
     with tab_manual:
         st.markdown("### 📚 Manual de Testes para Abertura de Chamados (NOC N1)")
-        st.info("Consulte os requisitos mínimos, ferramentas sugeridas e o Tutor de Testes abaixo.")
+        st.info("Consulte os requisitos mínimos, aprenda a realizar os testes básicos e utilize nosso Tutor IA no final da página.")
 
-        # --- SEÇÃO DO MANUAL (Baseado no PDF) ---
+        # --- SEÇÃO NOVA: COMO FAZER OS TESTES PADRÕES ---
+        with st.expander("🛠️ COMO REALIZAR OS TESTES PADRÕES (PING E TRACERT)"):
+            st.markdown("""
+            Estes são os testes obrigatórios para quase todos os chamados de lentidão, falha de navegação ou jogos. 
+            Eles ajudam o NOC a entender se o problema é perda de pacote ou falha de rota.
+
+            **1. Teste de Ping (Latência e Perda de Pacotes)**
+            Serve para testar a estabilidade da conexão com um destino específico.
+            * **Como fazer (Windows):** Abra o Prompt de Comando (CMD) e digite `ping 8.8.8.8 -t` (o `-t` faz o teste rodar sem parar. Aperte `Ctrl + C` para parar e ver o resumo).
+            * **Como interpretar:** Observe o "tempo" (ms). Se houver oscilações gigantes (ex: de 20ms pulando para 500ms) ou aparecer a mensagem *"Esgotado o tempo limite do pedido"*, significa que a rede do cliente está com instabilidade ou perdendo pacotes.
+
+            **2. Tracert / Traceroute (Mapeamento de Rota)**
+            Mostra todo o caminho (saltos) que a internet do cliente faz desde o roteador da casa dele até chegar no servidor do site/jogo.
+            * **Como fazer (Windows):** No CMD, digite `tracert 8.8.8.8` (ou o domínio do site com problema, ex: `tracert www.banco.com.br`).
+            * **Como interpretar:** Cada linha numerada é um equipamento no meio do caminho. 
+                * O salto 1 ou 2 geralmente é o roteador/ONU.
+                * Se o tempo (ms) subir drasticamente num salto específico, ou aparecerem muitos asteriscos (`*`), a rota quebrou ali.
+                * A dica é olhar o IP onde a falha começou para o NOC saber se quebrou dentro da rede Brisanet ou se a falha é externa (em um servidor fora do Brasil, por exemplo).
+            """)
+
+        # --- SEÇÃO DO MANUAL (Sem as citações) ---
         with st.expander("🛡️ FILTRO DE PORTAS"):
             st.markdown("""
-            **Portas filtradas (IP Fixo):** 17, chargen, ssh, telnet, smtp, domain, sunrpc, 161, 369, 389, 445, cmd, 520, 521, 853, 953, 1900, 2700, 5353, 5900, 11211, !, 20005, range 135-139 [cite: 19-44].
+            **Portas filtradas (IP Fixo):** 17, chargen, ssh, telnet, smtp, domain, sunrpc, 161, 369, 389, 445, cmd, 520, 521, 853, 953, 1900, 2700, 5353, 5900, 11211, !, 20005, range 135-139.
             
             **📋 Requisitos Mínimos:**
-            * Nome do cliente, OLT e Login [cite: 46-48]
-            * IP Fixo e VLAN do PPPOE [cite: 49, 50]
+            * Nome do cliente, OLT e Login
+            * IP Fixo e VLAN do PPPOE
             
-            💡 **Dica:** Configure a porta no gerenciamento remoto do roteador ou em IP > Services do Mikrotik para provar que não há filtro na rede Brisanet[cite: 52].
+            💡 **Dica:** Configure a porta no gerenciamento remoto do roteador ou em IP > Services do Mikrotik para provar que não há filtro na rede Brisanet.
             """)
 
         with st.expander("🌐 PROBLEMA COM SITE OU SOFTWARE"):
             st.markdown("""
-            **Cenários:** Site não abre, Falha na aplicação ou Lentidão[cite: 54, 55].
+            **Cenários:** Site não abre, Falha na aplicação ou Lentidão.
             
             **📋 Requisitos Mínimos:**
-            * Nome, OLT, SN da ONU, IP NAT e IP CGNAT [cite: 57-61]
-            * Domínio/IP do site, Traceroute, Ping e Scan de portas [cite: 62-64, 67]
+            * Nome, OLT, SN da ONU, IP NAT e IP CGNAT
+            * Domínio/IP do site, Traceroute, Ping e Scan de portas
             
-            💡 **Dica:** Use 'Inspecionar Elementos > Network' no navegador ou Wireshark para análise de tráfego (anexe o .pcap) [cite: 72-74]. Use `isptools.com.br` para ver latência partindo do Ceará[cite: 78].
+            💡 **Dica:** Use 'Inspecionar Elementos > Network' no navegador ou Wireshark para análise de tráfego (anexe o .pcap). Use `isptools.com.br` para ver latência partindo do Ceará.
             """)
 
         with st.expander("🚀 PLANO NÃO ATINGE O CONTRATADO"):
             st.markdown("""
-            **Fatores:** Categoria do cabo, barramento da placa e estabilidade (Ping DNS Google)[cite: 83, 85, 87].
+            **Fatores:** Categoria do cabo, barramento da placa e estabilidade (Ping DNS Google).
             
             **📋 Requisitos Mínimos:**
-            * Nome, OLT, SN da ONU, IP CGNAT e Plano [cite: 89-93]
-            * Foto/Vídeo do teste via cabo sem cortes [cite: 94]
+            * Nome, OLT, SN da ONU, IP CGNAT e Plano
+            * Foto/Vídeo do teste via cabo sem cortes
             
-            💡 **Dica:** Force a banda baixando arquivos simultâneos de diferentes fontes[cite: 99, 100]. No Linux, use o recurso `testa link` (wget) com `nload`[cite: 101].
+            💡 **Dica:** Force a banda baixando arquivos simultâneos de diferentes fontes. No Linux, use o recurso `testa link` (wget) com `nload`.
             """)
 
         with st.expander("🔒 PROBLEMA COM VPN"):
             st.markdown("""
-            **Tipos:** PPTP, L2VPN e OVPN[cite: 104].
+            **Tipos:** PPTP, L2VPN e OVPN.
             
             **📋 Requisitos Mínimos:**
-            * Nome, OLT, SN da ONU e IP Fixo [cite: 106-109]
-            * IP Remoto, Domínio, Tracert, Ping e Print do 'check port' no servidor [cite: 110-113]
+            * Nome, OLT, SN da ONU e IP Fixo
+            * IP Remoto, Domínio, Tracert, Ping e Print do 'check port' no servidor
             
-            💡 **Dica:** PPTP exige IP Fixo em ambas as pontas[cite: 114]. Você pode validar a rede criando um servidor VPN em um Mikrotik Brisanet para teste[cite: 119].
+            💡 **Dica:** PPTP exige IP Fixo em ambas as pontas. Você pode validar a rede criando um servidor VPN em um Mikrotik Brisanet para teste.
             """)
 
         with st.expander("🎮 PROBLEMA COM JOGO"):
             st.markdown("""
-            **Cenários:** Falha ao acessar sala ou Latência alta[cite: 122, 123].
+            **Cenários:** Falha ao acessar sala ou Latência alta.
             
             **📋 Requisitos Mínimos:**
-            * Nome, OLT, SN da ONU, IP NAT/CGNAT, Domínio e IP do Servidor [cite: 125-131]
-            * Traceroute, Ping e Foto do Erro [cite: 132, 133]
+            * Nome, OLT, SN da ONU, IP NAT/CGNAT, Domínio e IP do Servidor
+            * Traceroute, Ping e Foto do Erro
             
-            💡 **Dica:** Verifique se o jogo é console/PC e se usa Wi-Fi[cite: 134]. Consulte o Downdetector para ver se o servidor do jogo está em manutenção[cite: 137].
+            💡 **Dica:** Verifique se o jogo é console/PC e se usa Wi-Fi. Consulte o Downdetector para ver se o servidor do jogo está em manutenção.
             """)
 
         with st.expander("🔌 PPPOE: FALHAS DE CONEXÃO E NAVEGAÇÃO"):
             st.markdown("""
             **Requisitos (Não Conecta/Não Navega):**
-            * Nome, OLT, Plano, Login, SN da ONU e IP Fixo [cite: 141-146, 208-210]
-            * Teste na ONU e Tracert para 8.8.8.8 [cite: 147, 211, 212]
+            * Nome, OLT, Plano, Login, SN da ONU e IP Fixo
+            * Teste na ONU e Tracert para 8.8.8.8
             
-            💡 **Dica:** Cheque o tráfego da OLT no Cacti[cite: 148]. Se for roteador pessoal, teste em modo Bridge ou configure VPN PPPoE no PC do cliente[cite: 149].
+            💡 **Dica:** Cheque o tráfego da OLT no Cacti. Se for roteador pessoal, teste em modo Bridge ou configure VPN PPPoE no PC do cliente.
             """)
 
         with st.expander("🔴 OUTROS CENÁRIOS (MASSIVA, IPv6 E TV)"):
             st.markdown("""
-            * **Falha Massiva:** Nome, OLT, SN e IP CGNAT. Cheque ICMP via Raumil e grupos como IX BR no Telegram [cite: 157-162, 176].
-            * **IPv6:** Nome, OLT, SN, VLAN, IP/Domínio, Tracert/Ping e IPv6 da WAN [cite: 179-182, 187-196].
-            * **Canais Quadriculando:** Nome, OLT, SN e informar o CANAL ESPECÍFICO afetado [cite: 200-203].
+            * **Falha Massiva:** Nome, OLT, SN e IP CGNAT. Cheque ICMP via Raumil e grupos como IX BR no Telegram.
+            * **IPv6:** Nome, OLT, SN, VLAN, IP/Domínio, Tracert/Ping e IPv6 da WAN.
+            * **Canais Quadriculando:** Nome, OLT, SN e informar o CANAL ESPECÍFICO afetado.
             """)
 
-        # --- SEÇÃO DO TUTOR TÉCNICO (AGORA DENTRO DA ABA) ---
+        # --- SEÇÃO DO TUTOR TÉCNICO ---
         st.markdown("---")
-        st.markdown("#### 🎓 Tutor Técnico: Aprenda a Executar os Testes")
-        st.caption("Selecione a ferramenta abaixo para receber um tutorial passo a passo da IA.")
+        st.markdown("#### 🤖 Tutor Técnico: IA Interativa")
+        st.caption("Ainda com dúvidas de como fazer os testes ou usar outra ferramenta? Selecione abaixo e a IA te dá o tutorial exato.")
         
         c_fer_1, c_fer_2 = st.columns(2)
         ferramenta_sel = c_fer_1.selectbox("Ferramenta:", [
@@ -4002,16 +4022,18 @@ else:
         
         os_sel = c_fer_2.selectbox("Sistema do Cliente:", ["Windows", "Linux", "MacOS", "Mikrotik"], key="sel_os_manual")
         
-        if st.button("📚 Gerar Tutorial de Teste", type="primary", use_container_width=True):
+        if st.button("📚 Gerar Tutorial Interativo", type="primary", use_container_width=True):
             if "GROQ_API_KEY" in st.secrets:
-                with st.spinner(f"Preparando guia de {ferramenta_sel}..."):
+                with st.spinner(f"Preparando guia detalhado de {ferramenta_sel}..."):
                     try:
                         prompt_sistema = "Você é um professor sênior de redes do NOC Brisanet. Ensine como abrir a ferramenta, o comando exato e como interpretar se o resultado indica problema ou normalidade."
                         prompt_usuario = f"Como usar '{ferramenta_sel}' no sistema '{os_sel}' seguindo os padrões do manual NOC?"
                         
                         tutorial = chamar_ia_groq(prompt_sistema, prompt_usuario)
-                        st.success("Guia gerado com sucesso!")
+                        
+                        st.markdown("<div style='background-color: #f0fdf4; border-left: 5px solid #22c55e; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-top: 15px;'>", unsafe_allow_html=True)
                         st.markdown(tutorial)
+                        st.markdown("</div><br>", unsafe_allow_html=True)
                     except Exception as e:
                         st.error(f"Erro na IA: {e}")
             else:
