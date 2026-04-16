@@ -3908,169 +3908,114 @@ else:
                     st.write("Nenhum recado recente por aqui.")
 
 # ---------------------------------------------------------
-    # ABA 8: MANUAL NOC N1 (COMPLETO)
+    # ABA 8: MANUAL NOC N1 + TUTOR TÉCNICO INTEGRADO
     # ---------------------------------------------------------
     with tab_manual:
         st.markdown("### 📚 Manual de Testes para Abertura de Chamados (NOC N1)")
-        st.info("Consulte os requisitos mínimos, ferramentas sugeridas e dicas antes de escalar um chamado para o NOC.")
+        st.info("Consulte os requisitos mínimos, ferramentas sugeridas e o Tutor de Testes abaixo.")
 
+        # --- SEÇÃO DO MANUAL (Baseado no PDF) ---
         with st.expander("🛡️ FILTRO DE PORTAS"):
             st.markdown("""
-            **Portas comumente filtradas:** 17, chargen, ssh, telnet, smtp, domain, sunrpc, 161, 369, 389, 445, cmd, 520, 521, 853, 953, 1900, 2700, 5353, 5900, 11211, !, 20005, range 135 139.
+            **Portas filtradas (IP Fixo):** 17, chargen, ssh, telnet, smtp, domain, sunrpc, 161, 369, 389, 445, cmd, 520, 521, 853, 953, 1900, 2700, 5353, 5900, 11211, !, 20005, range 135-139 [cite: 19-44].
             
             **📋 Requisitos Mínimos:**
-            * Nome do cliente e OLT
-            * Login de autenticação
-            * IP Fixo
-            * VLAN do PPPOE
+            * Nome do cliente, OLT e Login [cite: 46-48]
+            * IP Fixo e VLAN do PPPOE [cite: 49, 50]
             
-            💡 **Dica de Ouro:** Se constar 'filtro' no nmap em uma porta que NÃO está na lista acima, analise se o encaminhamento interno no roteador pessoal do cliente está correto. Para comprovar que não há filtro na nossa rede, configure a porta no gerenciamento remoto ou em IP > Services do Mikrotik.
+            💡 **Dica:** Configure a porta no gerenciamento remoto do roteador ou em IP > Services do Mikrotik para provar que não há filtro na rede Brisanet[cite: 52].
             """)
 
         with st.expander("🌐 PROBLEMA COM SITE OU SOFTWARE"):
             st.markdown("""
-            **Tipos de problema:** Site não abre/Software | Aplicação falhando | Lentidão no site
+            **Cenários:** Site não abre, Falha na aplicação ou Lentidão[cite: 54, 55].
             
             **📋 Requisitos Mínimos:**
-            * Nome, OLT e Número de Série da ONU
-            * IP válido do NAT e IP do CGNAT
-            * Domínio e IP do site
-            * Traceroute e Ping
-            * Erro apresentado (Se não for foto, gravar vídeo e mandar link do drive)
-            * Scan nas portas utilizadas para acesso web
-            * Testes a partir de outros equipamentos
+            * Nome, OLT, SN da ONU, IP NAT e IP CGNAT [cite: 57-61]
+            * Domínio/IP do site, Traceroute, Ping e Scan de portas [cite: 62-64, 67]
             
-            💡 **Dica de Ouro:** Teste de uma rede local Brisanet para validar. Inspecione elementos (Network) ou use Windump/Wireshark (Windows) ou tcpdump (Linux) - anexe o arquivo `.pcap`! Para checar latência de servidores focados no Ceará, use `isptools.com.br`. Teste ping no sentido inverso (se possível).
+            💡 **Dica:** Use 'Inspecionar Elementos > Network' no navegador ou Wireshark para análise de tráfego (anexe o .pcap) [cite: 72-74]. Use `isptools.com.br` para ver latência partindo do Ceará[cite: 78].
             """)
 
         with st.expander("🚀 PLANO NÃO ATINGE O CONTRATADO"):
             st.markdown("""
-            **Fatores a analisar:** Cabo de rede (categoria/barramento), Processamento/Memória da máquina, e Comunicação externa (Ping para DNS Google).
+            **Fatores:** Categoria do cabo, barramento da placa e estabilidade (Ping DNS Google)[cite: 83, 85, 87].
             
             **📋 Requisitos Mínimos:**
-            * Nome, OLT, Número de Série da ONU e IP do CGNAT
-            * Plano contratado
-            * Registro por foto/vídeo do plano atingido (mostrando cabo conectado)
-            * Teste de ping e descrição dos testes realizados.
-            *(Atenção: Testes por velocímetros comuns não são conclusivos).*
+            * Nome, OLT, SN da ONU, IP CGNAT e Plano [cite: 89-93]
+            * Foto/Vídeo do teste via cabo sem cortes [cite: 94]
             
-            💡 **Dica de Ouro:** Force a banda baixando vários arquivos grandes simultaneamente de hospedagens diferentes e monitore a placa de rede. No Linux, use "testa link" (`wget`) e acompanhe via `nload`.
+            💡 **Dica:** Force a banda baixando arquivos simultâneos de diferentes fontes[cite: 99, 100]. No Linux, use o recurso `testa link` (wget) com `nload`[cite: 101].
             """)
-            
+
         with st.expander("🔒 PROBLEMA COM VPN"):
             st.markdown("""
-            **VPNs Comuns:** PPTP, L2VPN e OVPN.
+            **Tipos:** PPTP, L2VPN e OVPN[cite: 104].
             
             **📋 Requisitos Mínimos:**
-            * Nome, OLT, Número de Série da ONU e IP Fixo (se houver)
-            * IP Remoto do servidor VPN e Domínio da VPN
-            * Tracert, Ping
-            * Erro apresentado (Foto ou Vídeo via Drive)
-            * Print do check port no IP do servidor VPN
+            * Nome, OLT, SN da ONU e IP Fixo [cite: 106-109]
+            * IP Remoto, Domínio, Tracert, Ping e Print do 'check port' no servidor [cite: 110-113]
             
-            💡 **Dica de Ouro:** VPN PPTP exige IP Fixo na Brisanet e no Cliente! Para comprovar que nossa rede está livre, você pode solicitar a criação de um servidor VPN em um Mikrotik Brisanet e testar a conexão limpa.
+            💡 **Dica:** PPTP exige IP Fixo em ambas as pontas[cite: 114]. Você pode validar a rede criando um servidor VPN em um Mikrotik Brisanet para teste[cite: 119].
             """)
 
         with st.expander("🎮 PROBLEMA COM JOGO"):
             st.markdown("""
-            **Tipos:** Falha ao acessar a sala | Latência alta. (Identifique se é Console, Mobile ou PC e se usa Cabo ou Wi-Fi).
+            **Cenários:** Falha ao acessar sala ou Latência alta[cite: 122, 123].
             
             **📋 Requisitos Mínimos:**
-            * Nome, OLT e Número de Série da ONU
-            * IP válido do NAT e IP do CGNAT
-            * Domínio e IP do servidor do jogo
-            * Traceroute e Ping (de múltiplas origens, se possível)
-            * Erro apresentado
+            * Nome, OLT, SN da ONU, IP NAT/CGNAT, Domínio e IP do Servidor [cite: 125-131]
+            * Traceroute, Ping e Foto do Erro [cite: 132, 133]
             
-            💡 **Dica de Ouro:** Pesquise em fóruns ou no Downdetector se o servidor do jogo não está em manutenção geral antes de escalar o chamado.
+            💡 **Dica:** Verifique se o jogo é console/PC e se usa Wi-Fi[cite: 134]. Consulte o Downdetector para ver se o servidor do jogo está em manutenção[cite: 137].
             """)
 
-        with st.expander("🔌 PPPOE NÃO CONECTA / CONECTA E NÃO NAVEGA"):
+        with st.expander("🔌 PPPOE: FALHAS DE CONEXÃO E NAVEGAÇÃO"):
             st.markdown("""
-            **📋 Requisitos Mínimos (Não Conecta):**
-            * Nome, OLT, Plano e Login de autenticação
-            * Número de Série da ONU e IP Fixo (caso tenha)
-            * Teste na ONU
+            **Requisitos (Não Conecta/Não Navega):**
+            * Nome, OLT, Plano, Login, SN da ONU e IP Fixo [cite: 141-146, 208-210]
+            * Teste na ONU e Tracert para 8.8.8.8 [cite: 147, 211, 212]
             
-            **📋 Requisitos Mínimos (Conecta e Não Navega):**
-            * Nome, OLT e Número de Série da ONU
-            * IP Fixo ou IP do CGNAT
-            * Teste na ONU
-            * Tracert para IP externo (ex: 8.8.8.8) com origem na ONU
-            
-            💡 **Dica de Ouro:** Verifique via Cacti se a OLT tem tráfego PPPoE e se outros clientes conectam. Teste com ONU em bridge ou VPN PPPoE. Se não der, altere a senha de autenticação para testar.
+            💡 **Dica:** Cheque o tráfego da OLT no Cacti[cite: 148]. Se for roteador pessoal, teste em modo Bridge ou configure VPN PPPoE no PC do cliente[cite: 149].
             """)
 
-        with st.expander("🔴 FALHA MASSIVA EM UMA REGIÃO OU GERAL"):
+        with st.expander("🔴 OUTROS CENÁRIOS (MASSIVA, IPv6 E TV)"):
             st.markdown("""
-            **📋 Requisitos Mínimos:**
-            * Nome, OLT, Número de Série da ONU e IP do CGNAT
-            * Descrição clara do que ocorre, serviço afetado e testes realizados.
-            
-            💡 **Dica de Ouro:** Verifique comunicação ICMP via Raumil e tráfego da OLT no Cacti. Consulte grupos do Telegram (ex: IX BR) e o Downdetector (Google, YouTube, Pokémon GO) para descartar quedas globais do serviço externo.
+            * **Falha Massiva:** Nome, OLT, SN e IP CGNAT. Cheque ICMP via Raumil e grupos como IX BR no Telegram [cite: 157-162, 176].
+            * **IPv6:** Nome, OLT, SN, VLAN, IP/Domínio, Tracert/Ping e IPv6 da WAN [cite: 179-182, 187-196].
+            * **Canais Quadriculando:** Nome, OLT, SN e informar o CANAL ESPECÍFICO afetado [cite: 200-203].
             """)
-            
-        with st.expander("🌐 PROBLEMAS COM IPv6"):
-            st.markdown("""
-            **Cenários:** Clientes conectados APENAS com IPv6 | Perda de pacotes em conteúdos IPv6.
-            
-            **📋 Requisitos Mínimos:**
-            * Nome, OLT e Número de Série da ONU
-            * VLAN do serviço
-            * IP do Site e Domínio do Site (Para perda de pacote)
-            * Tracert, Ping e IPv6 da WAN
-            * Descrição do problema (informando se é isolado ou geral)
-            """)
-            
-        with st.expander("📺 CANAIS QUADRICULANDO"):
-            st.markdown("""
-            **📋 Requisitos Mínimos:**
-            * Nome, OLT e Número de Série da ONU
-            * Qual canal específico está apresentando falha (ou informar se são todos)
-            * Descrição informando se é problema isolado ou geral
-            """)
-            # ==========================================================
-    # 🎓 TUTOR TÉCNICO (FIXO NO FINAL DA PÁGINA DO OPERADOR)
-    # ==========================================================
-    st.markdown("---")
-    with st.expander("🎓 Tutor Técnico: Aprenda a Fazer os Testes do NOC (Passo a Passo)", expanded=False):
-        st.info("Não sabe usar alguma ferramenta exigida pelo NOC? Escolha abaixo e a IA te dá o comando exato e te ensina a ler o resultado!")
+
+        # --- SEÇÃO DO TUTOR TÉCNICO (AGORA DENTRO DA ABA) ---
+        st.markdown("---")
+        st.markdown("#### 🎓 Tutor Técnico: Aprenda a Executar os Testes")
+        st.caption("Selecione a ferramenta abaixo para receber um tutorial passo a passo da IA.")
         
         c_fer_1, c_fer_2 = st.columns(2)
-        ferramenta_sel = c_fer_1.selectbox("Qual ferramenta você precisa usar?", [
+        ferramenta_sel = c_fer_1.selectbox("Ferramenta:", [
             "Nmap (Verificar Filtro de Portas)", 
             "Traceroute / Tracert (Verificar Rota)", 
             "Ping estendido (Verificar Perda de Pacote)", 
             "Wireshark / tcpdump (Análise de Tráfego)", 
             "Testa Link / Wget (Forçar Banda)"
-        ])
-        os_sel = c_fer_2.selectbox("Qual o sistema do cliente?", ["Windows", "Linux", "MacOS", "Roteador Mikrotik", "Prompt do Roteador (Geral)"])
+        ], key="sel_tutor_manual")
         
-        if st.button("📚 Me ensina a fazer esse teste agora", type="primary", use_container_width=True):
+        os_sel = c_fer_2.selectbox("Sistema do Cliente:", ["Windows", "Linux", "MacOS", "Mikrotik"], key="sel_os_manual")
+        
+        if st.button("📚 Gerar Tutorial de Teste", type="primary", use_container_width=True):
             if "GROQ_API_KEY" in st.secrets:
-                with st.spinner(f"Sofistas AI está preparando o tutorial prático de {ferramenta_sel}..."):
+                with st.spinner(f"Preparando guia de {ferramenta_sel}..."):
                     try:
-                        # O Prompt que transforma a IA num professor paciente
-                        prompt_sistema = """Você é um professor sênior de redes, especialista em suporte NOC N1 da Brisanet.
-                        Sua missão é ensinar um operador júnior a realizar testes de rede de forma MUITO didática, simples e direta.
-                        Sempre inclua:
-                        1. Como abrir o terminal/programa.
-                        2. O comando exato que ele deve copiar e colar (use blocos de código com exemplos visuais).
-                        3. Como parar o teste (ex: Ctrl+C), se aplicável.
-                        4. Como interpretar o resultado: explique claramente o que é um resultado 'Normal' e o que indica 'Problema' para ele saber se deve ou não abrir o chamado."""
+                        prompt_sistema = "Você é um professor sênior de redes do NOC Brisanet. Ensine como abrir a ferramenta, o comando exato e como interpretar se o resultado indica problema ou normalidade."
+                        prompt_usuario = f"Como usar '{ferramenta_sel}' no sistema '{os_sel}' seguindo os padrões do manual NOC?"
                         
-                        prompt_usuario = f"Explique o passo a passo prático de como usar a ferramenta '{ferramenta_sel}' no sistema operacional '{os_sel}'."
-                        
-                        tutorial_gerado = chamar_ia_groq(prompt_sistema, prompt_usuario)
-                        
-                        st.markdown("<div style='background-color: #f0fdf4; border-left: 5px solid #22c55e; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-top: 15px;'>", unsafe_allow_html=True)
-                        st.markdown(tutorial_gerado)
-                        st.markdown("</div><br>", unsafe_allow_html=True)
-                        
+                        tutorial = chamar_ia_groq(prompt_sistema, prompt_usuario)
+                        st.success("Guia gerado com sucesso!")
+                        st.markdown(tutorial)
                     except Exception as e:
-                        st.error(f"Erro ao conectar com a IA: {e}")
+                        st.error(f"Erro na IA: {e}")
             else:
-                st.warning("⚠️ Chave da IA (GROQ_API_KEY) não configurada pelo gestor.")
+                st.warning("Chave da IA não configurada.")
             
 
 # ==========================================
