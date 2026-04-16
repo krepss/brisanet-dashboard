@@ -3908,19 +3908,31 @@ else:
                     st.write("Nenhum recado recente por aqui.")
 
 # ---------------------------------------------------------
-    # ABA 8: MANUAL NOC N1
+    # ABA 8: MANUAL NOC N1 (COMPLETO)
     # ---------------------------------------------------------
     with tab_manual:
         st.markdown("### 📚 Manual de Testes para Abertura de Chamados (NOC N1)")
-        st.info("Consulte os requisitos mínimos e dicas antes de escalar um chamado para o NOC.")
+        st.info("Consulte os requisitos mínimos, ferramentas sugeridas e dicas antes de escalar um chamado para o NOC.")
+
+        with st.expander("🛡️ FILTRO DE PORTAS"):
+            st.markdown("""
+            **Portas comumente filtradas:** 17, chargen, ssh, telnet, smtp, domain, sunrpc, 161, 369, 389, 445, cmd, 520, 521, 853, 953, 1900, 2700, 5353, 5900, 11211, !, 20005, range 135 139.
+            
+            **📋 Requisitos Mínimos:**
+            * Nome do cliente e OLT
+            * Login de autenticação
+            * IP Fixo
+            * VLAN do PPPOE
+            
+            💡 **Dica de Ouro:** Se constar 'filtro' no nmap em uma porta que NÃO está na lista acima, analise se o encaminhamento interno no roteador pessoal do cliente está correto. Para comprovar que não há filtro na nossa rede, configure a porta no gerenciamento remoto ou em IP > Services do Mikrotik.
+            """)
 
         with st.expander("🌐 PROBLEMA COM SITE OU SOFTWARE"):
             st.markdown("""
-            **Tipos de problema:** Site não abre | Aplicação falhando | Lentidão no site
+            **Tipos de problema:** Site não abre/Software | Aplicação falhando | Lentidão no site
             
-            **📋 Requisitos Mínimos para o Chamado:**
-            * Nome do cliente e OLT
-            * Número de Série da ONU
+            **📋 Requisitos Mínimos:**
+            * Nome, OLT e Número de Série da ONU
             * IP válido do NAT e IP do CGNAT
             * Domínio e IP do site
             * Traceroute e Ping
@@ -3928,64 +3940,94 @@ else:
             * Scan nas portas utilizadas para acesso web
             * Testes a partir de outros equipamentos
             
-            💡 **Dica de Ouro:** Inspecione elementos (Network) ou use softwares como Wireshark/tcpdump para analisar o tráfego. Anexe o arquivo `.pcap` se possível. Teste também se a falha ocorre por outra operadora.
+            💡 **Dica de Ouro:** Teste de uma rede local Brisanet para validar. Inspecione elementos (Network) ou use Windump/Wireshark (Windows) ou tcpdump (Linux) - anexe o arquivo `.pcap`! Para checar latência de servidores focados no Ceará, use `isptools.com.br`. Teste ping no sentido inverso (se possível).
             """)
 
         with st.expander("🚀 PLANO NÃO ATINGE O CONTRATADO"):
             st.markdown("""
-            **Fatores a analisar:** 1. **Teste via cabo de rede:** Checar categoria do cabo, testar por ping e checar barramento da placa de rede.
-            2. **Análise da máquina:** Verificar processamento, memória, espaço em disco e capacidade da placa.
-            3. **Comunicação externa:** Ping para DNS do Google para atestar estabilidade mínima.
+            **Fatores a analisar:** Cabo de rede (categoria/barramento), Processamento/Memória da máquina, e Comunicação externa (Ping para DNS Google).
             
-            **📋 Requisitos Mínimos para o Chamado:**
-            * Nome do cliente e OLT
-            * Número de Série da ONU e IP do CGNAT
+            **📋 Requisitos Mínimos:**
+            * Nome, OLT, Número de Série da ONU e IP do CGNAT
             * Plano contratado
-            * Registro por foto ou vídeo do plano atingido (Sem cortes, mostrando que está no cabo)
-            * Teste de ping e descrição de tudo que foi testado
+            * Registro por foto/vídeo do plano atingido (mostrando cabo conectado)
+            * Teste de ping e descrição dos testes realizados.
+            *(Atenção: Testes por velocímetros comuns não são conclusivos).*
             
-            💡 **Dica de Ouro:** Force a banda com vários arquivos simultâneos (de hospedagens diferentes) acompanhando via placa de rede. Velocímetros comuns podem ser imprecisos.
+            💡 **Dica de Ouro:** Force a banda baixando vários arquivos grandes simultaneamente de hospedagens diferentes e monitore a placa de rede. No Linux, use "testa link" (`wget`) e acompanhe via `nload`.
+            """)
+            
+        with st.expander("🔒 PROBLEMA COM VPN"):
+            st.markdown("""
+            **VPNs Comuns:** PPTP, L2VPN e OVPN.
+            
+            **📋 Requisitos Mínimos:**
+            * Nome, OLT, Número de Série da ONU e IP Fixo (se houver)
+            * IP Remoto do servidor VPN e Domínio da VPN
+            * Tracert, Ping
+            * Erro apresentado (Foto ou Vídeo via Drive)
+            * Print do check port no IP do servidor VPN
+            
+            💡 **Dica de Ouro:** VPN PPTP exige IP Fixo na Brisanet e no Cliente! Para comprovar que nossa rede está livre, você pode solicitar a criação de um servidor VPN em um Mikrotik Brisanet e testar a conexão limpa.
             """)
 
         with st.expander("🎮 PROBLEMA COM JOGO"):
             st.markdown("""
-            **Tipos de problema:** Falha ao acessar a sala | Latência alta
+            **Tipos:** Falha ao acessar a sala | Latência alta. (Identifique se é Console, Mobile ou PC e se usa Cabo ou Wi-Fi).
             
-            **📋 Requisitos Mínimos para o Chamado:**
-            * Nome do cliente e OLT
-            * Número de Série da ONU
+            **📋 Requisitos Mínimos:**
+            * Nome, OLT e Número de Série da ONU
             * IP válido do NAT e IP do CGNAT
             * Domínio e IP do servidor do jogo
             * Traceroute e Ping (de múltiplas origens, se possível)
             * Erro apresentado
             
-            💡 **Dica de Ouro:** Identifique se é console, mobile ou PC (cabo ou Wi-Fi). Pesquise em fóruns ou no *Downdetector* se o servidor do jogo não está em manutenção geral antes de abrir o chamado.
-            """)
-
-        with st.expander("🔴 FALHA MASSIVA EM UMA REGIÃO OU GERAL"):
-            st.markdown("""
-            **📋 Requisitos Mínimos para o Chamado:**
-            * Nome do cliente e OLT
-            * Número de Série da ONU e IP do CGNAT
-            * Descrição clara do que ocorre e serviço afetado
-            * Testes possíveis realizados
-            
-            💡 **Dica de Ouro:** Verifique o tráfego da OLT via Cacti e a comunicação ICMP via Raumil. Em reclamações em massa, consulte o *Downdetector* (Google, YouTube, Pokémon GO, etc.) para garantir que não é uma queda global do serviço externo.
+            💡 **Dica de Ouro:** Pesquise em fóruns ou no Downdetector se o servidor do jogo não está em manutenção geral antes de escalar o chamado.
             """)
 
         with st.expander("🔌 PPPOE NÃO CONECTA / CONECTA E NÃO NAVEGA"):
             st.markdown("""
             **📋 Requisitos Mínimos (Não Conecta):**
-            * Nome do cliente, OLT e Plano
-            * Login de autenticação e Número de Série da ONU
-            * IP Fixo (se houver) e Teste na ONU
+            * Nome, OLT, Plano e Login de autenticação
+            * Número de Série da ONU e IP Fixo (caso tenha)
+            * Teste na ONU
             
             **📋 Requisitos Mínimos (Conecta e Não Navega):**
-            * Nome do cliente, OLT e Número de Série da ONU
-            * IP Fixo / IP do CGNAT e Teste na ONU
+            * Nome, OLT e Número de Série da ONU
+            * IP Fixo ou IP do CGNAT
+            * Teste na ONU
             * Tracert para IP externo (ex: 8.8.8.8) com origem na ONU
             
-            💡 **Dica de Ouro:** Verifique no Cacti se outros clientes da mesma OLT estão navegando. Tente testar com a ONU em modo roteador ou configure uma VPN PPPoE no PC do cliente.
+            💡 **Dica de Ouro:** Verifique via Cacti se a OLT tem tráfego PPPoE e se outros clientes conectam. Teste com ONU em bridge ou VPN PPPoE. Se não der, altere a senha de autenticação para testar.
+            """)
+
+        with st.expander("🔴 FALHA MASSIVA EM UMA REGIÃO OU GERAL"):
+            st.markdown("""
+            **📋 Requisitos Mínimos:**
+            * Nome, OLT, Número de Série da ONU e IP do CGNAT
+            * Descrição clara do que ocorre, serviço afetado e testes realizados.
+            
+            💡 **Dica de Ouro:** Verifique comunicação ICMP via Raumil e tráfego da OLT no Cacti. Consulte grupos do Telegram (ex: IX BR) e o Downdetector (Google, YouTube, Pokémon GO) para descartar quedas globais do serviço externo.
+            """)
+            
+        with st.expander("🌐 PROBLEMAS COM IPv6"):
+            st.markdown("""
+            **Cenários:** Clientes conectados APENAS com IPv6 | Perda de pacotes em conteúdos IPv6.
+            
+            **📋 Requisitos Mínimos:**
+            * Nome, OLT e Número de Série da ONU
+            * VLAN do serviço
+            * IP do Site e Domínio do Site (Para perda de pacote)
+            * Tracert, Ping e IPv6 da WAN
+            * Descrição do problema (informando se é isolado ou geral)
+            """)
+            
+        with st.expander("📺 CANAIS QUADRICULANDO"):
+            st.markdown("""
+            **📋 Requisitos Mínimos:**
+            * Nome, OLT e Número de Série da ONU
+            * Qual canal específico está apresentando falha (ou informar se são todos)
+            * Descrição informando se é problema isolado ou geral
             """)
             # ==========================================================
     # 🎓 TUTOR TÉCNICO (FIXO NO FINAL DA PÁGINA DO OPERADOR)
