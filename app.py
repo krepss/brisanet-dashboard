@@ -2409,23 +2409,26 @@ Vamos com tudo! 🔥"""
             data_fim = c_d2.date_input("Data de Fim")
             
             c_h1, c_h2, c_h3 = st.columns(3)
-            # Adicionamos keys para garantir a persistência
+            
+            # Campo de Quantidade (que você já usa)
             qtd_horas = c_h1.text_input("Quantidade (HH:MM)", placeholder="Ex: 02:00", key="qtd_fix")
-            hora_ini = c_h2.time_input("Horário Inicial", key="h_ini_fix")
-            hora_fim = c_h3.time_input("Horário Final", key="h_fim_fix")
+            
+            # Transformando os relógios em campos de texto (IGUAL ao de cima)
+            hora_ini_txt = c_h2.text_input("Horário Inicial", placeholder="Ex: 08:00", key="h_ini_txt_fix")
+            hora_fim_txt = c_h3.text_input("Horário Final", placeholder="Ex: 12:00", key="h_fim_txt_fix")
             
             submit_agendamento = st.form_submit_button("Salvar e Gerar Solicitação 🚀")
             
             if submit_agendamento:
-                if not qtd_horas:
-                    st.error("Por favor, preencha a Quantidade de Horas.")
+                # Validação simples para garantir que nada ficou vazio
+                if not qtd_horas or not hora_ini_txt or not hora_fim_txt:
+                    st.error("⚠️ Por favor, preencha todos os campos de horário (Quantidade, Inicial e Final).")
                 else:
                     tipo_curto = "Pagamento" if "Pagamento" in tipo_agendamento else "Retirada"
-                    h_ini_str = hora_ini.strftime('%H:%M')
-                    h_fim_str = hora_fim.strftime('%H:%M')
-
+                    
+                    # Como agora já são texto, não precisa de .strftime()
                     texto_gerado = f"UNIDADE GERENCIAL | DATA DE INICIO E FIM | COLABORADOR | TIPO (Retirada/Pagamento) | QUANTIDADE (HH:MM) | HORÁRIO INICIAL | HORÁRIO FINAL\n"
-                    texto_gerado += f"{unidade_gerencial} | {data_ini.strftime('%d/%m/%Y')} a {data_fim.strftime('%d/%m/%Y')} | {str(sel_colab).upper()} | {tipo_curto} | {qtd_horas} | {h_ini_str} | {h_fim_str}"
+                    texto_gerado += f"{unidade_gerencial} | {data_ini.strftime('%d/%m/%Y')} a {data_fim.strftime('%d/%m/%Y')} | {str(sel_colab).upper()} | {tipo_curto} | {qtd_horas} | {hora_ini_txt} | {hora_fim_txt}"
                     
                     dados_salvar = {
                         "Periodo_Registro": datetime.now().strftime("%d/%m/%Y %H:%M"),
@@ -2435,9 +2438,10 @@ Vamos com tudo! 🔥"""
                         "Data_Fim": data_fim.strftime('%d/%m/%Y'),
                         "Tipo": tipo_curto,
                         "Quantidade": qtd_horas,
-                        "Horario_Inicial": h_ini_str,
-                        "Horario_Final": h_fim_str
+                        "Horario_Inicial": hora_ini_txt,
+                        "Horario_Final": hora_fim_txt
                     }
+                    
                     salvar_escala_banco(dados_salvar)
                     
                     st.success("✅ Agendamento salvo com sucesso!")
