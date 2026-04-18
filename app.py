@@ -2383,11 +2383,20 @@ Vamos com tudo! 🔥"""
         
     # ------------------ BANCO DE HORAS ------------------
     with tabs[10]:
+        # Força o estilo visual dos inputs para que o texto apareça
+        st.markdown("""
+            <style>
+                /* Garante que o texto digitado em inputs e seletores seja visível */
+                input { color: #111827 !important; }
+                .stTimeInput div div input { color: #111827 !important; }
+                .stTextInput div div input { color: #111827 !important; }
+            </style>
+        """, unsafe_allow_html=True)
+
         st.markdown("### ⏰ Banco de Horas e Agendamentos")
-        
-        # Formulário de Agendamento Novo
         st.markdown("#### 📅 Agendar Retirada / Pagamento de Horas")
-        with st.form("form_banco_horas"):
+        
+        with st.form("form_banco_horas_v2"): # Mudamos o nome do form para resetar o cache
             colab_list = sorted(df_users_cadastrados['nome'].str.title().unique()) if df_users_cadastrados is not None else ["Nenhum usuário cadastrado"]
             c_f1, c_f2 = st.columns(2)
             sel_colab = c_f1.selectbox("Colaborador:", colab_list)
@@ -2400,11 +2409,10 @@ Vamos com tudo! 🔥"""
             data_fim = c_d2.date_input("Data de Fim")
             
             c_h1, c_h2, c_h3 = st.columns(3)
-            qtd_horas = c_h1.text_input("Quantidade (HH:MM)", placeholder="Ex: 02:00", key="banco_qtd_input")
-            
-            # Adicionamos 'key' para forçar o Streamlit a segurar o valor na tela
-            hora_ini = c_h2.time_input("Horário Inicial", key="banco_hora_ini_input")
-            hora_fim = c_h3.time_input("Horário Final", key="banco_hora_fim_input")
+            # Adicionamos keys para garantir a persistência
+            qtd_horas = c_h1.text_input("Quantidade (HH:MM)", placeholder="Ex: 02:00", key="qtd_fix")
+            hora_ini = c_h2.time_input("Horário Inicial", key="h_ini_fix")
+            hora_fim = c_h3.time_input("Horário Final", key="h_fim_fix")
             
             submit_agendamento = st.form_submit_button("Salvar e Gerar Solicitação 🚀")
             
@@ -2413,8 +2421,6 @@ Vamos com tudo! 🔥"""
                     st.error("Por favor, preencha a Quantidade de Horas.")
                 else:
                     tipo_curto = "Pagamento" if "Pagamento" in tipo_agendamento else "Retirada"
-                    
-                    # Formatação garantida das variáveis de tempo
                     h_ini_str = hora_ini.strftime('%H:%M')
                     h_fim_str = hora_fim.strftime('%H:%M')
 
